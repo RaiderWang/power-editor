@@ -1,0 +1,171 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-fg);
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.body {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fontList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.fontList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fontList::-webkit-scrollbar-thumb {
+  background: var(--toolbar-border);
+  border-radius: 3px;
+}
+
+.fontOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.08s;
+}
+
+.fontOption:hover {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.fontOption.selected {
+  background: #0e639c22;
+  border-color: #0e639c;
+}
+
+.fontOption.unavailable {
+  opacity: 0.5;
+}
+
+.fontName {
+  font-size: 13px;
+  color: var(--app-fg);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unavailableBadge {
+  font-size: 10px;
+  color: var(--toolbar-btn-color);
+  background: var(--toolbar-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: inherit;
+  opacity: 0.8;
+}
+
+.fontPreview {
+  font-size: 12px;
+  color: var(--toolbar-btn-color);
+  opacity: 0.8;
+}
+
+.customLabel {
+  font-size: 12px;
+  color: var(--toolbar-btn-color);
+  margin-bottom: 2px;
+}
+
+.customInput {
+  background: var(--toolbar-field-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  color: var(--app-fg);
+  padding: 5px 8px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+}
+
+.customInput:focus {
+  border-color: #0e639c;
+}
+
+.preview {
+  padding: 8px 10px;
+  background: var(--toolbar-field-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--app-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--toolbar-border);
+}
+
+.btnCancel,
+.btnApply {
+  padding: 5px 16px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--toolbar-border);
+  transition: background 0.1s;
+}
+
+.btnCancel {
+  background: transparent;
+  color: var(--app-fg);
+}
+
+.btnCancel:hover {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.btnApply {
+  background: #0e639c;
+  color: #fff;
+  border-color: #1177bb;
+}
+
+.btnApply:hover {
+  background: #1177bb;
+}

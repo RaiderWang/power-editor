@@ -1,0 +1,19 @@
+/L3"C++" Line Comment=// Block Comment On=/* Block Comment Off=*/
+/Delimiters = ~!@%^&*()-+=|\/{}[]:;"'<>,.?
+/FE="*.c *.h *.cpp *.cxx *.cc *.hpp *.hxx"
+/Keyword Colors
+#keyword1#
+asm auto break case catch class const const_cast continue default delete do
+else enum explicit export extern false for friend goto if inline int long
+mutable namespace new operator private protected public register reinterpret_cast
+return short signed sizeof static static_cast struct switch template this throw
+true try typedef typeid typename union unsigned using virtual void volatile
+wchar_t while
+#keyword2#
+bool char double float int long short unsigned void wchar_t
+int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t
+size_t ptrdiff_t
+#keyword3#
+NULL nullptr true false
+BOOL TRUE FALSE
+INT UINT LONG ULONG DWORD WORD BYTE CHAR WCHAR

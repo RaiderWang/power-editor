@@ -1,0 +1,182 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px solid var(--border, #444);
+  border-radius: 8px;
+  min-width: 440px;
+  max-width: 560px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+  border-bottom: 1px solid var(--border, #444);
+}
+
+.body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Quote checkboxes section */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary, #e0e0e0);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxRow input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  accent-color: #0e639c;
+  cursor: pointer;
+}
+
+.checkboxRow input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+
+/* Field rows */
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  color: var(--text-secondary, #aaa);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 5px;
+  border: 1px solid var(--border, #555);
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  outline: none;
+  font-family: var(--font-mono, monospace);
+}
+
+.input:focus {
+  border-color: #0e639c;
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inputWithButton {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.inputWithButton .input {
+  flex: 1;
+}
+
+.btnDetect {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border, #555);
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  white-space: nowrap;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.btnDetect:hover:not(:disabled) {
+  background: #2d2d2d;
+}
+
+.btnDetect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: #e74c3c;
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border, #3a3a3a);
+}
+
+.actions button {
+  padding: 6px 18px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s;
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions button:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.btnPrimary {
+  background: #0e639c;
+  color: #fff;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--text-primary, #e0e0e0);
+  border-color: var(--border, #555) !important;
+}

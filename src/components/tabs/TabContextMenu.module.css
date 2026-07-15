@@ -1,0 +1,40 @@
+.menu {
+  position: fixed;
+  z-index: 400;
+  min-width: 200px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: 13px;
+  color: var(--app-fg);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.08s;
+}
+
+.item:hover:not(:disabled) {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--toolbar-border);
+}

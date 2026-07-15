@@ -1,0 +1,267 @@
+.panel {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  z-index: 100;
+  width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* 标题栏：关闭按钮固定在右上角 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: -2px;
+}
+
+.title {
+  color: var(--app-fg);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 查找输入行 */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 选项行 */
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 替换行 */
+.replaceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+  border-top: 1px solid var(--toolbar-border);
+}
+
+.replaceActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: var(--app-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+  color: var(--app-fg);
+  padding: 4px 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #007acc;
+}
+
+.btn {
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+  color: var(--app-fg);
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn:hover {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.btnActive {
+  background: #094771;
+  border-color: #007acc;
+  color: #fff;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+  color: var(--app-fg);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--app-fg-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg);
+}
+
+.count {
+  color: var(--app-fg-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 48px;
+  text-align: center;
+}
+
+/* 搜索忙碌状态 */
+.panelSearching {
+  cursor: wait;
+}
+
+.panelSearching .iconBtn,
+.panelSearching .btn {
+  cursor: wait;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.panelSearching .input {
+  cursor: wait;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--app-fg);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* 帮助图标与悬浮提示卡片 */
+.helpWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--toolbar-bg);
+  color: #9cdcfe;
+  font-size: 11px;
+  font-style: normal;
+  cursor: default;
+  user-select: none;
+  line-height: 1;
+}
+
+.helpBtn:hover {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.helpTooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  min-width: 220px;
+  background: var(--tab-bar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 5px;
+  box-shadow: var(--panel-shadow);
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.helpWrapper:hover .helpTooltip {
+  display: block;
+}
+
+.helpTitle {
+  color: #9cdcfe;
+  font-weight: 600;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.helpRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  color: var(--app-fg);
+}
+
+.helpExpr {
+  display: inline-block;
+  min-width: 28px;
+  background: var(--app-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+  color: #ce9178;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  text-align: center;
+}

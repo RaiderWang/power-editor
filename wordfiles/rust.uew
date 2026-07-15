@@ -1,0 +1,15 @@
+/L20"Rust" Line Comment=// Block Comment On=/* Block Comment Off=*/
+/Delimiters = ~!@%^&*()-+=|\/{}[]:;"'<>,.?
+/FE="*.rs"
+/Keyword Colors
+#keyword1#
+as async await break const continue crate dyn else enum extern false fn for
+if impl in let loop match mod move mut pub ref return self Self static struct
+super trait true type union unsafe use where while
+#keyword2#
+bool char f32 f64 i8 i16 i32 i64 i128 isize str u8 u16 u32 u64 u128 usize
+String Vec Box Option Result
+#keyword3#
+Some None Ok Err true false
+println eprintln print eprint panic todo unimplemented unreachable assert
+assert_eq assert_ne dbg vec format

@@ -1,0 +1,242 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── CSS 主题变量（深色，默认） ─────────────────────────── */
+.app {
+  --app-bg: #1e1e1e;
+  --app-fg: #d4d4d4;
+  --app-fg-muted: #999999;
+  --toolbar-bg: #3c3c3c;
+  --toolbar-border: #555555;
+  --toolbar-btn-color: #c8c8c8;
+  --toolbar-btn-hover-bg: #505050;
+  --toolbar-btn-hover-border: #666666;
+  --toolbar-field-bg: #3a3a3a;
+  --tab-bar-bg: #252526;
+  --tab-bar-border: #1e1e1e;
+  --tab-color: #969696;
+  --tab-active-bg: #1e1e1e;
+  --tab-active-color: #ffffff;
+  --tab-hover-bg: #2a2d2e;
+  --tab-hover-color: #d4d4d4;
+  --tab-close-hover-bg: #444444;
+  --panel-bg: #2d2d2d;
+  --panel-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  --list-active-bg: #094771;
+  --list-active-bg-hover: #0e5a8a;
+  --list-row-border: #333333;
+  --list-row-hover-bg: #2a2d2e;
+}
+
+/* ── CSS 主题变量（浅色） ──────────────────────────────── */
+.app[data-theme="light"] {
+  --app-bg: #f5f5f5;
+  --app-fg: #333333;
+  --app-fg-muted: #777777;
+  --toolbar-bg: #e8e8e8;
+  --toolbar-border: #cccccc;
+  --toolbar-btn-color: #444444;
+  --toolbar-btn-hover-bg: #d8d8d8;
+  --toolbar-btn-hover-border: #bbbbbb;
+  --toolbar-field-bg: #f0f0f0;
+  --tab-bar-bg: #ececec;
+  --tab-bar-border: #dddddd;
+  --tab-color: #666666;
+  --tab-active-bg: #f5f5f5;
+  --tab-active-color: #000000;
+  --tab-hover-bg: #e0e0e0;
+  --tab-hover-color: #333333;
+  --tab-close-hover-bg: #d0d0d0;
+  --panel-bg: #ffffff;
+  --panel-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  --list-active-bg: #cce5f7;
+  --list-active-bg-hover: #a8d4ef;
+  --list-row-border: #e0e0e0;
+  --list-row-hover-bg: #e8e8e8;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Split-pane layouts ──────────────────────────────── */
+.editor-split {
+  flex-direction: row; /* default; overridden below */
+}
+
+.editor-split-h {
+  flex-direction: row;
+}
+
+.editor-split-v {
+  flex-direction: column;
+}
+
+/* Draggable divider between panes */
+.split-handle {
+  background: var(--toolbar-border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+  position: relative;
+  z-index: 10;
+}
+
+.split-handle:hover,
+.split-handle:active {
+  background: #007acc;
+}
+
+.split-handle-h {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.split-handle-v {
+  height: 4px;
+  cursor: row-resize;
+}
+
+/* Primary pane wrapper — starts at 50%, shrinks/grows via JS drag */
+.split-primary {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* CodeMirror overrides */
+.cm-editor {
+  height: 100%;
+  /* font-size is controlled by EditorView.theme via fontComp compartment */
+}
+
+.cm-scroller {
+  overflow: auto !important;
+}
+
+/* Hide the native vertical scrollbar; the VirtualScrollbar overlay replaces it.
+   Keep horizontal scrollbar visible for unwrapped long lines.
+   width:0 removes the vertical thumb/track; height:8px keeps the horizontal bar. */
+.cm-scroller::-webkit-scrollbar {
+  width: 0;
+  height: 8px;
+}
+.cm-scroller::-webkit-scrollbar:vertical {
+  display: none;
+}
+.cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cm-scroller::-webkit-scrollbar-thumb:horizontal {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 4px;
+}
+.cm-scroller::-webkit-scrollbar-thumb:horizontal:hover {
+  background: rgba(128, 128, 128, 0.65);
+}
+
+/* Welcome screen */
+.welcome {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--app-bg);
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 480px;
+  padding: 40px;
+}
+
+.welcome-content h1 {
+  font-size: 36px;
+  font-weight: 300;
+  color: #ffffff;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.welcome-content > p {
+  color: #888;
+  font-size: 15px;
+  margin-bottom: 32px;
+}
+
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.welcome-actions button {
+  background: #007acc;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 10px 24px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.welcome-actions button:hover {
+  background: #005fa3;
+}
+
+.hint {
+  color: #666;
+  font-size: 13px;
+}
+
+.features {
+  list-style: none;
+  text-align: left;
+  display: inline-block;
+}
+
+.features li {
+  color: #777;
+  font-size: 13px;
+  padding: 4px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #007acc;
+}

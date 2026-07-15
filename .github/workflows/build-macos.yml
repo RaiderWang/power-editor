@@ -1,0 +1,83 @@
+name: Build macOS (Apple Silicon)
+
+on:
+  # 手动触发：在 GitHub 仓库页面 → Actions → 选择此 workflow → Run workflow
+  workflow_dispatch:
+  # 也可按需改为 push/tag 自动触发，例如：
+  # push:
+  #   tags:
+  #     - 'v*'
+
+jobs:
+  build-macos-arm:
+    name: Build for macOS M1 (aarch64)
+    runs-on: macos-14        # macos-14 runner 本身就是 M1（Apple Silicon）
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # aarch64-apple-darwin：M1/M2/M3 原生目标
+          targets: aarch64-apple-darwin
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (macOS Apple Silicon)
+        # APPLE_SIGNING_IDENTITY="-" 表示不进行代码签名（临时/自用包）
+        # 如需正式签名发布，请配置 Apple Developer 相关 Secrets，见下方注释
+        env:
+          APPLE_SIGNING_IDENTITY: '-'
+        run: npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerEditor-macOS-arm64
+          # Tauri 构建产物路径：src-tauri/target/<target>/release/bundle/dmg/*.dmg
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload .app artifact (zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerEditor-macOS-arm64-app
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+          if-no-files-found: warn
+          retention-days: 30
+
+# ─────────────────────────────────────────────
+# 如需正式代码签名（可通过 Apple Gatekeeper 验证），
+# 需要在 GitHub 仓库 Settings → Secrets and variables → Actions 中配置：
+#
+#   APPLE_CERTIFICATE          — base64 编码的 .p12 证书
+#   APPLE_CERTIFICATE_PASSWORD — .p12 密码
+#   APPLE_SIGNING_IDENTITY     — 签名标识（如 "Developer ID Application: Your Name (XXXXXXXXXX)"）
+#   APPLE_ID                   — Apple ID 邮箱（公证用）
+#   APPLE_ID_PASSWORD          — App-Specific Password（公证用）
+#   APPLE_TEAM_ID              — 10位 Team ID（公证用）
+#
+# 并将上面 env.APPLE_SIGNING_IDENTITY 改为 ${{ secrets.APPLE_SIGNING_IDENTITY }}，
+# 并在 build 步骤增加：
+#   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+#   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+#   APPLE_ID: ${{ secrets.APPLE_ID }}
+#   APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+#   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+# ─────────────────────────────────────────────

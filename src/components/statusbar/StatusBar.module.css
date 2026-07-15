@@ -1,0 +1,41 @@
+.bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  padding: 0 8px;
+  background: #007acc;
+  color: #fff;
+  font-size: 12px;
+  min-height: 24px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.item {
+  padding: 0 6px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.separator {
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 2px;
+}
+
+.modified {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.spacer {
+  flex: 1;
+}

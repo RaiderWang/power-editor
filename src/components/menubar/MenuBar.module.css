@@ -1,0 +1,167 @@
+/* Menu bar – top-level container */
+.menubar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  flex-shrink: 0;
+  min-height: 28px;
+  user-select: none;
+  position: relative;
+  z-index: 200;
+}
+
+/* Top-level menu trigger */
+.menuTrigger {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--toolbar-btn-color);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.menuTrigger:hover,
+.menuTrigger.open {
+  background: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg);
+}
+
+/* Dropdown panel */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 300;
+  padding: 4px 0;
+}
+
+/* Dropdown item */
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 28px;
+  font-size: 13px;
+  color: var(--app-fg);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: background 0.08s;
+}
+
+.dropdownItem:hover:not(:disabled) {
+  background: var(--toolbar-btn-hover-bg);
+}
+
+.dropdownItem:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Check mark for toggleable items */
+.dropdownItem.checked::before {
+  content: '✓';
+  position: absolute;
+  left: 10px;
+  font-size: 12px;
+  color: var(--app-fg);
+}
+
+/* Shortcut hint – right side */
+.shortcut {
+  margin-left: auto;
+  padding-left: 24px;
+  font-size: 11px;
+  color: var(--toolbar-btn-color);
+  opacity: 0.75;
+}
+
+/* Separator line */
+.dropdownSeparator {
+  height: 1px;
+  background: var(--toolbar-border);
+  margin: 4px 0;
+}
+
+/* Section label inside dropdown (e.g., "编码") */
+.dropdownSectionLabel {
+  padding: 4px 12px 2px;
+  font-size: 11px;
+  color: var(--toolbar-btn-color);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: default;
+}
+
+/* Scrollable encoding list */
+.dropdownScrollList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Submenu wrapper – provides positioning context */
+.submenuWrapper {
+  position: relative;
+}
+
+/* Submenu trigger row (arrow on the right) */
+.submenuTrigger {
+  justify-content: space-between;
+}
+
+.submenuArrow {
+  margin-left: auto;
+  padding-left: 16px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Submenu floating panel */
+.submenuPanel {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  min-width: 320px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 400;
+  padding: 4px 0;
+}
+
+.submenuPanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.submenuPanel::-webkit-scrollbar-thumb {
+  background: var(--toolbar-border);
+  border-radius: 3px;
+}
+
+.dropdownScrollList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdownScrollList::-webkit-scrollbar-thumb {
+  background: var(--toolbar-border);
+  border-radius: 3px;
+}
