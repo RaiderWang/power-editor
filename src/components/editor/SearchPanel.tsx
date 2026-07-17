@@ -39,7 +39,7 @@ import {
 } from '../../store/searchHistory';
 
 interface SearchPanelProps {
-  onMatchesFound?: (matches: SearchMatch[], current: number) => void;
+  onMatchesFound?: (matches: SearchMatch[], current: number, noScroll?: boolean) => void;
 }
 
 export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
@@ -122,7 +122,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const listLinesRef = useRef(listLines);
   listLinesRef.current = listLines;
 
-  const doSearch = useCallback(async () => {
+  const doSearch = useCallback(async (options?: { noScroll?: boolean }) => {
     if (!activeTab || !params.pattern) return;
     lastSearchedPattern.current = params.pattern;
     setSearching(true);
@@ -138,7 +138,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       setTotal(result.total);
       const newIdx = result.matches.length > 0 ? 0 : -1;
       setCurrentIdx(newIdx);
-      onMatchesFound?.(result.matches, newIdx);
+      onMatchesFound?.(result.matches, newIdx, options?.noScroll);
     } finally {
       setSearching(false);
     }
@@ -341,7 +341,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     addReplaceHistory(replaceText);
     setReplaceHistory(loadReplaceHistory());
     markTabModified(activeTab.id);
-    await doSearch();
+    await doSearch({ noScroll: true });
     alert(t('search.replacedCount', { count }));
   }, [activeTab, params, replaceText, doSearch, markTabModified]);
 

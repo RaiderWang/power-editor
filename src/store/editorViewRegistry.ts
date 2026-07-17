@@ -327,13 +327,15 @@ export async function highlightSearchMatches(
   bufferId: number,
   matches: SearchMatch[],
   currentIdx: number,
+  noScroll?: boolean,
 ): Promise<void> {
   const view = registry.get(bufferId);
   if (!view) return;
 
   // If the active match is outside the current window, slide the window to it.
+  // Skip when noScroll is set (e.g. after Replace All) to keep the user's viewport stable.
   const currentMatch = currentIdx >= 0 ? matches[currentIdx] : null;
-  if (currentMatch) {
+  if (currentMatch && !noScroll) {
     const winRange = windowRangeMap.get(bufferId);
     const winStart = winRange?.start ?? 0;
     const winEnd = winRange?.end ?? new TextEncoder().encode(view.state.doc.toString()).length;
@@ -393,7 +395,7 @@ export async function highlightSearchMatches(
     setMatchRanges.of(cmMatches),
     setCurrentMatch.of(cmCurrentIdx),
   ];
-  if (cmCurrentIdx >= 0 && cmMatches[cmCurrentIdx]) {
+  if (cmCurrentIdx >= 0 && cmMatches[cmCurrentIdx] && !noScroll) {
     effects.push(EditorView.scrollIntoView(cmMatches[cmCurrentIdx].from, { y: 'center' }));
   }
   view.dispatch({ effects });

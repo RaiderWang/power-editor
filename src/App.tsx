@@ -78,9 +78,9 @@ export default function App() {
   }, []);
 
   const handleMatchesFound = useCallback(
-    (matches: SearchMatch[], current: number) => {
+    (matches: SearchMatch[], current: number, noScroll?: boolean) => {
       if (activeTab) {
-        highlightSearchMatches(activeTab.bufferId, matches, current).catch(console.error);
+        highlightSearchMatches(activeTab.bufferId, matches, current, noScroll).catch(console.error);
       }
     },
     [activeTab],

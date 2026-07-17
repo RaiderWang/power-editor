@@ -138,6 +138,18 @@ html, body, #root {
   /* font-size is controlled by EditorView.theme via fontComp compartment */
 }
 
+.cm-gutters {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.cm-lineNumbers .cm-gutterElement {
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 .cm-scroller {
   overflow: auto !important;
 }
