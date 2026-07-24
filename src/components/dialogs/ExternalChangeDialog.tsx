@@ -2,7 +2,7 @@ import React from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { externalChangeTabIdAtom, tabsAtom } from '../../store/atoms';
 import { getTabFileName } from '../../utils/tabFileName';
-import { clearTextEdited, reloadCurrentWindow } from '../../store/editorViewRegistry';
+import { clearTextEdited, reloadFromStart } from '../../store/editorViewRegistry';
 import * as cmd from '../../store/tauriCommands';
 import { useTranslation } from '../../i18n';
 import styles from './CloseConfirmDialog.module.css';
@@ -35,7 +35,8 @@ export const ExternalChangeDialog: React.FC = () => {
     try {
       const newInfo = await cmd.reloadBuffer(bufferId);
       clearTextEdited(bufferId);
-      await reloadCurrentWindow(bufferId);
+      // Reset virtual-window to line 0 so the user sees the full new content.
+      await reloadFromStart(bufferId);
       setTabs((prev) =>
         prev.map((t) => (t.id === tabId ? { ...t, fileInfo: newInfo } : t)),
       );

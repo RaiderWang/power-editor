@@ -42,16 +42,30 @@ const windowRangeMap = new Map<number, { start: number; end: number }>();
 
 /**
  * Maps bufferId → jumpToWindow function registered by the corresponding Editor.
- * Signature matches (targetLine: number) => Promise<void> where targetLine is
- * the 0-based line number in the full file of the desired match.
+ * Signature: (targetLine: number, noScroll?: boolean) => Promise<void>
+ *   - targetLine: 0-based line number in the full file of the desired target.
+ *   - noScroll:   when true, the window is loaded but NO scrollIntoView is
+ *                 dispatched by jumpToWindow itself.  The caller (e.g.
+ *                 highlightSearchMatches) is then solely responsible for
+ *                 scrolling to the match.  This prevents competing scroll
+ *                 intents (one from jumpToWindow, one from the caller) that
+ *                 can leave the match above or below the visible viewport.
  */
-const jumpRegistry = new Map<number, (targetLine: number) => Promise<void>>();
+const jumpRegistry = new Map<number, (targetLine: number, noScroll?: boolean) => Promise<void>>();
 
 /**
  * Maps bufferId → reloadCurrentWindow function registered by the corresponding Editor.
  * Called after replace operations to refresh the CM view from the updated Rust rope.
  */
 const reloadWindowRegistry = new Map<number, () => Promise<void>>();
+
+/**
+ * Maps bufferId → reloadFromStart function registered by the corresponding Editor.
+ * Called after an external file change to reload from line 0, so the user always
+ * sees the freshly updated file from the beginning regardless of where the virtual
+ * window was positioned before the reload.
+ */
+const reloadFromStartRegistry = new Map<number, () => Promise<void>>();
 
 /**
  * Tracks which buffers have user-typed text edits (as opposed to only
@@ -82,6 +96,7 @@ export function unregisterEditorView(bufferId: number) {
   cursorMovedSinceNav.delete(bufferId);
   windowRangeMap.delete(bufferId);
   reloadWindowRegistry.delete(bufferId);
+  reloadFromStartRegistry.delete(bufferId);
   // If the secondary was still registered, disconnect its peer ref.
   secondaryRegistry.delete(bufferId);
 }
@@ -135,7 +150,7 @@ export function unregisterSecondaryEditorView(
   clearMyPeer();
 }
 
-export function registerJumpToLine(bufferId: number, fn: (targetLine: number) => Promise<void>) {
+export function registerJumpToLine(bufferId: number, fn: (targetLine: number, noScroll?: boolean) => Promise<void>) {
   jumpRegistry.set(bufferId, fn);
 }
 
@@ -154,6 +169,27 @@ export function unregisterReloadWindow(bufferId: number) {
 /** Re-fetches the current virtual-document window from Rust and refreshes the CM view. */
 export async function reloadCurrentWindow(bufferId: number): Promise<void> {
   const fn = reloadWindowRegistry.get(bufferId);
+  if (fn) await fn();
+}
+
+export function registerReloadFromStart(bufferId: number, fn: () => Promise<void>) {
+  reloadFromStartRegistry.set(bufferId, fn);
+}
+
+export function unregisterReloadFromStart(bufferId: number) {
+  reloadFromStartRegistry.delete(bufferId);
+}
+
+/**
+ * Re-reads the Rust rope from line 0 and replaces the entire CM view with the
+ * first CHUNK_SIZE lines.  The virtual-window position is reset to the start of
+ * the file so the user always sees the freshly reloaded content from the top.
+ *
+ * Use this for **external file change reloads** (not for replace operations,
+ * which should use reloadCurrentWindow to stay at the user's current position).
+ */
+export async function reloadFromStart(bufferId: number): Promise<void> {
+  const fn = reloadFromStartRegistry.get(bufferId);
   if (fn) await fn();
 }
 
@@ -342,7 +378,13 @@ export async function highlightSearchMatches(
     if (currentMatch.from < winStart || currentMatch.from >= winEnd) {
       const jumpFn = jumpRegistry.get(bufferId);
       if (jumpFn) {
-        await jumpFn(currentMatch.line);
+        // Pass noScroll=true: jumpToWindow only loads the correct window content;
+        // scrolling to center the match is handled exclusively by the
+        // EditorView.scrollIntoView({ y: 'center' }) effect dispatched below.
+        // Without this, two competing scroll intents fire in the same frame:
+        // jumpToWindow's { y: 'start' } and the { y: 'center' } below, which
+        // can leave the match above (or below) the visible viewport.
+        await jumpFn(currentMatch.line, true);
       }
     }
   }

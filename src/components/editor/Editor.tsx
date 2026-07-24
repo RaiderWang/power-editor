@@ -38,6 +38,8 @@ import {
   unregisterJumpToLine,
   registerReloadWindow,
   unregisterReloadWindow,
+  registerReloadFromStart,
+  unregisterReloadFromStart,
   setWindowRange,
   syncEditorToRust,
   registerPeerSetter,
@@ -208,7 +210,13 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   //
   // Before sliding, any pending user edits in the current window are synced to
   // Rust so they are not lost when the window is replaced.
-  const jumpToWindow = useCallback(async (targetLine: number) => {
+  //
+  // noScroll: when true, the function only loads the window content and does NOT
+  // dispatch a scrollIntoView effect. Used by highlightSearchMatches so that the
+  // single { y: 'center' } scroll it dispatches afterwards is the sole scroll
+  // intent, avoiding a race between { y: 'start' } (from here) and { y: 'center' }
+  // (from the caller) that could leave the match above the visible viewport.
+  const jumpToWindow = useCallback(async (targetLine: number, noScroll?: boolean) => {
     const view = viewRef.current;
     const bufferId = activeBufferIdRef.current;
     if (!view || bufferId < 0) return;
@@ -228,6 +236,11 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
 
     const scrollToTarget = (winStart: number) => {
+      if (noScroll) {
+        // Caller (highlightSearchMatches) handles scrolling; just sync the scrollbar.
+        updateScrollbar(view, seekToBottom ? maxFirstLine : targetLine);
+        return;
+      }
       if (seekToBottom) {
         const lastCmLine = view.state.doc.lines;
         view.dispatch({
@@ -327,6 +340,50 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       loadedEndLineRef.current = chunk.start_line + chunk.lines.length;
       totalLinesRef.current = chunk.total_lines;
       setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
+      updateScrollbar(view);
+    } finally {
+      isAppendingRef.current = false;
+    }
+  }, [updateScrollbar]);
+
+  // ── Reload from line 0 (called after external file change) ───────────────
+  // Re-fetches from the very beginning of the file, resetting the virtual-window
+  // position to line 0.  This ensures that the user always sees the freshly
+  // reloaded file from the top, regardless of where the window was sitting
+  // before the external change was detected.
+  //
+  // Unlike reloadCurrentWindowFn (which is used by replace operations and keeps
+  // the viewport at the current position), this function is only used for
+  // external file reloads where the entire content may have been rewritten.
+  const reloadFromStartFn = useCallback(async () => {
+    const view = viewRef.current;
+    const bufferId = activeBufferIdRef.current;
+    if (!view || bufferId < 0) return;
+
+    while (isAppendingRef.current) {
+      await new Promise<void>((r) => setTimeout(r, 50));
+    }
+
+    isAppendingRef.current = true;
+    try {
+      const chunk = await getLines(bufferId, 0, CHUNK_SIZE);
+      if (activeBufferIdRef.current !== bufferId) return;
+
+      // Update refs BEFORE dispatch so that the synchronous update listener
+      // reads the correct window-start values (same pattern as loadContent).
+      windowStartLineRef.current = 0;
+      windowStartByteOffsetRef.current = 0;
+      loadedEndLineRef.current = chunk.lines.length;
+      totalLinesRef.current = chunk.total_lines;
+      setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
+
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
+        annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
+        // Always reset the line-number gutter to the default (file starts at 1).
+        effects: lineNumComp.reconfigure(lineNumbers()),
+      });
+
       updateScrollbar(view);
     } finally {
       isAppendingRef.current = false;
@@ -558,6 +615,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
     registerJumpToLine(tab.bufferId, jumpToWindow);
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
+    registerReloadFromStart(tab.bufferId, reloadFromStartFn);
 
     // Small files may fit entirely inside CM's render viewport, so wheel
     // scrolling only changes scrollTop without firing viewportChanged.
@@ -584,6 +642,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       }
       unregisterJumpToLine(prevBufferIdRef.current);
       unregisterReloadWindow(prevBufferIdRef.current);
+      unregisterReloadFromStart(prevBufferIdRef.current);
       view.destroy();
       viewRef.current = null;
       loadingRef.current = false;
@@ -600,6 +659,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     const prevId = prevBufferIdRef.current;
     unregisterJumpToLine(prevId);
     unregisterReloadWindow(prevId);
+    unregisterReloadFromStart(prevId);
     // Disconnect peer for the old buffer.
     if (paneId === 'secondary') {
       unregisterSecondaryEditorView(prevId, () => { peerViewRef.current = null; });
@@ -618,9 +678,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
     registerJumpToLine(tab.bufferId, jumpToWindow);
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
+    registerReloadFromStart(tab.bufferId, reloadFromStartFn);
     loadContent(tab.bufferId, view, tab.fileInfo.total_lines);
     view.focus();
-  }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn]);
+  }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn, reloadFromStartFn]);
 
   // ── Hot-swap: line wrap ────────────────────────────────────────
   useEffect(() => {

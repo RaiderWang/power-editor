@@ -162,10 +162,43 @@ export function loadCustomKeybindings(): CustomKeybindings {
   }
 }
 
+/**
+ * Save custom keybindings to both localStorage (backward compat) and
+ * the Rust-side file (survives WebView2 data clearing during upgrades).
+ */
 export function saveCustomKeybindings(custom: CustomKeybindings): void {
+  const json = JSON.stringify(custom);
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(custom));
+    localStorage.setItem(LS_KEY, json);
   } catch { /* ignore */ }
+  import('./tauriCommands').then((cmd) => {
+    cmd.saveKeybindingsToFile(json).catch(console.error);
+  });
+}
+
+/**
+ * Called once at app startup. Loads keybindings from the Rust-side file.
+ * If the file has data, returns it (file is the source of truth).
+ * If the file is empty but localStorage has data, migrates localStorage → file.
+ */
+export async function initKeybindingsFromFile(): Promise<CustomKeybindings | null> {
+  const { loadKeybindings, saveKeybindingsToFile } = await import('./tauriCommands');
+  try {
+    const raw = await loadKeybindings();
+    const fileData: CustomKeybindings = JSON.parse(raw);
+    if (Object.keys(fileData).length > 0) {
+      return fileData;
+    }
+    // File is empty — check localStorage for migration
+    const lsData = loadCustomKeybindings();
+    if (Object.keys(lsData).length > 0) {
+      await saveKeybindingsToFile(JSON.stringify(lsData));
+      return lsData;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // ──────────────────────────────────────────────────────────────

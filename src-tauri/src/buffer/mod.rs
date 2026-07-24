@@ -110,6 +110,11 @@ impl Buffer {
     /// Return lines [start_line, start_line + count) (0-indexed)
     pub fn get_lines(&self, start_line: usize, count: usize) -> LineChunk {
         let total_lines = self.rope.len_lines();
+        // Clamp start_line to the file length to avoid usize underflow when
+        // computing (end_line - start_line) below.  This can happen when an
+        // external file change shrinks the file while the frontend window was
+        // positioned beyond the new end-of-file.
+        let start_line = start_line.min(total_lines);
         let end_line = (start_line + count).min(total_lines);
         let mut lines = Vec::with_capacity(end_line - start_line);
 

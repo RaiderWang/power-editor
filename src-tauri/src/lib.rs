@@ -2,6 +2,7 @@ pub mod buffer;
 pub mod csv;
 pub mod file_io;
 pub mod file_watcher;
+pub mod keybindings;
 pub mod search;
 pub mod session;
 pub mod shell_integration;
@@ -552,6 +553,9 @@ pub fn run() {
             // CSV conversion
             csv::csv_detect,
             csv::csv_to_fixed_width,
+            // Keybindings persistence
+            keybindings::load_keybindings,
+            keybindings::save_keybindings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

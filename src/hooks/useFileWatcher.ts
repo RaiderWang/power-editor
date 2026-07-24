@@ -3,7 +3,7 @@ import { useAtom, useSetAtom } from 'jotai';
 import { listen } from '@tauri-apps/api/event';
 import { tabsAtom, externalChangeTabIdAtom } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
-import { clearTextEdited, reloadCurrentWindow } from '../store/editorViewRegistry';
+import { clearTextEdited, reloadFromStart } from '../store/editorViewRegistry';
 
 /**
  * Listens for `file:externally-modified` events from the Rust file watcher.
@@ -27,8 +27,11 @@ export function useFileWatcher() {
       // Clear the pending-sync flag so syncEditorToRust does not push stale CM
       // content back into the freshly reloaded Rust rope.
       clearTextEdited(bufferId);
-      // Reload the CodeMirror view from the updated Rust rope.
-      await reloadCurrentWindow(bufferId);
+      // Reset the virtual-window to line 0 and reload from the updated Rust rope.
+      // We use reloadFromStart (not reloadCurrentWindow) so that the user always
+      // sees the beginning of the freshly reloaded file, regardless of where the
+      // virtual window was positioned before the external change was detected.
+      await reloadFromStart(bufferId);
       setTabs((prev) =>
         prev.map((t) => (t.id === tabId ? { ...t, fileInfo: newInfo } : t)),
       );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { activeTabAtom, tabsAtom, languageDefsAtom, supportedEncodingsAtom, editorPrefsAtom } from './store/atoms';
+import { customKeybindingsAtom, initKeybindingsFromFile } from './store/keybindings';
 import { useTranslation } from './i18n';
 import { splitLayoutAtom } from './store/splitAtoms';
 import { MenuBar } from './components/menubar/MenuBar';
@@ -32,6 +33,7 @@ export default function App() {
   const splitLayout = useAtomValue(splitLayoutAtom);
   const setLanguageDefs = useSetAtom(languageDefsAtom);
   const setSupportedEncodings = useSetAtom(supportedEncodingsAtom);
+  const setCustomKeybindings = useSetAtom(customKeybindingsAtom);
   const { newFile, openFile } = useFile();
 
   useSessionRestore();
@@ -39,6 +41,12 @@ export default function App() {
   usePrefsPersist();
   useFileWatcher();
   useKeybindingDispatcher();
+
+  useEffect(() => {
+    initKeybindingsFromFile().then((data) => {
+      if (data) setCustomKeybindings(data);
+    });
+  }, [setCustomKeybindings]);
 
   useEffect(() => {
     document.documentElement.lang = prefs.locale;

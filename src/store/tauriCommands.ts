@@ -193,3 +193,15 @@ export const unregisterExplorerIntegration = (): Promise<void> =>
  */
 export const getStartupFile = (): Promise<string | null> =>
   invoke('get_startup_file');
+
+// ──────────────────────────────────────────────────────────────
+// Keybindings Persistence
+// ──────────────────────────────────────────────────────────────
+
+/** Load custom keybindings JSON from app_data_dir/keybindings.json. */
+export const loadKeybindings = (): Promise<string> =>
+  invoke('load_keybindings');
+
+/** Save custom keybindings JSON to app_data_dir/keybindings.json. */
+export const saveKeybindingsToFile = (data: string): Promise<void> =>
+  invoke('save_keybindings', { data });
