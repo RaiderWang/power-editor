@@ -19,7 +19,7 @@ export const DEFAULT_PREFS: EditorPrefs = {
   showLineNumbers: true,
   tabSize: 4,
   theme: 'dark',
-  locale: 'zh-CN',
+  locale: 'en-US',
 };
 
 /** Load editor prefs from localStorage, merging with defaults to handle missing keys. */
