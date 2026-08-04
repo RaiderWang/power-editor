@@ -4,6 +4,10 @@
 
 High-performance cross-platform text editor optimized for 100MB+ large files, with UltraEdit Wordfile syntax highlighting support.
 
+## Screenshot
+
+![Power Editor main window with syntax highlighting, multi-tab editing, and dark theme](docs/screenshots/power-editor.jpg)
+
 ## Tech Stack
 
 | Layer | Technology |

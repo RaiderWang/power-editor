@@ -4,6 +4,10 @@
 
 高性能跨平台文本编辑器，针对 100MB+ 大文件优化，兼容 UltraEdit Wordfile 语法高亮。
 
+## 界面截图
+
+![Power Editor 主界面：语法高亮、多标签编辑与深色主题](docs/screenshots/power-editor.jpg)
+
 ## 技术栈
 
 | 层级 | 技术 |

@@ -70,6 +70,8 @@ html, body, #root {
   background: var(--app-bg);
   color: var(--app-fg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .editor-area {
@@ -136,6 +138,11 @@ html, body, #root {
 .cm-editor {
   height: 100%;
   /* font-size is controlled by EditorView.theme via fontComp compartment */
+}
+
+.cm-content {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .cm-gutters {

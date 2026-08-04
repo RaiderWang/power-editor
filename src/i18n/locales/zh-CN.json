@@ -95,6 +95,7 @@
   "tabs.saveAs": "另存为...",
   "tabs.rename": "重命名...",
   "tabs.copyPath": "复制文件路径",
+  "tabs.copyFileName": "复制文件名",
   "tabs.closeAll": "关闭所有标签",
   "tabs.closeOthers": "关闭其它标签",
   "tabs.close": "关闭",

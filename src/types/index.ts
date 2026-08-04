@@ -59,9 +59,11 @@ export interface LanguageDef {
   case_sensitive: boolean;
   keyword_groups: string[][];
   line_comment: string | null;
+  line_comment_alt: string | null;
   block_comment_start: string | null;
   block_comment_end: string | null;
   string_chars: string[];
+  escape_char: string | null;
   delimiters: string;
   indent_with: string | null;
 }

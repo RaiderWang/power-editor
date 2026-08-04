@@ -95,6 +95,7 @@
   "tabs.saveAs": "Save As...",
   "tabs.rename": "Rename...",
   "tabs.copyPath": "Copy File Path",
+  "tabs.copyFileName": "Copy File Name",
   "tabs.closeAll": "Close All Tabs",
   "tabs.closeOthers": "Close Other Tabs",
   "tabs.close": "Close",

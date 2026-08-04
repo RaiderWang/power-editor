@@ -45,7 +45,9 @@ export function buildWordfileLanguage(lang: LanguageDef) {
   const wordSets = buildWordSet(lang.keyword_groups, lang.case_sensitive);
   const delimSet = new Set(lang.delimiters.split(''));
   const stringChars = new Set(lang.string_chars);
+  const escapeChar = lang.escape_char;
   const lineComment = lang.line_comment;
+  const lineCommentAlt = lang.line_comment_alt;
   const blockStart = lang.block_comment_start;
   const blockEnd = lang.block_comment_end;
 
@@ -72,8 +74,8 @@ export function buildWordfileLanguage(lang: LanguageDef) {
       if (state.inString) {
         while (!stream.eol()) {
           const ch = stream.next()!;
-          if (ch === '\\') {
-            stream.next(); // escape
+          if (escapeChar && ch === escapeChar) {
+            stream.next();
           } else if (ch === state.stringChar) {
             state.inString = false;
             break;
@@ -87,6 +89,10 @@ export function buildWordfileLanguage(lang: LanguageDef) {
 
       // ── Line comment ──────────────────────────────────────────
       if (lineComment && stream.match(lineComment)) {
+        stream.skipToEnd();
+        return 'comment';
+      }
+      if (lineCommentAlt && stream.match(lineCommentAlt)) {
         stream.skipToEnd();
         return 'comment';
       }

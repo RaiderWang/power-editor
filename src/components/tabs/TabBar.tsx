@@ -87,6 +87,18 @@ export const TabBar: React.FC<TabBarProps> = ({
     }
   }, [tabs]);
 
+  const handleCopyFileName = useCallback(async (tabId: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    const path = tab?.fileInfo.path;
+    if (!path) return;
+    const fileName = path.replace(/\\/g, '/').split('/').pop() ?? path;
+    try {
+      await navigator.clipboard.writeText(fileName);
+    } catch (err) {
+      console.error('[TabBar] copy file name failed:', err);
+    }
+  }, [tabs]);
+
   const handleContextMenu = useCallback((e: React.MouseEvent, tabId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -108,6 +120,11 @@ export const TabBar: React.FC<TabBarProps> = ({
         disabled: !hasPath,
         onClick: () => { handleCopyFilePath(tabId).catch(console.error); },
       },
+      {
+        label: t('tabs.copyFileName'),
+        disabled: !hasPath,
+        onClick: () => { handleCopyFileName(tabId).catch(console.error); },
+      },
       { label: 'sep', separator: true },
       {
         label: t('tabs.closeAll'),
@@ -122,7 +139,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         },
       },
     ];
-  }, [contextTab, tabs, handleSaveAs, handleCopyFilePath, closeTabsSequentially, t]);
+  }, [contextTab, tabs, handleSaveAs, handleCopyFilePath, handleCopyFileName, closeTabsSequentially, t]);
 
   const handleSplitToggle = useCallback(() => {
     if (splitLayout !== 'none') {
