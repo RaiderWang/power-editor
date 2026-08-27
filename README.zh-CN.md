@@ -48,9 +48,14 @@ npm install
 # 开发模式（热重载）
 npm run tauri:dev
 
-# 生产构建
+# 生产构建（Windows / macOS / 现代 Linux）
 npm run tauri:build
+
+# 银河麒麟 / Linux (ARM64 & x86_64) Docker 隔离构建
+./scripts/build-linux-docker.sh
 ```
+
+> Linux / 银河麒麟系统详细构建与依赖说明见 [docs/build-linux-kylin.md](docs/build-linux-kylin.md)。
 
 ## 添加自定义语法高亮
 

@@ -22,7 +22,7 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
   const [trackHeight, setTrackHeight] = useState(1);
   // Local override while dragging: null means use the props-driven position.
   const [dragTop, setDragTop] = useState<number | null>(null);
-  // Offset from thumb-top to mouse at drag-start (0-1 fraction of track height).
+  // Offset from thumb-top to pointer at drag-start (0-1 fraction of track height).
   const dragOffsetRef = useRef(0);
   // Timestamp of the last onSeek call during drag, for throttling.
   const lastSeekTimeRef = useRef(0);
@@ -37,10 +37,13 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
     return () => ro.disconnect();
   }, []);
 
-  // Effective size and top are clamped in JS so the thumb never overflows
-  // the track, regardless of CSS min-height rules.
   const effectiveSize = Math.max(size, MIN_THUMB_PX / trackHeight);
   const effectiveTop = Math.min(dragTop !== null ? dragTop : top, 1 - effectiveSize);
+
+  // Ref-sync so pointer handlers always read the latest effectiveTop without
+  // capturing a stale closure value.
+  const effectiveTopRef = useRef(effectiveTop);
+  effectiveTopRef.current = effectiveTop;
 
   const ratioFromClientY = useCallback((clientY: number): number => {
     const track = trackRef.current;
@@ -49,47 +52,51 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
     return Math.max(0, Math.min(1, (clientY - trackTop) / trackH));
   }, []);
 
-  const handleTrackMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleTrackPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     if ((e.target as HTMLElement).dataset.thumb) return;
     onSeek(ratioFromClientY(e.clientY));
   }, [onSeek, ratioFromClientY]);
 
-  const handleThumbMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  // ── Pointer-capture drag ──────────────────────────────────────────────────
+  // Using setPointerCapture ensures pointermove / pointerup are always
+  // delivered to this element even if the pointer moves outside it.  This
+  // avoids the macOS WebKit issue where rapidly removing + re-adding
+  // window-level mousemove/mouseup listeners (the old approach) caused the
+  // drag to be interrupted after a small movement.
+  const handleThumbPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    dragOffsetRef.current = ratioFromClientY(e.clientY) - effectiveTop;
-    setDragTop(effectiveTop);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragOffsetRef.current = ratioFromClientY(e.clientY) - effectiveTopRef.current;
+    setDragTop(effectiveTopRef.current);
     lastSeekTimeRef.current = 0;
-  }, [effectiveTop, ratioFromClientY]);
+  }, [ratioFromClientY]);
 
-  useEffect(() => {
-    if (dragTop === null) return;
-
-    const onMove = (e: MouseEvent) => {
-      const ratio = Math.max(0, Math.min(1, ratioFromClientY(e.clientY) - dragOffsetRef.current));
-      setDragTop(ratio);
-      // Throttle IPC calls while dragging so content updates smoothly.
-      const now = Date.now();
-      if (now - lastSeekTimeRef.current >= DRAG_THROTTLE_MS) {
-        lastSeekTimeRef.current = now;
-        onSeek(ratio);
-      }
-    };
-
-    const onUp = (e: MouseEvent) => {
-      const ratio = Math.max(0, Math.min(1, ratioFromClientY(e.clientY) - dragOffsetRef.current));
-      setDragTop(null);
+  const handleThumbPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const ratio = Math.max(0, Math.min(1, ratioFromClientY(e.clientY) - dragOffsetRef.current));
+    setDragTop(ratio);
+    const now = Date.now();
+    if (now - lastSeekTimeRef.current >= DRAG_THROTTLE_MS) {
+      lastSeekTimeRef.current = now;
       onSeek(ratio);
-    };
+    }
+  }, [ratioFromClientY, onSeek]);
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [dragTop, onSeek, ratioFromClientY]);
+  const handleThumbPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    const ratio = Math.max(0, Math.min(1, ratioFromClientY(e.clientY) - dragOffsetRef.current));
+    setDragTop(null);
+    onSeek(ratio);
+  }, [ratioFromClientY, onSeek]);
+
+  // Clean up drag state if the pointer gesture is cancelled by the OS
+  // (e.g. a system gesture recognizer takes over on macOS).
+  const handleThumbPointerCancel = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
+    setDragTop(null);
+  }, []);
 
   const thumbTopPct = `${(effectiveTop * 100).toFixed(3)}%`;
   const thumbSizePct = `${(effectiveSize * 100).toFixed(3)}%`;
@@ -98,13 +105,16 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
     <div
       ref={trackRef}
       className={styles.track}
-      onMouseDown={handleTrackMouseDown}
+      onPointerDown={handleTrackPointerDown}
     >
       <div
         className={styles.thumb}
         style={{ top: thumbTopPct, height: thumbSizePct }}
         data-thumb="1"
-        onMouseDown={handleThumbMouseDown}
+        onPointerDown={handleThumbPointerDown}
+        onPointerMove={handleThumbPointerMove}
+        onPointerUp={handleThumbPointerUp}
+        onPointerCancel={handleThumbPointerCancel}
       />
     </div>
   );

@@ -48,9 +48,14 @@ npm install
 # Dev mode (hot reload)
 npm run tauri:dev
 
-# Production build
+# Production build (Windows / macOS / Modern Linux)
 npm run tauri:build
+
+# Linux (ARM64 & x86_64 / Kylin OS) Docker build
+./scripts/build-linux-docker.sh
 ```
+
+> See [docs/build-linux-kylin.md](docs/build-linux-kylin.md) for Linux & Kylin OS build guide.
 
 ## Custom Syntax Highlighting
 

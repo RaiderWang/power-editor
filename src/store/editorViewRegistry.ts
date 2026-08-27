@@ -1,4 +1,4 @@
-import { deleteLine } from '@codemirror/commands';
+import { deleteLine, undo, redo } from '@codemirror/commands';
 import { Annotation } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { applyEdit } from './tauriCommands';
@@ -277,6 +277,20 @@ export function getSelectedText(bufferId: number): string {
   const { from, to } = view.state.selection.main;
   if (from === to) return '';
   return view.state.sliceDoc(from, to);
+}
+
+/** Runs undo in the editor for the given buffer. Returns false when no view is found. */
+export function undoEdit(bufferId: number): boolean {
+  const view = registry.get(bufferId);
+  if (!view) return false;
+  return undo(view);
+}
+
+/** Runs redo in the editor for the given buffer. Returns false when no view is found. */
+export function redoEdit(bufferId: number): boolean {
+  const view = registry.get(bufferId);
+  if (!view) return false;
+  return redo(view);
 }
 
 /** Deletes the full line(s) containing the primary cursor in the active editor. */

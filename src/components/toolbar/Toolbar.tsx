@@ -4,6 +4,8 @@ import {
   FilePlus,
   FolderOpen,
   Save,
+  Undo2,
+  Redo2,
   Search,
   WrapText,
   Columns2,
@@ -24,6 +26,7 @@ import {
   languageDefsAtom,
 } from '../../store/atoms';
 import { customKeybindingsAtom, getEffectiveShortcut } from '../../store/keybindings';
+import { undoEdit, redoEdit } from '../../store/editorViewRegistry';
 import { useFile } from '../../hooks/useFile';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';
 import * as cmd from '../../store/tauriCommands';
@@ -104,6 +107,16 @@ export const Toolbar: React.FC = () => {
     }
   }, [activeTab, saveFile, saveFileAs, showError, t]);
 
+  const handleUndo = useCallback(() => {
+    if (!activeTab) return;
+    undoEdit(activeTab.bufferId);
+  }, [activeTab]);
+
+  const handleRedo = useCallback(() => {
+    if (!activeTab) return;
+    redoEdit(activeTab.bufferId);
+  }, [activeTab]);
+
   const handleEncoding = useCallback(async (enc: string) => {
     if (!activeTab) return;
     try {
@@ -152,6 +165,15 @@ export const Toolbar: React.FC = () => {
       </button>
       <button className={styles.btn} onClick={handleSave} title={`${t('toolbar.save')}${sk('file.save')}`} disabled={!activeTab}>
         <Save size={16} />
+      </button>
+
+      <div className={styles.separator} />
+
+      <button className={styles.btn} onClick={handleUndo} title={`${t('toolbar.undo')} (Ctrl+Z)`} disabled={!activeTab}>
+        <Undo2 size={16} />
+      </button>
+      <button className={styles.btn} onClick={handleRedo} title={`${t('toolbar.redo')} (Ctrl+Y)`} disabled={!activeTab}>
+        <Redo2 size={16} />
       </button>
 
       <div className={styles.separator} />

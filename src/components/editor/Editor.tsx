@@ -61,6 +61,9 @@ const fontComp = new Compartment();
 // Line-number offset compartment: reconfigured on window jumps so the gutter
 // always shows the real file line number, not the CM-local line number.
 const lineNumComp = new Compartment();
+// History compartment: reconfigured (reset) after virtual-window jumps so that
+// stale undo entries from the previous window don't corrupt the new content.
+const historyComp = new Compartment();
 
 interface EditorProps {
   tab: TabState;
@@ -286,13 +289,17 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // Replace the entire CM document with the new window and update the line-number
       // gutter offset in a single transaction so the gutter immediately shows real
       // file line numbers (e.g. line 901 instead of 1 when window starts at file line 900).
+      // Also reset history — stale undo entries from the old window would corrupt content.
       const newWinStart = chunk.start_line;
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-        effects: lineNumComp.reconfigure(
-          lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
-        ),
+        effects: [
+          lineNumComp.reconfigure(
+            lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
+          ),
+          historyComp.reconfigure(history()),
+        ],
       });
 
       windowStartLineRef.current = chunk.start_line;
@@ -328,11 +335,14 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-        effects: lineNumComp.reconfigure(
-          newWinStart === 0
-            ? lineNumbers()
-            : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
-        ),
+        effects: [
+          lineNumComp.reconfigure(
+            newWinStart === 0
+              ? lineNumbers()
+              : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
+          ),
+          historyComp.reconfigure(history()),
+        ],
       });
 
       windowStartLineRef.current = chunk.start_line;
@@ -380,8 +390,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-        // Always reset the line-number gutter to the default (file starts at 1).
-        effects: lineNumComp.reconfigure(lineNumbers()),
+        effects: [
+          lineNumComp.reconfigure(lineNumbers()),
+          historyComp.reconfigure(history()),
+        ],
       });
 
       updateScrollbar(view);
@@ -541,7 +553,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: text },
             annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-            effects: lineNumComp.reconfigure(lineNumbers()),
+            effects: [
+              lineNumComp.reconfigure(lineNumbers()),
+              historyComp.reconfigure(history()),
+            ],
           });
 
           const textByteLen = new TextEncoder().encode(text).length;
@@ -568,7 +583,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     const state = EditorState.create({
       doc: '',
       extensions: [
-        history(),
+        historyComp.of(history()),
         lineNumComp.of(lineNumbers()),
         highlightActiveLine(),
         highlightActiveLineGutter(),

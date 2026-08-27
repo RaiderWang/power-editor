@@ -108,7 +108,7 @@ export function useKeybindingDispatcher() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (dialogOpen) return;
+      if (dialogOpen || e.isComposing || e.keyCode === 229) return;
 
       for (const [shortcutStr, actionId] of shortcutMap) {
         if (matchesEvent(shortcutStr, e)) {

@@ -62,6 +62,10 @@ export const HistoryComboInput: React.FC<HistoryComboInputProps> = ({
         placeholder={placeholder}
         autoFocus={autoFocus}
         onKeyDown={handleKeyDown}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoComplete="off"
       />
       {history.length > 0 && (
         <button

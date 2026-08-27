@@ -75,6 +75,8 @@
   "toolbar.new": "New",
   "toolbar.open": "Open File",
   "toolbar.save": "Save",
+  "toolbar.undo": "Undo",
+  "toolbar.redo": "Redo",
   "toolbar.findReplace": "Find & Replace",
   "toolbar.lineWrap": "Word Wrap",
   "toolbar.columnMode": "Column Mode (Alt+Drag)",

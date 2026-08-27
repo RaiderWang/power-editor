@@ -107,7 +107,7 @@ export const KeyboardShortcutsDialog: React.FC = () => {
   }, [setCustoms]);
 
   const handleCapture = useCallback((e: KeyboardEvent) => {
-    if (!capturingId) return;
+    if (!capturingId || e.isComposing || e.keyCode === 229) return;
     e.preventDefault();
     e.stopPropagation();
 

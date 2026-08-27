@@ -1,0 +1,50 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN sed -i 's@ports.ubuntu.com@mirrors.ustc.edu.cn@g' /etc/apt/sources.list || true
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libgtk-3-dev \
+    libwebkit2gtk-4.1-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    fcitx-frontend-gtk3 \
+    fcitx5-frontend-gtk3 \
+    ibus-gtk3 \
+    libgtk-3-bin \
+    dbus-x11 \
+    im-config \
+    fonts-noto-cjk \
+    fonts-wqy-zenhei \
+    fonts-wqy-microhei \
+    locales \
+    fontconfig \
+    curl \
+    wget \
+    file \
+    ca-certificates \
+    git \
+    && locale-gen zh_CN.UTF-8 \
+    && fc-cache -fv \
+    && (/usr/lib/aarch64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0 --update-cache 2>/dev/null || /usr/lib/x86_64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0 --update-cache 2>/dev/null || gtk-query-immodules-3.0 --update-cache 2>/dev/null || true) \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x via fast mirror
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then NODE_ARCH="arm64"; else NODE_ARCH="x64"; fi && \
+    curl -fsSL https://npmmirror.com/mirrors/node/v20.18.0/node-v20.18.0-linux-${NODE_ARCH}.tar.xz | tar -xJ -C /usr/local --strip-components=1 && \
+    node -v && npm -v
+
+ENV LANG=zh_CN.UTF-8 \
+    LANGUAGE=zh_CN:zh \
+    LC_ALL=zh_CN.UTF-8 \
+    GTK_IM_MODULE=fcitx \
+    QT_IM_MODULE=fcitx \
+    XMODIFIERS=@im=fcitx \
+    PATH=/root/.cargo/bin:$PATH
+
+WORKDIR /app

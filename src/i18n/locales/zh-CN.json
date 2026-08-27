@@ -75,6 +75,8 @@
   "toolbar.new": "新建",
   "toolbar.open": "打开文件",
   "toolbar.save": "保存",
+  "toolbar.undo": "撤销",
+  "toolbar.redo": "重做",
   "toolbar.findReplace": "查找替换",
   "toolbar.lineWrap": "自动换行",
   "toolbar.columnMode": "列模式 (Alt+拖动)",
