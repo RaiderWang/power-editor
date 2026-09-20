@@ -1,0 +1,128 @@
+# Release pipeline — triggered by pushing a version tag (e.g. v0.1.5).
+#
+# Flow:
+#   1. Tag push  →  builds native installer on Windows, macOS (arm64 + x64), Linux
+#   2. Uploads artefacts to GitHub Release
+#
+# Platforms produced:
+#   Windows   →  .msi + .exe (NSIS) installer
+#   macOS     →  .dmg (universal via separate arm64 / x64 jobs)
+#   Linux     →  .AppImage + .deb
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'                      # v0.1.5
+      - 'v*.*.*-*'                    # v0.1.5-beta.1
+  workflow_dispatch:                    # allow manual trigger from Actions UI
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v0.1.5)'
+        required: true
+
+jobs:
+  build:
+    name: build · ${{ matrix.label }}
+    permissions:
+      contents: write       # needed to create / update the GitHub Release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Windows ────────────────────────────────────────────────────────
+          - label: windows-x64
+            os: windows-latest
+            args: ''
+
+          # ── macOS ARM (Apple Silicon) ───────────────────────────────────────
+          - label: macos-arm64
+            os: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust-target: aarch64-apple-darwin
+
+          # ── macOS Intel ─────────────────────────────────────────────────────
+          - label: macos-x64
+            os: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust-target: x86_64-apple-darwin
+
+          # ── Linux ──────────────────────────────────────────────────────────
+          - label: linux-x64
+            os: ubuntu-22.04
+            args: ''
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Node (Tauri CLI is an npm dev-dep) ──────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # ── Rust ────────────────────────────────────────────────────────────────
+      - name: Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target || '' }}
+
+      - name: Cache Rust build artefacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: release-${{ matrix.label }}
+
+      # ── Linux system deps ───────────────────────────────────────────────────
+      - name: Install system dependencies (Linux only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # ── Node deps (Tauri CLI) ───────────────────────────────────────────────
+      - name: Install frontend dependencies
+        run: npm ci || npm install
+
+      # ── Build + publish ─────────────────────────────────────────────────────
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: '-'
+        with:
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: 'Power Editor ${{ inputs.tag || github.ref_name }}'
+          releaseBody: |
+            ## Power Editor ${{ inputs.tag || github.ref_name }}
+
+            ### Installation
+            | Platform | File |
+            |----------|------|
+            | Windows  | `.msi` (recommended) or `.exe` (NSIS) |
+            | macOS    | `.dmg` |
+            | Linux    | `.AppImage` or `.deb` |
+
+            **Windows:** if SmartScreen blocks the installer, click _More info → Run anyway_.
+            This will resolve once the app is code-signed.
+
+            ### System Requirements
+            - Windows 10/11 x64
+            - macOS 12+ (Apple Silicon / Intel)
+            - Linux (x86_64)
+
+            ### License
+            MIT License
+          releaseDraft: false
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
+          args: ${{ matrix.args }}

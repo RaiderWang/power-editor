@@ -332,6 +332,11 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       if (activeBufferIdRef.current !== bufferId) return;
 
       const newWinStart = chunk.start_line;
+      // Preserve scroll position: CM6 maps the old viewport through the change
+      // set during a full-doc replacement, sending all positions to 0 and causing
+      // the viewport to jump to the top. Save scrollTop and restore it afterwards
+      // so that replace-all (and similar operations) keep the user's viewport stable.
+      const savedScrollTop = view.scrollDOM.scrollTop;
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
@@ -344,6 +349,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           historyComp.reconfigure(history()),
         ],
       });
+      view.scrollDOM.scrollTop = savedScrollTop;
 
       windowStartLineRef.current = chunk.start_line;
       windowStartByteOffsetRef.current = chunk.start_byte_offset;
