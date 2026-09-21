@@ -53,11 +53,25 @@ const windowRangeMap = new Map<number, { start: number; end: number }>();
  */
 const jumpRegistry = new Map<number, (targetLine: number, noScroll?: boolean) => Promise<void>>();
 
+/** Options for reloading the current CM window from Rust. */
+export interface ReloadWindowOptions {
+  /**
+   * When true, the reload change is a **normal** history-tracked CM transaction
+   * (not virtualLoad, not addToHistory:false).  This makes it undoable via
+   * Ctrl+Z.  Used by Replace All so the user can undo the replacement.
+   *
+   * When false (default), the reload is a non-history virtualLoad and the
+   * history is reset afterwards — appropriate for external reloads and window
+   * jumps where undo should not revert to stale content.
+   */
+  trackHistory?: boolean;
+}
+
 /**
  * Maps bufferId → reloadCurrentWindow function registered by the corresponding Editor.
  * Called after replace operations to refresh the CM view from the updated Rust rope.
  */
-const reloadWindowRegistry = new Map<number, () => Promise<void>>();
+const reloadWindowRegistry = new Map<number, (options?: ReloadWindowOptions) => Promise<void>>();
 
 /**
  * Maps bufferId → reloadFromStart function registered by the corresponding Editor.
@@ -158,7 +172,7 @@ export function unregisterJumpToLine(bufferId: number) {
   jumpRegistry.delete(bufferId);
 }
 
-export function registerReloadWindow(bufferId: number, fn: () => Promise<void>) {
+export function registerReloadWindow(bufferId: number, fn: (options?: ReloadWindowOptions) => Promise<void>) {
   reloadWindowRegistry.set(bufferId, fn);
 }
 
@@ -166,10 +180,13 @@ export function unregisterReloadWindow(bufferId: number) {
   reloadWindowRegistry.delete(bufferId);
 }
 
-/** Re-fetches the current virtual-document window from Rust and refreshes the CM view. */
-export async function reloadCurrentWindow(bufferId: number): Promise<void> {
+/**
+ * Re-fetches the current virtual-document window from Rust and refreshes the CM view.
+ * Pass `{ trackHistory: true }` to make the reload undoable (used by Replace All).
+ */
+export async function reloadCurrentWindow(bufferId: number, options?: ReloadWindowOptions): Promise<void> {
   const fn = reloadWindowRegistry.get(bufferId);
-  if (fn) await fn();
+  if (fn) await fn(options);
 }
 
 export function registerReloadFromStart(bufferId: number, fn: () => Promise<void>) {
@@ -265,6 +282,16 @@ export function clearAllSearchHighlights(): void {
       ],
     });
   });
+}
+
+/**
+ * Returns the character count of the CM document for the given buffer.
+ * Used to decide whether Replace All should be undoable (small doc) or
+ * non-undoable (large doc where storing undo would consume too much memory).
+ */
+export function getEditorDocLength(bufferId: number): number {
+  const view = registry.get(bufferId);
+  return view ? view.state.doc.length : 0;
 }
 
 /**

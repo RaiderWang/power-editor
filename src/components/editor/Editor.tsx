@@ -48,6 +48,7 @@ import {
   unregisterSecondaryEditorView,
   syncAnnotation,
 } from '../../store/editorViewRegistry';
+import type { ReloadWindowOptions } from '../../store/editorViewRegistry';
 import { virtualLoad } from '../../store/virtualLoadAnnotation';
 import type { TabState } from '../../types';
 import type { PaneId } from '../../store/splitAtoms';
@@ -64,6 +65,27 @@ const lineNumComp = new Compartment();
 // History compartment: reconfigured (reset) after virtual-window jumps so that
 // stale undo entries from the previous window don't corrupt the new content.
 const historyComp = new Compartment();
+
+/**
+ * Properly reset the CM undo/redo history to empty.
+ *
+ * `historyComp.reconfigure(history())` alone does NOT reset history because
+ * `history()` returns the same module-level `historyField_` StateField singleton
+ * every time. CM6 sees the identical field reference and calls `update()` (which
+ * preserves the existing undo stack) instead of `create()` (which would start
+ * with `HistoryState.empty`).
+ *
+ * The workaround is a two-step reconfigure:
+ *   1. Remove the history extension → the StateField is dropped along with its state.
+ *   2. Re-add it → CM6 calls `create()` → fresh empty history.
+ *
+ * Both dispatches are synchronous with no user interaction in between, so the
+ * brief absence of the history plugin is invisible to the user.
+ */
+function resetEditorHistory(view: EditorView) {
+  view.dispatch({ effects: historyComp.reconfigure([]) });
+  view.dispatch({ effects: historyComp.reconfigure(history()) });
+}
 
 interface EditorProps {
   tab: TabState;
@@ -289,7 +311,6 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // Replace the entire CM document with the new window and update the line-number
       // gutter offset in a single transaction so the gutter immediately shows real
       // file line numbers (e.g. line 901 instead of 1 when window starts at file line 900).
-      // Also reset history — stale undo entries from the old window would corrupt content.
       const newWinStart = chunk.start_line;
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
@@ -298,9 +319,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           lineNumComp.reconfigure(
             lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
           ),
-          historyComp.reconfigure(history()),
         ],
       });
+      // Stale undo entries from the old window would corrupt the new content.
+      resetEditorHistory(view);
 
       windowStartLineRef.current = chunk.start_line;
       windowStartByteOffsetRef.current = chunk.start_byte_offset;
@@ -313,9 +335,12 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   }, [updateScrollbar]);
 
   // ── Reload current window from Rust (called after replace operations) ──────
-  // Re-fetches the same window position and replaces CM content without
-  // touching the virtual-load / user-edit bookkeeping.
-  const reloadCurrentWindowFn = useCallback(async () => {
+  // Re-fetches the same window position and replaces CM content.
+  //
+  // options.trackHistory (default false):
+  //   false → virtualLoad + addToHistory:false + history reset (non-undoable reload)
+  //   true  → normal history-tracked transaction so Ctrl+Z can undo (Replace All)
+  const reloadCurrentWindowFn = useCallback(async (options?: ReloadWindowOptions) => {
     const view = viewRef.current;
     const bufferId = activeBufferIdRef.current;
     if (!view || bufferId < 0) return;
@@ -332,23 +357,45 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       if (activeBufferIdRef.current !== bufferId) return;
 
       const newWinStart = chunk.start_line;
+      const trackHistory = options?.trackHistory ?? false;
+
       // Preserve scroll position: CM6 maps the old viewport through the change
       // set during a full-doc replacement, sending all positions to 0 and causing
       // the viewport to jump to the top. Save scrollTop and restore it afterwards
       // so that replace-all (and similar operations) keep the user's viewport stable.
       const savedScrollTop = view.scrollDOM.scrollTop;
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
-        annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-        effects: [
-          lineNumComp.reconfigure(
-            newWinStart === 0
-              ? lineNumbers()
-              : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
-          ),
-          historyComp.reconfigure(history()),
-        ],
-      });
+
+      if (trackHistory) {
+        // History-tracked reload: the change enters the undo stack so Ctrl+Z
+        // can revert it.  No virtualLoad annotation, no addToHistory:false.
+        // The updateListener will detect this as a user edit and call
+        // markTextEdited, which is correct — on undo the same happens,
+        // keeping CM ↔ Rust sync consistent.
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
+          effects: [
+            lineNumComp.reconfigure(
+              newWinStart === 0
+                ? lineNumbers()
+                : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
+            ),
+          ],
+        });
+      } else {
+        // Non-history reload: used by external file reloads, window jumps, etc.
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
+          annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
+          effects: [
+            lineNumComp.reconfigure(
+              newWinStart === 0
+                ? lineNumbers()
+                : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
+            ),
+          ],
+        });
+        resetEditorHistory(view);
+      }
       view.scrollDOM.scrollTop = savedScrollTop;
 
       windowStartLineRef.current = chunk.start_line;
@@ -398,9 +445,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
         effects: [
           lineNumComp.reconfigure(lineNumbers()),
-          historyComp.reconfigure(history()),
         ],
       });
+      resetEditorHistory(view);
 
       updateScrollbar(view);
     } finally {
@@ -561,9 +608,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
             annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
             effects: [
               lineNumComp.reconfigure(lineNumbers()),
-              historyComp.reconfigure(history()),
             ],
           });
+          resetEditorHistory(view);
 
           const textByteLen = new TextEncoder().encode(text).length;
           windowStartLineRef.current = 0;

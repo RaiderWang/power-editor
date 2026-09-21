@@ -24,6 +24,7 @@ import {
   applyReplaceEditToCM,
   hasCursorMoved,
   clearCursorMoved,
+  getEditorDocLength,
 } from '../../store/editorViewRegistry';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
@@ -325,17 +326,35 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     doSearch, markTabModified, refreshMatches, setCurrentIdx, onMatchesFound,
   ]);
 
+  // Threshold (in characters) above which Replace All is non-undoable.
+  // CM6 undo stores the full old document for a whole-doc replacement;
+  // for very large virtual windows (e.g. after Ctrl+A on a 100 MB file)
+  // this would consume excessive memory.  10 M chars ≈ 10 MB ASCII.
+  const REPLACE_ALL_UNDO_THRESHOLD = 10_000_000;
+
   const doReplaceAll = useCallback(async () => {
     if (!activeTab || !params.pattern) return;
     // Sync any pending CM edits (including Ctrl+Z undo) to Rust before replacing,
     // so replaceAll operates on the current editor content, not a stale rope.
     await syncEditorToRust(activeTab.bufferId);
+
+    // Decide whether the replacement should be undoable.
+    // For large CM windows the undo entry would duplicate the entire document
+    // in memory, so we fall back to non-undoable and warn the user.
+    const docLen = getEditorDocLength(activeTab.bufferId);
+    const canUndo = docLen < REPLACE_ALL_UNDO_THRESHOLD;
+
+    if (!canUndo) {
+      const ok = confirm(t('search.replaceAllNoUndo'));
+      if (!ok) return;
+    }
+
     const replaceParams = params.is_regex
       ? params
       : { ...params, pattern: expandSpecialChars(params.pattern) };
     const expandedReplacement = params.is_regex ? replaceText : expandSpecialChars(replaceText);
     const count = await cmd.replaceAll(activeTab.bufferId, replaceParams, expandedReplacement);
-    await reloadCurrentWindow(activeTab.bufferId);
+    await reloadCurrentWindow(activeTab.bufferId, { trackHistory: canUndo });
     addSearchHistory(params.pattern);
     setSearchHistory(loadSearchHistory());
     addReplaceHistory(replaceText);

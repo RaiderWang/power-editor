@@ -135,6 +135,7 @@
   "search.replaceOne": "替换当前",
   "search.replaceAll": "全部替换",
   "search.replacedCount": "已替换 {count} 处",
+  "search.replaceAllNoUndo": "文档内容较大，全部替换后将无法撤销。是否继续？",
 
   "history.title": "历史记录",
   "history.ariaLabel": "显示历史记录",

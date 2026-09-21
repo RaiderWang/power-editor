@@ -1,6 +1,6 @@
 [package]
 name = "power-editor"
-version = "0.1.5"
+version = "0.1.6"
 description = "A high-performance text editor optimized for large files"
 authors = []
 license = ""
