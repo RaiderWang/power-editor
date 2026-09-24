@@ -2,44 +2,108 @@
 
 **中文 | [English](README.md)**
 
-高性能跨平台文本编辑器，针对 100MB+ 大文件优化，兼容 UltraEdit Wordfile 语法高亮。
-
-## 界面截图
+> **免费开源的跨平台大文件文本编辑器。** 秒开 100MB、1GB 乃至数 GB 的文本文件，不卡顿，不崩溃。
 
 ![Power Editor 主界面：语法高亮、多标签编辑与深色主题](docs/screenshots/power-editor.jpg)
 
-## 技术栈
+---
 
-| 层级 | 技术 |
+## 为什么选择 Power Editor？
+
+绝大多数文本编辑器在面对几百兆的日志文件、CSV 导出或源码归档包时，要么极度缓慢，要么直接崩溃。Power Editor 专为此场景打造，使用原生 Rust 后端流式加载并索引内容，让编辑器始终保持流畅。
+
+**适用人群**
+
+- 开发者查看大型构建日志、服务器日志或数据导出文件
+- 数据工程师打开数百 MB 的 CSV / TSV / JSON 文件
+- 系统管理员编辑大型配置文件或 grep 输出结果
+- 任何曾见过「文件过大」提示或编辑器卡死的用户
+
+---
+
+## 核心功能
+
+### ⚡ 任意大小文件，秒级打开
+100MB+ 文件不到一秒即可打开。编辑器采用渐进式流式加载，内容在后台持续载入的同时，你即可立刻开始阅读和编辑。无需等待，不占用大量内存。
+
+### 🔍 全文闪电搜索
+支持正则表达式的查找替换，100MB 文本的全文搜索在 2 秒内完成。搜索结果按行号列出，点击即可跳转到对应位置。
+
+### 🎨 语法高亮
+兼容广泛使用的 **UltraEdit `.uew` Wordfile** 格式，内置 C++、Python、Rust 语法高亮。通过 **语言 → 导入 Wordfile** 可在运行时即时加载任意 `.uew` 文件，无需重启。
+
+### 🌐 多编码支持——一键修复乱码
+打开文件时自动检测编码（UTF-8、GBK、Big5、Shift_JIS 等数十种）。若文件出现乱码，点击状态栏底部的编码标签，以正确编码重新打开，立刻还原正常显示。
+
+### ↕ 换行符转换
+一键在 LF（Unix）与 CRLF（Windows）之间切换，跨系统共享文件时不再烦恼。
+
+### ▦ 列模式编辑（Alt + 拖动）
+跨多行选取矩形文本块，非常适合编辑定宽数据、日志列或对齐代码。
+
+### 🗂 多标签编辑
+同时打开多个文件并行编辑。右键标签可快速执行：另存为、重命名、复制路径、关闭其它标签。
+
+### 🔔 外部文件修改检测
+当其他程序修改了你已打开的文件，Power Editor 会立即感知。若无未保存改动则静默重载；若有本地编辑则弹出确认——重新加载或保留本地改动，由你决定。
+
+### 🌙 深色 / 浅色主题
+在视图菜单或工具栏中一键切换主题风格。
+
+### ⌨ 完全自定义快捷键
+打开 **文件 → 设置 → 快捷键设置**，重新映射任意操作，检测冲突，或恢复默认值。所有自定义配置跨会话持久保存。
+
+### 📌 收藏夹与最近文件
+将常用文件固定到收藏夹，一键直达。最近文件记录完整打开历史。
+
+### 💾 会话恢复
+重新打开 Power Editor，上次的标签页自动恢复，继续从你离开的地方开始工作。
+
+---
+
+## 下载
+
+前往 [**Releases 页面**](../../releases) 下载对应平台的最新安装包：
+
+| 平台 | 文件 |
 |------|------|
-| 应用框架 | Tauri 2.0 |
-| 前端 | React 18 + TypeScript + Vite 8 |
-| 编辑器渲染 | CodeMirror 6 |
-| 文本缓冲 | Rust + ropey (B-tree Rope) |
-| 文件 I/O | Rust memmap2 + tokio + notify（外部修改监听） |
-| 编码处理 | encoding_rs + chardetng |
-| 搜索引擎 | Rust regex (SIMD 加速) |
-| 状态管理 | Jotai |
+| Windows | `Power.Editor_x.y.z_x64-setup.exe` |
+| macOS | `Power.Editor_x.y.z_universal.dmg` |
+| Linux（x86_64 / ARM64） | `.deb` / `.AppImage` |
 
-## 主要功能
+---
 
-- **大文件支持**：通过 Rust Rope 缓冲区 + 虚拟渲染，快速打开 100MB+ 文件
-- **语法高亮**：兼容 UltraEdit `.uew` Wordfile 格式，内置 C++、Python、Rust 高亮
-- **查找替换**：Rust SIMD regex 引擎，全文搜索 100MB 文件 < 2s
-- **编码转换**：自动检测编码，支持 UTF-8/GBK/Big5/Shift_JIS 等主流编码；状态栏点击编码可弹出列表，以指定编码重新打开当前文件（解决乱码）
-- **换行符转换**：LF ↔ CRLF 互转
-- **列模式编辑**：Alt + 拖动矩形选区
-- **多标签页**：同时编辑多个文件；最右侧标签旁提供 **+** 按钮快速新建空白标签（等同工具栏「新建」）；标签栏右键菜单（另存为、重命名、复制文件路径、关闭所有/其它标签）
-- **外部文件修改检测**：已打开文件被外部程序修改时自动感知；无未保存更改则静默从磁盘重载，有本地编辑则弹出确认框（重新加载 / 保留本地更改）
-- **深色/浅色主题**切换
-- **菜单栏**：文件（新建/打开/**收藏**/**收藏的文件**/最近打开/保存/**另存为**/关闭标签/**设置**）、编辑（查找替换、**删除行**、**重命名**、复制文件路径）、视图（自动换行、列模式、字号、**编辑器字体**、主题切换）、格式（编码与换行符）、语言（语法列表与 **导入 Wordfile**）；功能与工具栏互补，工具栏仍保留编码与语言等快捷控件
-- **自定义快捷键**：**文件 → 设置 → 快捷键设置...** 打开快捷键面板，按分类列出菜单、工具栏及编辑器内置快捷键；可点击修改可编辑项、检测冲突、恢复单项或全部默认，自定义配置持久化到 localStorage（macOS 下 `Cmd` 等同于 `Ctrl`）
+## 快速上手
+
+1. **安装**：下载并运行对应平台的安装包（见上方下载）。
+2. **打开文件**：将文件拖入窗口、使用 **文件 → 打开**，或在 Windows 资源管理器中右键 → *用 Power Editor 打开*。
+3. **搜索**：`Ctrl+F` 查找，`Ctrl+H` 查找替换。
+4. **切换编码**：点击底部状态栏中的编码标签。
+5. **添加语法高亮**：**语言 → 导入 Wordfile (.uew)…** 并选择你的语法文件。
+
+---
+
+## 添加语法高亮
+
+Power Editor 使用与 UltraEdit 相同的 **Wordfile** 格式，现有 `.uew` 文件开箱即用。
+
+**方式一——运行时导入（无需重启）：**
+前往 **语言 → 导入 Wordfile (.uew)…**，选择文件后立即生效。
+
+**方式二——随应用打包（开发者）：**
+将 `.uew` 文件放入项目根目录 `wordfiles/`，重新构建后随应用启动加载。
+
+格式参考：[UltraEdit Wordfile 格式说明](https://www.ultraedit.com/wiki/Wordfiles)
+
+---
 
 ## 已知问题
 
-- **Windows 中文标点需按两次（已应用临时补丁）**：Chromium 149+ 在 Windows 上会将 CodeMirror 默认的 `autocorrect="off"` 误判为自动纠错并静默撤销 IME 瞬时插入（中文标点等），导致每隔一次按键才出现字符。Power Editor 已在 Windows + Chromium 149+ 环境下通过 `EditorView.contentAttributes` 强制 `autocorrect="on"` 绕过该回归（见 `src/extensions/chromiumImeAutocorrectWorkaround.ts`）；桌面端几乎无自动拼写纠错副作用。上游修复已合并（[Chromium Issue 521205128](https://issues.chromium.org/issues/521205128)、[CL 7917332](https://chromium-review.googlesource.com/c/chromium/src/+/7917332)），待用户 WebView2 普遍升级至含修复版本（预计 149.0.7827.103 修订版或 150+）后可移除此补丁。详见 [docs/known-issues-chinese-ime-punctuation.md](docs/known-issues-chinese-ime-punctuation.md)。
+- **Windows 中文标点需按两次（已有临时补丁）**：Chromium 149+ 在 Windows 上存在一个影响中文 IME 标点输入的 bug，导致每隔一次才出现字符。Power Editor 已内置自动绕过方案，无需任何手动操作。上游浏览器修复已合并，将随后续 WebView2 更新推送。详见 [docs/known-issues-chinese-ime-punctuation.md](docs/known-issues-chinese-ime-punctuation.md)。
 
-## 开发
+---
+
+## 从源码构建
 
 ```bash
 # 安装依赖
@@ -48,68 +112,17 @@ npm install
 # 开发模式（热重载）
 npm run tauri:dev
 
-# 生产构建（Windows / macOS / 现代 Linux）
+# 生产构建
 npm run tauri:build
 
-# 银河麒麟 / Linux (ARM64 & x86_64) Docker 隔离构建
+# Linux / 银河麒麟（Docker，ARM64 + x86_64）
 ./scripts/build-linux-docker.sh
 ```
 
-> Linux / 银河麒麟系统详细构建与依赖说明见 [docs/build-linux-kylin.md](docs/build-linux-kylin.md)。
+> Linux 及银河麒麟系统详细构建说明：[docs/build-linux-kylin.md](docs/build-linux-kylin.md)
 
-## 添加自定义语法高亮
+---
 
-有两种方式：
+## 开源协议
 
-1. **内置目录**：将 UltraEdit 格式的 `.uew` 文件放入项目根目录 `wordfiles/`，随应用打包后在启动时加载。
-2. **运行时导入**：使用菜单 **语言 → 导入 Wordfile (.uew)...** 选择任意 `.uew` 文件，解析结果会合并进当前会话的语言列表（同名语言会被覆盖）。
-
-Wordfile 格式参考：https://www.ultraedit.com/wiki/Wordfiles
-
-## 项目结构
-
-```
-power-editor/
-├── src/                        # React 前端
-│   ├── assets/                 # 静态资源（图标、图片）
-│   ├── components/
-│   │   ├── dialogs/            # AboutDialog、CloseConfirmDialog、CsvToFixedWidthDialog、
-│   │   │                       #   ExternalChangeDialog、KeyboardShortcutsDialog、RenameDialog
-│   │   ├── editor/             # Editor.tsx（CM6 视图）、SearchPanel、LineListDialog、
-│   │   │                       #   HistoryComboInput、VirtualScrollbar
-│   │   ├── layout/             # EditorPane 布局容器
-│   │   ├── menubar/            # MenuBar + FontPickerModal
-│   │   ├── statusbar/          # StatusBar + EncodingPicker
-│   │   ├── tabs/               # TabBar + TabContextMenu
-│   │   └── toolbar/            # 工具栏（编码/语言等快捷控件）
-│   ├── extensions/             # CM6 扩展：columnMode、searchHighlight、
-│   │                           #   wordfileSyntax、smartEnter、chromiumImeWorkaround
-│   ├── hooks/                  # useFile、useFileWatcher、useKeybindingDispatcher、
-│   │                           #   useSessionRestore、useWindowClose、usePrefsPersist
-│   ├── i18n/                   # useTranslation Hook + 语言包
-│   │   └── locales/            # en-US.json、zh-CN.json
-│   ├── store/                  # Jotai atoms、editorViewRegistry、keybindings、
-│   │                           #   tauriCommands、recentFiles、favoriteFiles、searchHistory
-│   ├── types/                  # TypeScript 类型定义（与 Rust 结构体对应）
-│   └── utils/                  # pathUtils、tabFileName、specialChars
-├── src-tauri/                  # Rust 后端
-│   └── src/
-│       ├── buffer/             # Rope 文本缓冲 + 虚拟文档 API
-│       ├── csv/                # CSV 转固定宽度文本
-│       ├── file_io/            # 文件 I/O、编码检测/转换
-│       ├── file_watcher/       # 磁盘文件变更监听（notify）
-│       ├── search/             # SIMD 查找替换引擎
-│       ├── session/            # 会话持久化（应用重启后恢复标签）
-│       ├── shell_integration/  # Windows 资源管理器右键菜单注册
-│       └── wordfile/           # UltraEdit .uew 解析器
-├── docs/                       # 文档（已知问题等）
-└── wordfiles/                  # 内置语法定义（C++、Python、Rust）
-```
-
-## 自定义程序图标
-
-用 Tauri CLI 自动生成所有尺寸：
-
-```bash
-npm run tauri icon app-icon.png
-```
+MIT
