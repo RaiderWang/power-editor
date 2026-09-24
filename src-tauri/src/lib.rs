@@ -12,11 +12,24 @@ use buffer::{BufferRegistry, EditOp, FileInfo, LineChunk};
 use file_io::supported_encodings;
 use file_watcher::FileWatcherRegistry;
 use search::{FindResult, SearchParams};
+use serde::Serialize;
 use tauri::{Emitter, Manager};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 use tauri::State;
 use wordfile::WordfileDef;
+
+/// Progress payload emitted via `file:open-progress` during large file opens.
+#[derive(Clone, Serialize)]
+struct OpenProgress {
+    request_id: String,
+    bytes_read: u64,
+    total_bytes: u64,
+}
+
+/// Minimum interval between progress events to avoid flooding IPC.
+const PROGRESS_THROTTLE_MS: u128 = 100;
 
 /// Shared app state passed to all Tauri commands
 pub struct AppState {
@@ -32,12 +45,104 @@ pub struct AppState {
 // ──────────────────────────────────────────────────────────────
 
 #[tauri::command]
-fn open_file(state: State<AppState>, path: String) -> Result<FileInfo, String> {
+async fn get_file_size(path: String) -> Result<u64, String> {
+    std::fs::metadata(&path)
+        .map(|m| m.len())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn open_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+    request_id: String,
+) -> Result<FileInfo, String> {
     let p = PathBuf::from(&path);
-    let id = file_io::open_file(&state.registry, &p).map_err(|e| e.to_string())?;
+    let total_bytes = std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+    let registry = state.registry.clone();
+
+    // ── Phase 1: read first chunk only → return immediately ──
+    let (id, continuation) = tokio::task::spawn_blocking({
+        let registry = registry.clone();
+        let p = p.clone();
+        move || file_io::open_file_quick(&registry, &p)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+
     state.watcher.watch_buffer(id, p);
-    let buffers = state.registry.buffers.lock().unwrap();
-    let info = buffers[&id].file_info();
+
+    let info = {
+        let buffers = state.registry.buffers.lock().unwrap();
+        buffers[&id].file_info()
+    };
+
+    // ── Phase 2: background loading of remaining chunks (detached) ──
+    if let Some(continuation) = continuation {
+        let registry = registry.clone();
+        let app_handle = app.clone();
+        let rid = request_id;
+        tokio::task::spawn_blocking(move || {
+            let mut cont = continuation;
+            let mut last_emit = Instant::now();
+
+            loop {
+                match file_io::streaming::decode_next_chunk(&mut cont) {
+                    Ok(Some(chunk_rope)) => {
+                        let mut bufs = registry.buffers.lock().unwrap();
+                        match bufs.get_mut(&id) {
+                            Some(buf) => buf.rope.append(chunk_rope),
+                            None => break, // buffer was closed by user
+                        }
+                    }
+                    Ok(None) => break, // EOF reached
+                    Err(e) => {
+                        log::error!("Background loading failed for buffer {}: {}", id, e);
+                        break;
+                    }
+                }
+
+                // Throttled progress events
+                let now = Instant::now();
+                if now.duration_since(last_emit).as_millis() >= PROGRESS_THROTTLE_MS {
+                    let _ = app_handle.emit(
+                        "file:open-progress",
+                        OpenProgress {
+                            request_id: rid.clone(),
+                            bytes_read: cont.bytes_read,
+                            total_bytes,
+                        },
+                    );
+                    last_emit = now;
+                }
+            }
+
+            // Emit final 100% progress so the status bar knows loading finished
+            let _ = app_handle.emit(
+                "file:open-progress",
+                OpenProgress {
+                    request_id: rid,
+                    bytes_read: total_bytes,
+                    total_bytes,
+                },
+            );
+
+            // Finalise buffer
+            let final_le = cont.final_line_ending();
+            let mut bufs = registry.buffers.lock().unwrap();
+            if let Some(buf) = bufs.get_mut(&id) {
+                buf.is_fully_loaded = true;
+                buf.line_ending = final_le;
+                let updated_info = buf.file_info();
+                drop(bufs);
+                // Tell frontend the file is fully loaded with final metadata
+                let _ = app_handle.emit("file:load-complete", updated_info);
+            }
+        });
+    }
+
     Ok(info)
 }
 
@@ -70,6 +175,9 @@ fn save_buffer(state: State<AppState>, buffer_id: u64) -> Result<(), String> {
     state.watcher.record_save(buffer_id);
     let mut buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    if !buf.is_fully_loaded {
+        return Err("Cannot save while the file is still loading".to_string());
+    }
     buf.save().map_err(|e| e.to_string())
 }
 
@@ -79,6 +187,9 @@ fn save_buffer_as(state: State<AppState>, buffer_id: u64, path: String) -> Resul
     state.watcher.record_save(buffer_id);
     let mut buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    if !buf.is_fully_loaded {
+        return Err("Cannot save while the file is still loading".to_string());
+    }
     buf.save_as(p.clone()).map_err(|e| e.to_string())?;
     let info = buf.file_info();
     drop(buffers);
@@ -93,22 +204,18 @@ fn save_buffer_as(state: State<AppState>, buffer_id: u64, path: String) -> Resul
 /// The frontend should clear its `textEdited` flag and reload the CM view after this.
 #[tauri::command]
 fn reload_buffer(state: State<AppState>, buffer_id: u64) -> Result<FileInfo, String> {
-    let path = {
+    let (path, encoding) = {
         let buffers = state.registry.buffers.lock().unwrap();
         let buf = buffers.get(&buffer_id).ok_or("Buffer not found")?;
-        buf.path.clone().ok_or("Buffer has no path")?
+        let p = buf.path.clone().ok_or("Buffer has no path")?;
+        let enc = encoding_rs::Encoding::for_label(buf.encoding.as_bytes())
+            .unwrap_or(encoding_rs::UTF_8);
+        (p, enc)
     };
 
-    let raw = std::fs::read(&path).map_err(|e| e.to_string())?;
-
-    let encoding = {
-        let buffers = state.registry.buffers.lock().unwrap();
-        let buf = buffers.get(&buffer_id).ok_or("Buffer not found")?;
-        encoding_rs::Encoding::for_label(buf.encoding.as_bytes())
-            .unwrap_or(encoding_rs::UTF_8)
-    };
-
-    let (rope, enc_name, line_ending) = file_io::decode_bytes(&raw, encoding);
+    let (rope, enc_name, line_ending) =
+        file_io::reload_file(&path, encoding, |_| {})
+            .map_err(|e| e.to_string())?;
     let mtime = std::fs::metadata(&path).ok().and_then(|m| m.modified().ok());
 
     let mut buffers = state.registry.buffers.lock().unwrap();
@@ -118,6 +225,8 @@ fn reload_buffer(state: State<AppState>, buffer_id: u64) -> Result<FileInfo, Str
     buf.line_ending = line_ending;
     buf.is_modified = false;
     buf.mtime = mtime;
+    buf.is_fully_loaded = true;
+    buf.file_total_bytes = std::fs::metadata(&path).ok().map(|m| m.len()).unwrap_or(0);
 
     Ok(buf.file_info())
 }
@@ -145,6 +254,9 @@ fn get_lines(state: State<AppState>, buffer_id: u64, start_line: usize, count: u
 fn get_full_text(state: State<AppState>, buffer_id: u64) -> Result<String, String> {
     let buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get(&buffer_id).ok_or("Buffer not found")?;
+    if !buf.is_fully_loaded {
+        return Err("Cannot read full text while the file is still loading".to_string());
+    }
     Ok(buf.get_full_text())
 }
 
@@ -174,6 +286,13 @@ fn find_all(
     params: SearchParams,
     max_results: usize,
 ) -> Result<FindResult, String> {
+    {
+        let bufs = state.registry.buffers.lock().unwrap();
+        let buf = bufs.get(&buffer_id).ok_or("Buffer not found")?;
+        if !buf.is_fully_loaded {
+            return Err("Search is not available while the file is still loading".to_string());
+        }
+    }
     let max = if max_results == 0 { 10000 } else { max_results };
     search::find_all(&state.registry, buffer_id, &params, max).map_err(|e| e.to_string())
 }
@@ -219,8 +338,8 @@ fn change_encoding(state: State<AppState>, buffer_id: u64, encoding: String) -> 
 /// Creates a new buffer so the editor reloads content from scratch.
 /// Returns the new FileInfo (with a new buffer id); the old buffer is closed automatically.
 #[tauri::command]
-fn reopen_with_encoding(
-    state: State<AppState>,
+async fn reopen_with_encoding(
+    state: State<'_, AppState>,
     buffer_id: u64,
     encoding: String,
 ) -> Result<FileInfo, String> {
@@ -232,10 +351,16 @@ fn reopen_with_encoding(
             .ok_or("Cannot re-open an unsaved buffer with a different encoding")?
     };
 
-    let new_id = file_io::open_file_with_encoding(&state.registry, &path, &encoding)
-        .map_err(|e| e.to_string())?;
+    let registry = state.registry.clone();
+    let enc = encoding.clone();
+    let p = path.clone();
+    let new_id = tokio::task::spawn_blocking(move || {
+        file_io::open_file_with_encoding(&registry, &p, &enc, |_| {})
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
 
-    // Remove the old buffer after the new one is ready
     state.registry.remove(buffer_id);
 
     let buffers = state.registry.buffers.lock().unwrap();
@@ -329,9 +454,17 @@ fn export_buffer_to_scratch(
 
     let buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get(&buffer_id).ok_or("Buffer not found")?;
-    // Write rope as UTF-8; encoding/line_ending metadata is stored in session.json
-    let text = buf.rope.to_string();
-    std::fs::write(&scratch_path, text.as_bytes()).map_err(|e| e.to_string())?;
+    // Stream rope chunks directly to disk instead of materialising the entire
+    // document as a single String (which would double memory usage for large files).
+    {
+        use std::io::{BufWriter, Write};
+        let file = std::fs::File::create(&scratch_path).map_err(|e| e.to_string())?;
+        let mut writer = BufWriter::new(file);
+        for chunk in buf.rope.chunks() {
+            writer.write_all(chunk.as_bytes()).map_err(|e| e.to_string())?;
+        }
+        writer.flush().map_err(|e| e.to_string())?;
+    }
 
     Ok(scratch_path.to_string_lossy().to_string())
 }
@@ -511,6 +644,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // File operations
+            get_file_size,
             open_file,
             new_buffer,
             close_buffer,

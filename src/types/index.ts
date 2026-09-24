@@ -10,6 +10,8 @@ export interface FileInfo {
   encoding: string;
   line_ending: 'LF' | 'CRLF' | 'Mixed';
   is_modified: boolean;
+  /** `false` while the file is still being loaded in the background. */
+  is_fully_loaded: boolean;
 }
 
 export interface LineChunk {

@@ -52,6 +52,8 @@ import type { ReloadWindowOptions } from '../../store/editorViewRegistry';
 import { virtualLoad } from '../../store/virtualLoadAnnotation';
 import type { TabState } from '../../types';
 import type { PaneId } from '../../store/splitAtoms';
+import { useTranslation } from '../../i18n';
+import { formatBytes } from '../../utils/formatBytes';
 
 // Compartments allow hot-swapping extensions without rebuilding the full state
 const wrapComp = new Compartment();
@@ -95,6 +97,8 @@ interface EditorProps {
 
 // Lines per IPC fetch; also the size of the initial viewport load.
 const CHUNK_SIZE = 300;
+// Files larger than this cannot be fully loaded into JS/CM for select-all.
+const SELECT_ALL_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 // Start prefetching the next chunk when the user scrolls within this many
 // lines of the end of already-loaded content.
 const PREFETCH_LINES = 80;
@@ -127,6 +131,12 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   const loadedEndLineRef = useRef<number>(0);
   const totalLinesRef = useRef<number>(0);    // total lines in the Rust Rope
   const isAppendingRef = useRef<boolean>(false);
+  // ── Refs for select-all gate (synced from tab.fileInfo) ──
+  const fileTotalBytesRef = useRef<number>(0);
+  const isFullyLoadedRef = useRef<boolean>(true);
+  const t = useTranslation();
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   // ── Update virtual-scrollbar thumb position and size ─────────────
   // Called whenever the CM viewport changes or the virtual window shifts.
@@ -205,6 +215,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           changes: { from: docLen, to: docLen, insert: appendText },
           annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
         });
+        if (chunk.total_lines > totalLinesRef.current) {
+          totalLinesRef.current = chunk.total_lines;
+        }
         loadedEndLineRef.current = loadedEnd + chunk.lines.length;
         // Extend the window's end byte offset as new content is appended.
         setWindowRange(bufferId, windowStartByteOffsetRef.current, chunk.end_byte_offset);
@@ -324,6 +337,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // Stale undo entries from the old window would corrupt the new content.
       resetEditorHistory(view);
 
+      if (chunk.total_lines > totalLinesRef.current) {
+        totalLinesRef.current = chunk.total_lines;
+      }
       windowStartLineRef.current = chunk.start_line;
       windowStartByteOffsetRef.current = chunk.start_byte_offset;
       loadedEndLineRef.current = chunk.start_line + chunk.lines.length;
@@ -493,6 +509,26 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
   }, [updateScrollbar]);
 
+  // ── Sync total lines when background loading finishes ───────────
+  // When a large file finishes its Phase 2 background load, `tab.fileInfo.total_lines`
+  // updates to the full line count. Update `totalLinesRef` and re-render the
+  // virtual scrollbar thumb so the user can scroll to the end of the full file.
+  useEffect(() => {
+    if (tab.fileInfo.total_lines > 0 && tab.fileInfo.total_lines !== totalLinesRef.current) {
+      totalLinesRef.current = tab.fileInfo.total_lines;
+      const view = viewRef.current;
+      if (view) {
+        updateScrollbar(view);
+      }
+    }
+  }, [tab.fileInfo.total_lines, updateScrollbar]);
+
+  // ── Sync file metadata refs for select-all gate ─────────────────
+  useEffect(() => {
+    fileTotalBytesRef.current = tab.fileInfo.total_bytes;
+    isFullyLoadedRef.current = tab.fileInfo.is_fully_loaded;
+  }, [tab.fileInfo.total_bytes, tab.fileInfo.is_fully_loaded]);
+
   // ── Build the language extension for this tab ──────────────────
   const buildLangExtension = useCallback((): Extension => {
     const ext = tab.language;
@@ -581,6 +617,21 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
 
       // File already fully loaded in CM → let default selectAll handle it
       if (winStart === 0 && loadedEnd >= totalLines) return false;
+
+      // Block select-all while background loading is still in progress
+      if (!isFullyLoadedRef.current) {
+        alert(tRef.current('editor.selectAllStillLoading'));
+        return true;
+      }
+
+      // Block select-all for files too large to fit in JS heap / CodeMirror
+      if (fileTotalBytesRef.current > SELECT_ALL_MAX_BYTES) {
+        alert(tRef.current('editor.selectAllTooLarge', {
+          limit: formatBytes(SELECT_ALL_MAX_BYTES),
+          size: formatBytes(fileTotalBytesRef.current),
+        }));
+        return true;
+      }
 
       void (async () => {
         try {

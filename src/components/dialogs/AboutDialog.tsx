@@ -32,9 +32,9 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ onClose }) => {
           <span className={styles.developerName}>Rick Wang</span>
           <button
             className={styles.developerHandle}
-            onClick={() => open('https://x.com/leirenwangz').catch(console.error)}
+            onClick={() => open('https://powereditor.noedge.org').catch(console.error)}
           >
-            @leirenwangz
+            https://powereditor.noedge.org
           </button>
         </div>
         <div className={styles.actions}>

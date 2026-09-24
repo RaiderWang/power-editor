@@ -200,7 +200,7 @@ html, body, #root {
 .welcome-content h1 {
   font-size: 36px;
   font-weight: 300;
-  color: #ffffff;
+  color: var(--app-fg);
   margin-bottom: 8px;
   letter-spacing: 2px;
 }

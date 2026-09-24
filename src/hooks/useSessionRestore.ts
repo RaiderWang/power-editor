@@ -95,7 +95,7 @@ export function useSessionRestore() {
             );
           } else if (tabSession.path) {
             // Clean saved file – just re-open from disk
-            fileInfo = await cmd.openFile(tabSession.path);
+            fileInfo = await cmd.openFile(tabSession.path, uuidv4());
           } else {
             // Empty new buffer (no path, no content) – recreate as new buffer
             fileInfo = await cmd.newBuffer();

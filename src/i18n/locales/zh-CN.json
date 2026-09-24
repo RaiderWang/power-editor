@@ -113,6 +113,7 @@
   "status.encodingHint": "点击以编码重新打开文件",
   "status.lineEnding": "换行符",
   "status.modified": "已修改",
+  "status.loading": "加载中…",
   "status.filePath": "文件路径",
 
   "encoding.reopenHeader": "以编码重新打开",
@@ -230,6 +231,14 @@
   "keybinding.editor.selectAll": "全选",
   "keybinding.editor.indent": "增加缩进",
   "keybinding.editor.dedent": "减少缩进",
+
+  "largeFile.confirmMessage": "「{fileName}」是一个较大的文件（{size}），打开可能需要一些时间并占用较多内存。是否继续？",
+  "largeFile.continue": "继续打开",
+
+  "editor.selectAllStillLoading": "文件仍在后台加载中，请等待加载完成后再使用全选。",
+  "editor.selectAllTooLarge": "全选功能不适用于大于 {limit} 的文件（当前文件 {size}）。文件过大，无法完整加载到编辑器中。",
+
+  "progress.opening": "正在打开文件…",
 
   "special.newline": "换行符（CRLF/LF）",
   "special.tab": "制表符（Tab）",

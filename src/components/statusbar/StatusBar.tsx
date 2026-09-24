@@ -1,11 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import { activeTabAtom, supportedEncodingsAtom, tabsAtom } from '../../store/atoms';
+import { activeTabAtom, openProgressAtom, supportedEncodingsAtom, tabsAtom } from '../../store/atoms';
 import { getTabTitle } from '../../utils/tabFileName';
 import * as cmd from '../../store/tauriCommands';
 import { clearTextEdited } from '../../store/editorViewRegistry';
 import { EncodingPicker } from './EncodingPicker';
 import { useTranslation } from '../../i18n';
+import { formatBytes } from '../../utils/formatBytes';
 import styles from './StatusBar.module.css';
 
 interface StatusBarProps {
@@ -13,15 +14,10 @@ interface StatusBarProps {
   cursorCol: number;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) => {
   const activeTab = useAtomValue(activeTabAtom);
   const encodings = useAtomValue(supportedEncodingsAtom);
+  const openProgress = useAtomValue(openProgressAtom);
   const [, setTabs] = useAtom(tabsAtom);
   const [pickerOpen, setPickerOpen] = useState(false);
   const encodingRef = useRef<HTMLSpanElement>(null);
@@ -79,6 +75,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
       </span>
       <span className={styles.separator}>|</span>
       <span className={styles.item} title={t('status.lineEnding')}>{fileInfo.line_ending}</span>
+      {!fileInfo.is_fully_loaded && (
+        <>
+          <span className={styles.separator}>|</span>
+          <span className={`${styles.item} ${styles.loading}`}>
+            {openProgress && openProgress.totalBytes > 0
+              ? `${t('status.loading')} ${((openProgress.bytesRead / openProgress.totalBytes) * 100).toFixed(0)}% (${formatBytes(openProgress.bytesRead)} / ${formatBytes(openProgress.totalBytes)})`
+              : t('status.loading')}
+          </span>
+        </>
+      )}
       {fileInfo.is_modified && (
         <>
           <span className={styles.separator}>|</span>

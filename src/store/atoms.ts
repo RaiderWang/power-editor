@@ -68,3 +68,30 @@ export const pendingCloseTabIdAtom = atom<string | null>(null);
 // ──────────────────────────────────────────────────────────────
 
 export const externalChangeTabIdAtom = atom<string | null>(null);
+
+// ──────────────────────────────────────────────────────────────
+// Large file open confirmation
+// ──────────────────────────────────────────────────────────────
+
+export interface PendingLargeFile {
+  path: string;
+  sizeBytes: number;
+  resolve: () => void;
+  reject: () => void;
+}
+
+export const pendingLargeFileAtom = atom<PendingLargeFile | null>(null);
+
+// ──────────────────────────────────────────────────────────────
+// File open progress
+// ──────────────────────────────────────────────────────────────
+
+export interface OpenProgressInfo {
+  requestId: string;
+  bytesRead: number;
+  totalBytes: number;
+  /** Display name for the file being loaded. */
+  fileName: string;
+}
+
+export const openProgressAtom = atom<OpenProgressInfo | null>(null);

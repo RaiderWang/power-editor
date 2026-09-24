@@ -113,6 +113,7 @@
   "status.encodingHint": "Click to reopen with encoding",
   "status.lineEnding": "Line Ending",
   "status.modified": "Modified",
+  "status.loading": "Loading…",
   "status.filePath": "File Path",
 
   "encoding.reopenHeader": "Reopen with Encoding",
@@ -230,6 +231,14 @@
   "keybinding.editor.selectAll": "Select All",
   "keybinding.editor.indent": "Indent",
   "keybinding.editor.dedent": "Dedent",
+
+  "largeFile.confirmMessage": "\"{fileName}\" is a very large file ({size}). Opening may take some time and use significant memory. Continue?",
+  "largeFile.continue": "Continue",
+
+  "editor.selectAllStillLoading": "The file is still loading in the background. Please wait until loading completes before using Select All.",
+  "editor.selectAllTooLarge": "Select All is not available for files larger than {limit} (current file: {size}). The file is too large to load entirely into the editor.",
+
+  "progress.opening": "Opening file…",
 
   "special.newline": "Line break (CRLF/LF)",
   "special.tab": "Tab character",

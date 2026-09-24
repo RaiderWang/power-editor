@@ -1,6 +1,6 @@
 [package]
 name = "power-editor"
-version = "0.1.6"
+version = "0.2.0"
 description = "A high-performance text editor optimized for large files"
 authors = []
 license = ""
@@ -28,15 +28,13 @@ log = "0.4"
 # Text buffer: Rope data structure for O(log n) edits
 ropey = "1.6"
 
-# File I/O: memory-mapped files for instant large file opening
-memmap2 = "0.9"
-
 # Encoding detection and conversion
 encoding_rs = "0.8"
 chardetng = "0.1"
 
 # Regex search engine (SIMD-accelerated)
 regex = "1.11"
+memchr = "2.7"
 
 # Async runtime for non-blocking I/O
 tokio = { version = "1", features = ["full"] }

@@ -1,32 +1,37 @@
 import { useAtom, useSetAtom } from 'jotai';
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom } from '../store/atoms';
+import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingLargeFileAtom } from '../store/atoms';
+import type { PendingLargeFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust } from '../store/editorViewRegistry';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
 import { pathsEqual } from '../utils/pathUtils';
 import type { TabState } from '../types';
 
+/** Files larger than this trigger a confirmation dialog before opening (500 MB). */
+const LARGE_FILE_WARN_BYTES = 500 * 1024 * 1024;
+
 export function useFile() {
   const [tabs, setTabs] = useAtom(tabsAtom);
   const setActiveTabId = useSetAtom(activeTabIdAtom);
   const setPendingCloseTabId = useSetAtom(pendingCloseTabIdAtom);
+  const setPendingLargeFile = useSetAtom(pendingLargeFileAtom);
   const setRecentFiles = useSetAtom(recentFilesAtom);
 
-  const openFile = useCallback(async (path: string) => {
-    // If the file is already open in a tab, switch to it instead of duplicating.
-    const existing = tabs.find(
-      (t) => t.fileInfo.path && pathsEqual(t.fileInfo.path, path),
-    );
-    if (existing) {
-      setActiveTabId(existing.id);
-      return existing;
+  /** Actually perform the open (after any size confirmation). */
+  const doOpen = useCallback(async (path: string): Promise<TabState> => {
+    const requestId = uuidv4();
+
+    let fileInfo;
+    try {
+      fileInfo = await cmd.openFile(path, requestId);
+    } catch (err) {
+      console.error('[useFile] doOpen failed for', path, err);
+      throw err;
     }
 
-    const fileInfo = await cmd.openFile(path);
     const ext = path.split('.').pop()?.toLowerCase() ?? '';
-
     const tab: TabState = {
       id: uuidv4(),
       bufferId: fileInfo.id,
@@ -44,7 +49,42 @@ export function useFile() {
       return next;
     });
     return tab;
-  }, [tabs, setTabs, setActiveTabId, setRecentFiles]);
+  }, [setTabs, setActiveTabId, setRecentFiles]);
+
+  const openFile = useCallback(async (path: string) => {
+    // If the file is already open in a tab, switch to it instead of duplicating.
+    const existing = tabs.find(
+      (t) => t.fileInfo.path && pathsEqual(t.fileInfo.path, path),
+    );
+    if (existing) {
+      setActiveTabId(existing.id);
+      return existing;
+    }
+
+    // Large file size check
+    let fileSize = 0;
+    try {
+      fileSize = await cmd.getFileSize(path);
+      if (fileSize >= LARGE_FILE_WARN_BYTES) {
+        // Show confirmation dialog and wait for user decision
+        const confirmed = await new Promise<boolean>((resolve) => {
+          const pending: PendingLargeFile = {
+            path,
+            sizeBytes: fileSize,
+            resolve: () => resolve(true),
+            reject: () => resolve(false),
+          };
+          setPendingLargeFile(pending);
+        });
+        setPendingLargeFile(null);
+        if (!confirmed) return undefined;
+      }
+    } catch {
+      // If size check fails, proceed anyway (the open itself will report errors)
+    }
+
+    return doOpen(path);
+  }, [tabs, setActiveTabId, setPendingLargeFile, doOpen]);
 
   const newFile = useCallback(async () => {
     const fileInfo = await cmd.newBuffer();

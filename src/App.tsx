@@ -13,9 +13,11 @@ import { SearchPanel } from './components/editor/SearchPanel';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { CloseConfirmDialog } from './components/dialogs/CloseConfirmDialog';
 import { ExternalChangeDialog } from './components/dialogs/ExternalChangeDialog';
+import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
 import { useFile } from './hooks/useFile';
 import { useFileWatcher } from './hooks/useFileWatcher';
+import { useFileOpenProgress } from './hooks/useFileOpenProgress';
 import { useSessionRestore } from './hooks/useSessionRestore';
 import { useWindowClose } from './hooks/useWindowClose';
 import { usePrefsPersist } from './hooks/usePrefsPersist';
@@ -40,6 +42,7 @@ export default function App() {
   useWindowClose();
   usePrefsPersist();
   useFileWatcher();
+  useFileOpenProgress();
   useKeybindingDispatcher();
 
   useEffect(() => {
@@ -177,6 +180,7 @@ export default function App() {
       <StatusBar cursorLine={cursorLine} cursorCol={cursorCol} />
       <CloseConfirmDialog />
       <ExternalChangeDialog />
+      <LargeFileConfirmDialog />
       <KeyboardShortcutsDialog />
     </div>
   );

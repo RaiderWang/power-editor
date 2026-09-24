@@ -13,8 +13,12 @@ import type { AppSession } from '../types/session';
 // File operations
 // ──────────────────────────────────────────────────────────────
 
-export const openFile = (path: string): Promise<FileInfo> =>
-  invoke('open_file', { path });
+/** Get file size in bytes (lightweight metadata-only check, no file read). */
+export const getFileSize = (path: string): Promise<number> =>
+  invoke('get_file_size', { path });
+
+export const openFile = (path: string, requestId: string): Promise<FileInfo> =>
+  invoke('open_file', { path, requestId });
 
 export const newBuffer = (): Promise<FileInfo> =>
   invoke('new_buffer');
