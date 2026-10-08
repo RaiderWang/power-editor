@@ -246,17 +246,34 @@ pub fn find_all(
 // replace_all – incremental rope edits (no full-text rebuild)
 // ──────────────────────────────────────────────────────────────
 
+/// Build the replacement text for one match.
+///
+/// - `literal == true` (non-regex mode): insert `replacement` verbatim. `$` and `${...}`
+///   must NOT be interpreted, otherwise e.g. `${tag[i]}` is treated as a reference to a
+///   non-existent capture group and expands to an empty string.
+/// - `literal == false` (regex mode): expand `$1`, `${name}`, `$$` etc.
+fn expand_replacement(caps: &regex::Captures, replacement: &str, literal: bool) -> String {
+    if literal {
+        replacement.to_string()
+    } else {
+        let mut expanded = String::new();
+        caps.expand(replacement, &mut expanded);
+        expanded
+    }
+}
+
 /// Collect all match byte ranges and their expanded replacements.
 /// Uses the same dual-path (full-text / windowed) strategy as `find_all`.
 fn collect_replacements(
     rope: &ropey::Rope,
     re: &Regex,
     replacement: &str,
+    literal: bool,
 ) -> Vec<(usize, usize, String)> {
     if rope.len_bytes() <= SEARCH_WINDOW_THRESHOLD {
-        collect_replacements_full(rope, re, replacement)
+        collect_replacements_full(rope, re, replacement, literal)
     } else {
-        collect_replacements_windowed(rope, re, replacement)
+        collect_replacements_windowed(rope, re, replacement, literal)
     }
 }
 
@@ -264,13 +281,13 @@ fn collect_replacements_full(
     rope: &ropey::Rope,
     re: &Regex,
     replacement: &str,
+    literal: bool,
 ) -> Vec<(usize, usize, String)> {
     let text = rope.to_string();
     let mut result = Vec::new();
     for caps in re.captures_iter(&text) {
         let m = caps.get(0).unwrap();
-        let mut expanded = String::new();
-        caps.expand(replacement, &mut expanded);
+        let expanded = expand_replacement(&caps, replacement, literal);
         result.push((m.start(), m.end(), expanded));
     }
     result
@@ -280,6 +297,7 @@ fn collect_replacements_windowed(
     rope: &ropey::Rope,
     re: &Regex,
     replacement: &str,
+    literal: bool,
 ) -> Vec<(usize, usize, String)> {
     let mut result = Vec::new();
     let mut window = String::with_capacity(SEARCH_WINDOW_SIZE + SEARCH_WINDOW_OVERLAP);
@@ -296,8 +314,7 @@ fn collect_replacements_windowed(
                 if m.start() >= safe_end {
                     break;
                 }
-                let mut expanded = String::new();
-                caps.expand(replacement, &mut expanded);
+                let expanded = expand_replacement(&caps, replacement, literal);
                 result.push((
                     window_byte_start + m.start(),
                     window_byte_start + m.end(),
@@ -314,8 +331,7 @@ fn collect_replacements_windowed(
     // Final window
     for caps in re.captures_iter(&window) {
         let m = caps.get(0).unwrap();
-        let mut expanded = String::new();
-        caps.expand(replacement, &mut expanded);
+        let expanded = expand_replacement(&caps, replacement, literal);
         result.push((
             window_byte_start + m.start(),
             window_byte_start + m.end(),
@@ -339,7 +355,7 @@ pub fn replace_all(
         .get_mut(&buffer_id)
         .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?;
 
-    let replacements = collect_replacements(&buffer.rope, &re, replacement);
+    let replacements = collect_replacements(&buffer.rope, &re, replacement, !params.is_regex);
     let count = replacements.len();
 
     if count > 0 {
@@ -593,6 +609,25 @@ mod tests {
         assert_eq!(count, 2);
         let buffers = registry.buffers.lock().unwrap();
         assert_eq!(buffers.get(&id).unwrap().get_full_text(), "world-hello and bar-foo");
+    }
+
+    #[test]
+    fn test_replace_all_plain_mode_keeps_dollar_literal() {
+        // Non-regex mode must not interpret `$` / `${...}` in the replacement.
+        let (registry, id) = make_registry_with("echo ${tag} and ${tag}");
+        let params = SearchParams {
+            pattern: "${tag}".into(),
+            is_regex: false,
+            case_sensitive: true,
+            whole_word: false,
+        };
+        let count = replace_all(&registry, id, &params, "${tag[i]}").unwrap();
+        assert_eq!(count, 2);
+        let buffers = registry.buffers.lock().unwrap();
+        assert_eq!(
+            buffers.get(&id).unwrap().get_full_text(),
+            "echo ${tag[i]} and ${tag[i]}"
+        );
     }
 
     #[test]

@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-10-08
+
+### Fixed / 修复
+- **Literal replacement in plain search mode / 普通替换模式保留字面量 `$` 字符**: Fixed an issue where "Replace All" in non-regex mode treated replacement text containing `$` or `${...}` (such as `${tag[i]}`) as regex capture group references, causing matches to be replaced with empty text. Plain text replacements are now inserted verbatim.
+  （修复在非正则查找模式下点击「全部替换」时，替换内容中的 `$` 或 `${...}`（如 `${tag[i]}`）被当作正则表达式捕获组解析从而被替换为空的问题；普通替换现已严格按字面量文本插入。）
+
+---
+
 ## [0.2.1] - 2026-10-08
 
 ### Added / 新增
@@ -170,7 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/RaiderWang/power-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/RaiderWang/power-editor/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/RaiderWang/power-editor/compare/v0.1.5...v0.1.6
