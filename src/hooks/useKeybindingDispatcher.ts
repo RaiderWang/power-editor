@@ -13,6 +13,7 @@ import {
   columnModeAtom,
   searchOpenAtom,
   searchTriggerAtom,
+  reopenEncodingDialogOpenAtom,
 } from '../store/atoms';
 import { useFile } from './useFile';
 import { deleteCurrentLine, transformCase } from '../store/editorViewRegistry';
@@ -34,6 +35,7 @@ export function useKeybindingDispatcher() {
   const setColumnMode = useSetAtom(columnModeAtom);
   const setSearchOpen = useSetAtom(searchOpenAtom);
   const setSearchTrigger = useSetAtom(searchTriggerAtom);
+  const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
@@ -49,6 +51,11 @@ export function useKeybindingDispatcher() {
           open({ multiple: false }).then((selected) => {
             if (typeof selected === 'string' && selected) openFile(selected).catch(console.error);
           }).catch(console.error);
+        };
+      case 'file.reopenWithEncoding':
+        return () => {
+          if (!tab?.fileInfo.path) return;
+          setReopenEncodingOpen(true);
         };
       case 'file.save':
         return () => {
@@ -104,7 +111,7 @@ export function useKeybindingDispatcher() {
       default:
         return null;
     }
-  }, [activeTab, newFile, openFile, saveFile, saveFileAs, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode]);
+  }, [activeTab, newFile, openFile, saveFile, saveFileAs, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

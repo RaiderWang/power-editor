@@ -61,15 +61,52 @@
 
 ---
 
-## 下载
+## 下载与安装
 
-前往 [**Releases 页面**](../../releases) 下载对应平台的最新安装包：
+前往 [**Releases 页面**](../../releases) 下载对应平台的最新安装包，或通过包管理器安装：
 
-| 平台 | 文件 |
-|------|------|
-| Windows | `Power.Editor_x.y.z_x64-setup.exe` |
-| macOS | `Power.Editor_x.y.z_universal.dmg` |
-| Linux（x86_64 / ARM64） | `.deb` / `.AppImage` |
+### macOS
+
+#### 方式一：通过 Homebrew Cask 安装（推荐）
+在终端运行单条命令即可完成安装：
+```bash
+brew install --cask raiderwang/tap/power-editor
+```
+*或先添加 Tap 再安装：*
+```bash
+brew tap raiderwang/tap
+brew install --cask power-editor
+```
+> **为什么推荐 Homebrew？** Homebrew 安装时会自动清理 macOS Gatekeeper 隔离标记，安装后即可直接双击打开，完全不会触发“应用已损坏”的拦截警告。
+
+后续升级：
+```bash
+brew upgrade --cask power-editor
+```
+
+#### 方式二：手动下载安装（.dmg）
+从 [Releases](../../releases) 下载对应芯片架构的安装镜像：
+- **Apple Silicon（M1/M2/M3/M4 系列芯片）**：`Power.Editor_x.y.z_aarch64.dmg`
+- **Intel 架构（x86_64）**：`Power.Editor_x.y.z_x64.dmg`
+
+> **关于 macOS 提示“应用已损坏”的处理说明：**  
+> 首次运行若遇到 macOS 提示 *“Power Editor 已损坏，您应该将它移到废纸篓”*（因开源应用未购买苹果年费开发者证书公证导致），请打开终端执行以下命令清除隔离属性：
+> ```bash
+> xattr -cr "/Applications/Power Editor.app"
+> ```
+
+---
+
+### Windows
+
+- 从 [Releases](../../releases) 下载 `Power.Editor_x.y.z_x64_en-US.msi`（推荐）或 `Power.Editor_x.y.z_x64-setup.exe`。
+- 若触发 Windows SmartScreen 拦截提示，点击 **“更多信息” → “仍要运行”**。
+
+---
+
+### Linux
+
+- 从 [Releases](../../releases) 下载 `.deb`、`.rpm` 或 `.AppImage`（x86_64 / ARM64）。
 
 ---
 

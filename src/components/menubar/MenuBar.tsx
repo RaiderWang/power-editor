@@ -9,6 +9,7 @@ import {
   searchTriggerAtom,
   supportedEncodingsAtom,
   tabsAtom,
+  reopenEncodingDialogOpenAtom,
 } from '../../store/atoms';
 import { splitLayoutAtom, secondaryActiveTabIdAtom } from '../../store/splitAtoms';
 import { customKeybindingsAtom, keybindingsDialogOpenAtom, getEffectiveShortcut } from '../../store/keybindings';
@@ -164,6 +165,7 @@ export const MenuBar: React.FC = () => {
 
   const customs = useAtomValue(customKeybindingsAtom);
   const setKeybindingsDialogOpen = useSetAtom(keybindingsDialogOpenAtom);
+  const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const shortcut = useCallback((id: string) => getEffectiveShortcut(id, customs), [customs]);
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -444,6 +446,13 @@ export const MenuBar: React.FC = () => {
   const fileMenu: MenuItem[] = [
     { kind: 'item', label: t('menu.file.new'), shortcut: shortcut('file.new'), onClick: handleNewFile },
     { kind: 'item', label: t('menu.file.open'), shortcut: shortcut('file.open'), onClick: handleOpen },
+    {
+      kind: 'item',
+      label: t('menu.file.reopenWithEncoding'),
+      shortcut: shortcut('file.reopenWithEncoding'),
+      disabled: !activeTab?.fileInfo.path,
+      onClick: () => setReopenEncodingOpen(true),
+    },
     { kind: 'sep' },
     {
       kind: 'submenu',

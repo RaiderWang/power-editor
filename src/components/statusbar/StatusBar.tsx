@@ -1,9 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
-import { activeTabAtom, openProgressAtom, supportedEncodingsAtom, tabsAtom } from '../../store/atoms';
+import { useAtomValue } from 'jotai';
+import { activeTabAtom, openProgressAtom, supportedEncodingsAtom } from '../../store/atoms';
 import { getTabTitle } from '../../utils/tabFileName';
-import * as cmd from '../../store/tauriCommands';
-import { clearTextEdited } from '../../store/editorViewRegistry';
+import { useFile } from '../../hooks/useFile';
 import { EncodingPicker } from './EncodingPicker';
 import { useTranslation } from '../../i18n';
 import { formatBytes } from '../../utils/formatBytes';
@@ -18,32 +17,26 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
   const activeTab = useAtomValue(activeTabAtom);
   const encodings = useAtomValue(supportedEncodingsAtom);
   const openProgress = useAtomValue(openProgressAtom);
-  const [, setTabs] = useAtom(tabsAtom);
+  const { reopenWithEncoding } = useFile();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const encodingRef = useRef<HTMLSpanElement>(null);
+  const encodingRef = useRef<HTMLButtonElement>(null);
   const t = useTranslation();
 
+  const canReopen = Boolean(activeTab?.fileInfo.path);
+
   const handleEncodingClick = useCallback(() => {
-    if (!activeTab) return;
+    if (!activeTab || !activeTab.fileInfo.path) return;
     setPickerOpen(true);
   }, [activeTab]);
 
   const handleSelectEncoding = useCallback(async (enc: string) => {
-    if (!activeTab) return;
-    if (enc === activeTab.fileInfo.encoding) return;
+    if (!activeTab || !activeTab.fileInfo.path) return;
     try {
-      // reopenWithEncoding closes the old buffer and returns a FileInfo with a new bufferId.
-      // Updating bufferId triggers Editor's useEffect([tab.bufferId]) which re-registers
-      // the CM view and calls loadContent automatically.
-      const newInfo = await cmd.reopenWithEncoding(activeTab.bufferId, enc);
-      clearTextEdited(activeTab.bufferId);
-      setTabs((prev) =>
-        prev.map((t) => (t.id === activeTab.id ? { ...t, bufferId: newInfo.id, fileInfo: newInfo } : t))
-      );
+      await reopenWithEncoding(activeTab.id, enc);
     } catch (err) {
       console.error('[StatusBar] reopenWithEncoding failed:', err);
     }
-  }, [activeTab, setTabs]);
+  }, [activeTab, reopenWithEncoding]);
 
   if (!activeTab) {
     return <div className={styles.bar} />;
@@ -65,14 +58,17 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
         {formatBytes(fileInfo.total_bytes)}
       </span>
       <span className={styles.separator}>|</span>
-      <span
+      <button
+        type="button"
         ref={encodingRef}
-        className={`${styles.item} ${styles.clickable}`}
-        title={t('status.encodingHint')}
-        onClick={handleEncodingClick}
+        className={`${styles.encodingBtn} ${pickerOpen ? styles.encodingBtnActive : ''}`}
+        title={canReopen ? t('status.encodingHint') : t('status.encodingDisabledHint')}
+        disabled={!canReopen}
+        onClick={canReopen ? handleEncodingClick : undefined}
       >
-        {fileInfo.encoding}
-      </span>
+        <span>{t('status.openAs', { enc: fileInfo.encoding })}</span>
+        <span className={styles.arrow} aria-hidden="true">▾</span>
+      </button>
       <span className={styles.separator}>|</span>
       <span className={styles.item} title={t('status.lineEnding')}>{fileInfo.line_ending}</span>
       {!fileInfo.is_fully_loaded && (

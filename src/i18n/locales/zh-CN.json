@@ -17,6 +17,7 @@
 
   "menu.file.new": "新建",
   "menu.file.open": "打开文件...",
+  "menu.file.reopenWithEncoding": "以编码重新打开...",
   "menu.file.recentOpen": "最近打开",
   "menu.file.noRecords": "（无记录）",
   "menu.file.unfavorite": "取消收藏",
@@ -110,7 +111,9 @@
   "status.totalLines": "总行数",
   "status.totalLinesValue": "共 {count} 行",
   "status.fileSize": "文件大小",
+  "status.openAs": "Open as: {enc}",
   "status.encodingHint": "点击以编码重新打开文件",
+  "status.encodingDisabledHint": "未保存的文件无法以其他编码重新打开",
   "status.lineEnding": "换行符",
   "status.modified": "已修改",
   "status.loading": "加载中…",
@@ -208,6 +211,7 @@
 
   "keybinding.file.new": "新建",
   "keybinding.file.open": "打开文件",
+  "keybinding.file.reopenWithEncoding": "以编码重新打开",
   "keybinding.file.save": "保存",
   "keybinding.file.saveAs": "另存为",
   "keybinding.file.closeTab": "关闭标签页",

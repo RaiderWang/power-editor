@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { getDefaultStore, useAtom } from 'jotai';
 import { save } from '@tauri-apps/plugin-dialog';
+import { SquareSplitHorizontal, X } from 'lucide-react';
 import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom } from '../../store/atoms';
 import { splitLayoutAtom, secondaryActiveTabIdAtom, type PaneId } from '../../store/splitAtoms';
 import { useFile } from '../../hooks/useFile';
@@ -208,7 +209,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               onClick={onCloseSplit}
               title={t('tabs.closeSplit')}
             >
-              ✕
+              <X size={14} />
             </button>
           ) : (
             <button
@@ -216,7 +217,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               onClick={handleSplitToggle}
               title={splitLayout !== 'none' ? t('tabs.closeSplit') : t('tabs.splitView')}
             >
-              ⧉
+              <SquareSplitHorizontal size={15} />
             </button>
           )}
         </div>

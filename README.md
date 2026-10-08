@@ -61,15 +61,52 @@ Reopen Power Editor and your previous tabs reappear automatically, right where y
 
 ---
 
-## Download
+## Download & Installation
 
-Head to the [**Releases**](../../releases) page to download the latest installer for your platform:
+Head to the [**Releases**](../../releases) page for direct downloads, or install via package managers:
 
-| Platform | File |
-|----------|------|
-| Windows | `Power.Editor_x.y.z_x64-setup.exe` |
-| macOS | `Power.Editor_x.y.z_universal.dmg` |
-| Linux (x86_64 / ARM64) | `.deb` / `.AppImage` |
+### macOS
+
+#### Option 1: Homebrew Cask (Recommended)
+Install with a single command via our official tap:
+```bash
+brew install --cask raiderwang/tap/power-editor
+```
+*Or tap first and install:*
+```bash
+brew tap raiderwang/tap
+brew install --cask power-editor
+```
+> **Why Homebrew?** Homebrew automatically clears macOS Gatekeeper quarantine flags upon installation, allowing Power Editor to launch immediately without any "app is damaged" warning.
+
+To update in the future:
+```bash
+brew upgrade --cask power-editor
+```
+
+#### Option 2: Manual Download (.dmg)
+Download the `.dmg` installer corresponding to your architecture from [Releases](../../releases):
+- **Apple Silicon (M1/M2/M3/M4)**: `Power.Editor_x.y.z_aarch64.dmg`
+- **Intel (x86_64)**: `Power.Editor_x.y.z_x64.dmg`
+
+> **Note on macOS Gatekeeper ("App is damaged"):**  
+> If macOS displays *"Power Editor is damaged and can't be opened"* on launch (due to missing Apple Developer ID notarization), open Terminal and run:
+> ```bash
+> xattr -cr "/Applications/Power Editor.app"
+> ```
+
+---
+
+### Windows
+
+- Download `Power.Editor_x.y.z_x64_en-US.msi` (recommended) or `Power.Editor_x.y.z_x64-setup.exe` from [Releases](../../releases).
+- If Windows SmartScreen prompts on launch, click **More info → Run anyway**.
+
+---
+
+### Linux
+
+- Download `.deb`, `.rpm`, or `.AppImage` (x86_64 / ARM64) from [Releases](../../releases).
 
 ---
 

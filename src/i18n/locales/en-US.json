@@ -17,6 +17,7 @@
 
   "menu.file.new": "New",
   "menu.file.open": "Open File...",
+  "menu.file.reopenWithEncoding": "Reopen with Encoding...",
   "menu.file.recentOpen": "Recent Files",
   "menu.file.noRecords": "(none)",
   "menu.file.unfavorite": "Remove Favorite",
@@ -110,7 +111,9 @@
   "status.totalLines": "Total Lines",
   "status.totalLinesValue": "{count} lines",
   "status.fileSize": "File Size",
+  "status.openAs": "Open as: {enc}",
   "status.encodingHint": "Click to reopen with encoding",
+  "status.encodingDisabledHint": "Unsaved files cannot be reopened with another encoding",
   "status.lineEnding": "Line Ending",
   "status.modified": "Modified",
   "status.loading": "Loading…",
@@ -208,6 +211,7 @@
 
   "keybinding.file.new": "New",
   "keybinding.file.open": "Open File",
+  "keybinding.file.reopenWithEncoding": "Reopen with Encoding",
   "keybinding.file.save": "Save",
   "keybinding.file.saveAs": "Save As",
   "keybinding.file.closeTab": "Close Tab",

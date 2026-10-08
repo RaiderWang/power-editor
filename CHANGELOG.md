@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-10-08
+
+### Added / 新增
+- **Homebrew Cask distribution for macOS / macOS 支持 Homebrew Cask 安装**: Distribute macOS binaries via Homebrew Cask (`brew install --cask raiderwang/tap/power-editor`), including automatic Gatekeeper quarantine removal (`postflight`) to prevent "app is damaged" prompts.
+  （支持通过 Homebrew Cask 安装 macOS 版本，内置 `postflight` 钩子自动清除隔离标记，彻底解决未签名应用“已损坏”提示。）
+- **Automated Cask release sync / 自动同步更新 Homebrew Cask**: Added `update-cask` job in release workflow to calculate DMG SHA256 checksums and update `RaiderWang/homebrew-tap` upon release.
+  （发版工作流新增 `update-cask` 任务，自动计算 DMG 哈希并更新 Homebrew Tap 仓库。）
+- **Reopen with Encoding action & dialog / 以编码重新打开文件与快捷键支持**: Added "Reopen with Encoding..." to File menu, configurable keybinding (`file.reopenWithEncoding`), and centered modal fallback with Esc support.
+  （文件菜单新增「以编码重新打开...」入口，支持自定义快捷键唤起，并优化编码选择面板支持居中显示及 Esc 快速关闭。）
+
+### Changed / 变更与优化
+- **Status bar encoding selector / 状态栏编码指示与交互升级**: Replaced plain text item with a dedicated button with visual dropdown cue (`Open as: {enc} ▾`), disabling interaction with tooltip for unsaved new files.
+  （状态栏编码项升级为更具点击反馈的下拉按钮样式，针对未保存的新建文件提供禁用态及原因提示。）
+- **Split view icon modernisation / 分屏按钮图标现代化**: Replaced text glyphs with clean Lucide icons in the tab bar.
+  （标签栏分屏切换与关闭按钮采用 Lucide 矢量图标替代原有字符符号。）
+
+---
+
 ## [0.2.0] - 2026-09-24
 
 ### Added / 新增
@@ -152,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/RaiderWang/power-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/RaiderWang/power-editor/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/RaiderWang/power-editor/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/RaiderWang/power-editor/compare/v0.1.4...v0.1.5

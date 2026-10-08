@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
-import { activeTabAtom, tabsAtom, languageDefsAtom, supportedEncodingsAtom, editorPrefsAtom } from './store/atoms';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { activeTabAtom, tabsAtom, languageDefsAtom, supportedEncodingsAtom, editorPrefsAtom, reopenEncodingDialogOpenAtom } from './store/atoms';
 import { customKeybindingsAtom, initKeybindingsFromFile } from './store/keybindings';
 import { useTranslation } from './i18n';
 import { splitLayoutAtom } from './store/splitAtoms';
@@ -15,6 +15,7 @@ import { CloseConfirmDialog } from './components/dialogs/CloseConfirmDialog';
 import { ExternalChangeDialog } from './components/dialogs/ExternalChangeDialog';
 import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
+import { EncodingPicker } from './components/statusbar/EncodingPicker';
 import { useFile } from './hooks/useFile';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useFileOpenProgress } from './hooks/useFileOpenProgress';
@@ -36,7 +37,9 @@ export default function App() {
   const setLanguageDefs = useSetAtom(languageDefsAtom);
   const setSupportedEncodings = useSetAtom(supportedEncodingsAtom);
   const setCustomKeybindings = useSetAtom(customKeybindingsAtom);
-  const { newFile, openFile } = useFile();
+  const encodings = useAtomValue(supportedEncodingsAtom);
+  const [reopenEncodingOpen, setReopenEncodingOpen] = useAtom(reopenEncodingDialogOpenAtom);
+  const { newFile, openFile, reopenWithEncoding } = useFile();
 
   useSessionRestore();
   useWindowClose();
@@ -182,6 +185,16 @@ export default function App() {
       <ExternalChangeDialog />
       <LargeFileConfirmDialog />
       <KeyboardShortcutsDialog />
+      {reopenEncodingOpen && activeTab && activeTab.fileInfo.path && (
+        <EncodingPicker
+          currentEncoding={activeTab.fileInfo.encoding}
+          encodings={encodings}
+          onSelect={(enc) => {
+            reopenWithEncoding(activeTab.id, enc);
+          }}
+          onClose={() => setReopenEncodingOpen(false)}
+        />
+      )}
     </div>
   );
 }

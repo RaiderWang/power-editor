@@ -95,3 +95,10 @@ export interface OpenProgressInfo {
 }
 
 export const openProgressAtom = atom<OpenProgressInfo | null>(null);
+
+// ──────────────────────────────────────────────────────────────
+// Reopen with encoding dialog (modal triggered from menu/shortcut)
+// ──────────────────────────────────────────────────────────────
+
+export const reopenEncodingDialogOpenAtom = atom<boolean>(false);
+

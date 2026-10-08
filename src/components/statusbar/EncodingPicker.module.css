@@ -1,3 +1,10 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9998;
+}
+
 .panel {
   background: var(--dropdown-bg, #252526);
   border: 1px solid var(--dropdown-border, #454545);

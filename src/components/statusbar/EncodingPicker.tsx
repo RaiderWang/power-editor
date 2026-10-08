@@ -5,7 +5,7 @@ import styles from './EncodingPicker.module.css';
 interface EncodingPickerProps {
   currentEncoding: string;
   encodings: string[];
-  anchorEl: HTMLElement;
+  anchorEl?: HTMLElement | null;
   onSelect: (encoding: string) => void;
   onClose: () => void;
 }
@@ -20,13 +20,21 @@ export const EncodingPicker: React.FC<EncodingPickerProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const t = useTranslation();
 
-  // 定位：面板出现在锚点元素的正上方
-  const rect = anchorEl.getBoundingClientRect();
-  const style: React.CSSProperties = {
-    position: 'fixed',
-    left: rect.left,
-    bottom: window.innerHeight - rect.top,
-  };
+  // 定位：有锚点时出现在锚点正上方，无锚点时居中弹窗展示
+  const rect = anchorEl ? anchorEl.getBoundingClientRect() : null;
+  const style: React.CSSProperties = rect
+    ? {
+        position: 'fixed',
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 4,
+      }
+    : {
+        position: 'fixed',
+        left: '50%',
+        top: '20%',
+        transform: 'translateX(-50%)',
+        minWidth: 260,
+      };
 
   // 点击面板外部时关闭
   useEffect(() => {
@@ -39,8 +47,21 @@ export const EncodingPicker: React.FC<EncodingPickerProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
+  // 按 Esc 键关闭
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
-    <div ref={panelRef} className={styles.panel} style={style}>
+    <>
+      {!anchorEl && <div className={styles.backdrop} onClick={onClose} />}
+      <div ref={panelRef} className={styles.panel} style={style}>
       <div className={styles.header}>{t('encoding.reopenHeader')}</div>
       <div className={styles.list}>
         {encodings.map((enc) => (
@@ -55,5 +76,6 @@ export const EncodingPicker: React.FC<EncodingPickerProps> = ({
         ))}
       </div>
     </div>
+    </>
   );
 };

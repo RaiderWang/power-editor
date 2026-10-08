@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingLargeFileAtom } from '../store/atoms';
 import type { PendingLargeFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
-import { syncEditorToRust } from '../store/editorViewRegistry';
+import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
 import { pathsEqual } from '../utils/pathUtils';
 import type { TabState } from '../types';
@@ -197,5 +197,21 @@ export function useFile() {
     );
   }, [setTabs]);
 
-  return { openFile, newFile, closeTab, forceCloseTab, saveFile, saveFileAs, renameFile, updateTabInfo };
+  const reopenWithEncoding = useCallback(async (tabId: string, encoding: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab || !tab.fileInfo.path) return;
+    if (encoding === tab.fileInfo.encoding) return;
+    try {
+      const newInfo = await cmd.reopenWithEncoding(tab.bufferId, encoding);
+      clearTextEdited(tab.bufferId);
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, bufferId: newInfo.id, fileInfo: newInfo } : t))
+      );
+    } catch (err) {
+      console.error('[useFile] reopenWithEncoding failed:', err);
+      throw err;
+    }
+  }, [tabs, setTabs]);
+
+  return { openFile, newFile, closeTab, forceCloseTab, saveFile, saveFileAs, renameFile, reopenWithEncoding, updateTabInfo };
 }

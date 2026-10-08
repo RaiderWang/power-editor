@@ -18,12 +18,57 @@
   cursor: default;
 }
 
-.item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .clickable {
   cursor: pointer;
+}
+
+.encodingBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  margin: 0 3px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.encodingBtn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.encodingBtn:active,
+.encodingBtnActive {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.encodingBtn:focus-visible {
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.encodingBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.12);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.arrow {
+  font-size: 9px;
+  opacity: 0.85;
+  margin-left: 1px;
+  line-height: 1;
 }
 
 .separator {
