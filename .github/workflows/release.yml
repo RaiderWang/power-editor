@@ -144,6 +144,23 @@ jobs:
           prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
           args: ${{ matrix.args }}
 
+  # ── Update Release Notes with CHANGELOG ─────────────────────────────────────
+  update-release-notes:
+    name: update · release-notes
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update GitHub Release notes from CHANGELOG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python3 .github/update_release_notes.py "$TAG"
+
   # ── Sync Cask to raiderwang/homebrew-tap ─────────────────────────────────────
   update-cask:
     name: update · homebrew-cask
