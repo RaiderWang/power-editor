@@ -167,50 +167,72 @@ jobs:
           ARM_URL="https://github.com/RaiderWang/power-editor/releases/download/${TAG}/Power.Editor_${VERSION}_aarch64.dmg"
           X64_URL="https://github.com/RaiderWang/power-editor/releases/download/${TAG}/Power.Editor_${VERSION}_x64.dmg"
 
-          curl -sL "$ARM_URL" -o arm.dmg
-          curl -sL "$X64_URL" -o x64.dmg
+          echo "Downloading DMG assets..."
+          DOWNLOAD_OK=false
+          for i in {1..12}; do
+            if curl -fsSL "$ARM_URL" -o arm.dmg && curl -fsSL "$X64_URL" -o x64.dmg; then
+              DOWNLOAD_OK=true
+              echo "DMG assets downloaded successfully."
+              break
+            fi
+            echo "Waiting for release assets to be available... ($i/12)"
+            sleep 10
+          done
 
-          SHA_ARM=$(sha256sum arm.dmg | awk '{print $1}')
-          SHA_X64=$(sha256sum x64.dmg | awk '{print $1}')
+          if [ "$DOWNLOAD_OK" != "true" ]; then
+            echo "::error ::Failed to download release DMG assets."
+            exit 1
+          fi
+
+          export SHA_ARM=$(sha256sum arm.dmg | awk '{print $1}')
+          export SHA_X64=$(sha256sum x64.dmg | awk '{print $1}')
+          export VERSION
 
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/RaiderWang/homebrew-tap.git" tap
           cd tap
           mkdir -p Casks
 
-          cat <<EOF > Casks/power-editor.rb
-cask "power-editor" do
-  arch arm: "aarch64", intel: "x64"
+          python3 -c '
+          import os
+          v = os.environ["VERSION"]
+          arm = os.environ["SHA_ARM"]
+          x64 = os.environ["SHA_X64"]
+          content = """cask "power-editor" do
+            arch arm: "aarch64", intel: "x64"
 
-  version "${VERSION}"
-  sha256 arm:   "${SHA_ARM}",
-         intel: "${SHA_X64}"
+            version "__VERSION__"
+            sha256 arm:   "__SHA_ARM__",
+                   intel: "__SHA_X64__"
 
-  url "https://github.com/RaiderWang/power-editor/releases/download/v#{version}/Power.Editor_#{version}_#{arch}.dmg"
-  name "Power Editor"
-  desc "High-performance text editor optimized for large files"
-  homepage "https://github.com/RaiderWang/power-editor"
+            url "https://github.com/RaiderWang/power-editor/releases/download/v#{version}/Power.Editor_#{version}_#{arch}.dmg"
+            name "Power Editor"
+            desc "High-performance text editor optimized for large files"
+            homepage "https://github.com/RaiderWang/power-editor"
 
-  livecheck do
-    url :url
-    strategy :github_latest
-  end
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
 
-  app "Power Editor.app"
+            app "Power Editor.app"
 
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/Power Editor.app"],
-                   sudo: false
-  end
+            postflight do
+              system_command "/usr/bin/xattr",
+                             args: ["-cr", "#{appdir}/Power Editor.app"],
+                             sudo: false
+            end
 
-  zap trash: [
-    "~/Library/Application Support/com.rickeditor.powereditor",
-    "~/Library/Caches/com.rickeditor.powereditor",
-    "~/Library/Preferences/com.rickeditor.powereditor.plist",
-    "~/Library/Saved Application State/com.rickeditor.powereditor.savedState",
-  ]
-end
-EOF
+            zap trash: [
+              "~/Library/Application Support/com.rickeditor.powereditor",
+              "~/Library/Caches/com.rickeditor.powereditor",
+              "~/Library/Preferences/com.rickeditor.powereditor.plist",
+              "~/Library/Saved Application State/com.rickeditor.powereditor.savedState",
+            ]
+          end
+          """.replace("__VERSION__", v).replace("__SHA_ARM__", arm).replace("__SHA_X64__", x64)
+          with open("Casks/power-editor.rb", "w", encoding="utf-8") as f:
+              f.write(content.strip() + "\n")
+          '
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
