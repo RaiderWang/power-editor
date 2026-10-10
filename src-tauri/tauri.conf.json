@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Power Editor",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "identifier": "com.rickeditor.powereditor",
   "build": {
     "frontendDist": "../dist",
@@ -22,7 +22,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {

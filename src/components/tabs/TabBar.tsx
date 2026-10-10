@@ -1,9 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { getDefaultStore, useAtom } from 'jotai';
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { save } from '@tauri-apps/plugin-dialog';
 import { SquareSplitHorizontal, X } from 'lucide-react';
 import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom } from '../../store/atoms';
-import { splitLayoutAtom, secondaryActiveTabIdAtom, type PaneId } from '../../store/splitAtoms';
+import {
+  splitLayoutAtom,
+  openSplitAtom,
+  closeSplitAtom,
+  type PaneId,
+} from '../../store/splitAtoms';
 import { useFile } from '../../hooks/useFile';
 import { getTabFileName, getTabSaveDefaultPath, getTabTitle } from '../../utils/tabFileName';
 import { RenameDialog } from '../dialogs/RenameDialog';
@@ -38,8 +43,9 @@ export const TabBar: React.FC<TabBarProps> = ({
   const [internalActiveTabId, setInternalActiveTabId] = useAtom(activeTabIdAtom);
   const { closeTab, saveFileAs, renameFile, newFile } = useFile();
   const t = useTranslation();
-  const [splitLayout, setSplitLayout] = useAtom(splitLayoutAtom);
-  const [, setSecondaryActiveTabId] = useAtom(secondaryActiveTabIdAtom);
+  const splitLayout = useAtomValue(splitLayoutAtom);
+  const openSplit = useSetAtom(openSplitAtom);
+  const closeSplit = useSetAtom(closeSplitAtom);
 
   // In split mode the parent passes controlled values; in standalone mode use
   // the internal atom directly.
@@ -144,15 +150,11 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const handleSplitToggle = useCallback(() => {
     if (splitLayout !== 'none') {
-      // Close split
-      setSplitLayout('none');
-      setSecondaryActiveTabId(null);
+      closeSplit();
     } else {
-      // Open split: mirror current active tab in secondary pane
-      setSecondaryActiveTabId(activeTabId ?? null);
-      setSplitLayout('horizontal');
+      openSplit('horizontal', 'editor');
     }
-  }, [splitLayout, setSplitLayout, activeTabId, setSecondaryActiveTabId]);
+  }, [splitLayout, closeSplit, openSplit]);
 
   if (tabs.length === 0) return null;
 

@@ -19,6 +19,7 @@ import { useFile } from './useFile';
 import { deleteCurrentLine, transformCase } from '../store/editorViewRegistry';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getTabSaveDefaultPath } from '../utils/tabFileName';
+import { toggleMarkdownPreviewAtom } from '../store/previewAtoms';
 
 type ActionHandler = () => void;
 
@@ -36,6 +37,7 @@ export function useKeybindingDispatcher() {
   const setSearchOpen = useSetAtom(searchOpenAtom);
   const setSearchTrigger = useSetAtom(searchTriggerAtom);
   const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
+  const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
@@ -102,6 +104,8 @@ export function useKeybindingDispatcher() {
         return () => { setPrefs((p) => ({ ...p, lineWrap: !p.lineWrap })); };
       case 'view.columnMode':
         return () => { setColumnMode((v) => !v); };
+      case 'view.markdownPreview':
+        return () => { toggleMarkdownPreview(); };
       case 'view.fontSizeUp':
         return () => { setPrefs((p) => ({ ...p, fontSize: Math.min(48, p.fontSize + 1) })); };
       case 'view.fontSizeDown':
@@ -111,7 +115,7 @@ export function useKeybindingDispatcher() {
       default:
         return null;
     }
-  }, [activeTab, newFile, openFile, saveFile, saveFileAs, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen]);
+  }, [activeTab, newFile, openFile, saveFile, saveFileAs, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

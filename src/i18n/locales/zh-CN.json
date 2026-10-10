@@ -51,6 +51,7 @@
   "menu.view.selectFont": "选择字体...",
   "menu.view.toLight": "切换到浅色主题",
   "menu.view.toDark": "切换到深色主题",
+  "menu.view.markdownPreview": "Markdown 预览",
   "menu.view.split": "分屏",
   "menu.view.splitH": "左右分栏",
   "menu.view.splitV": "上下分栏",
@@ -60,6 +61,15 @@
   "menu.format.lineEnding": "换行符",
 
   "menu.language.importWordfile": "导入 Wordfile (.uew)...",
+  "wordfile.skippedBuiltin": "已内置 Markdown 支持（语法高亮 + 预览），已跳过 wordfile 中的语言段：{names}",
+
+  "preview.title": "Markdown 预览",
+  "preview.syncScroll": "滚动同步",
+  "preview.close": "关闭预览",
+  "preview.notMarkdown": "当前活动文件不是 Markdown 文件",
+  "preview.tooLarge": "文件大小超过预览上限（5 MB），无法开启 Markdown 预览",
+  "preview.loading": "正在加载全文...",
+  "preview.empty": "暂无内容",
 
   "dialog.openFailed": "打开失败",
   "dialog.openError": "文件无法打开：\n{path}\n\n{err}",
@@ -224,6 +234,7 @@
   "keybinding.search.prevMatch": "上一个匹配",
   "keybinding.view.lineWrap": "自动换行",
   "keybinding.view.columnMode": "列模式",
+  "keybinding.view.markdownPreview": "Markdown 预览",
   "keybinding.view.fontSizeUp": "增大字号",
   "keybinding.view.fontSizeDown": "减小字号",
   "keybinding.view.toggleTheme": "切换主题",

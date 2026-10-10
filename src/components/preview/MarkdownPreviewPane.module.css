@@ -1,0 +1,313 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--app-bg, #1e1e1e);
+  color: var(--app-fg, #d4d4d4);
+  overflow: hidden;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  background: var(--tab-bar-bg, #252526);
+  border-bottom: 1px solid var(--tab-bar-border, #1e1e1e);
+  user-select: none;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-fg, #d4d4d4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fileNameBadge {
+  font-size: 11px;
+  color: var(--app-fg-muted, #888);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--toolbar-btn-color, #c8c8c8);
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.actionBtn:hover {
+  background: var(--toolbar-btn-hover-bg, #505050);
+  color: #ffffff;
+}
+
+.actionBtnActive {
+  background: var(--toolbar-btn-hover-bg, #505050);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.contentContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 32px 64px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* ── Placeholder states ── */
+.placeholderBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  color: var(--app-fg-muted, #888);
+  text-align: center;
+}
+
+.placeholderIcon {
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.placeholderTitle {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--app-fg, #d4d4d4);
+}
+
+.placeholderDesc {
+  font-size: 12px;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── GitHub Style Markdown Render Elements ── */
+.markdownBody {
+  word-break: break-word;
+}
+
+.markdownBody h1,
+.markdownBody h2,
+.markdownBody h3,
+.markdownBody h4,
+.markdownBody h5,
+.markdownBody h6 {
+  margin-top: 24px;
+  margin-bottom: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--app-fg, #f3f4f6);
+}
+
+.markdownBody h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border, #333);
+}
+
+.markdownBody h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border, #333);
+}
+
+.markdownBody h3 {
+  font-size: 1.25em;
+}
+
+.markdownBody h4 {
+  font-size: 1em;
+}
+
+.markdownBody p,
+.markdownBody blockquote,
+.markdownBody ul,
+.markdownBody ol,
+.markdownBody dl,
+.markdownBody table,
+.markdownBody pre {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdownBody hr {
+  height: 2px;
+  padding: 0;
+  margin: 24px 0;
+  background-color: var(--border, #333);
+  border: 0;
+}
+
+.markdownBody blockquote {
+  padding: 0 1em;
+  color: var(--app-fg-muted, #999);
+  border-left: 4px solid var(--accent, #aa3bff);
+}
+
+.markdownBody ul,
+.markdownBody ol {
+  padding-left: 2em;
+}
+
+.markdownBody li + li {
+  margin-top: 0.25em;
+}
+
+.markdownBody a {
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.markdownBody a:hover {
+  text-decoration: underline;
+}
+
+.markdownBody code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(127, 127, 127, 0.15);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.markdownBody pre {
+  padding: 14px 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  border: 1px solid rgba(127, 127, 127, 0.15);
+}
+
+.markdownBody pre code {
+  padding: 0;
+  margin: 0;
+  font-size: 100%;
+  word-break: normal;
+  white-space: pre;
+  background: transparent;
+  border: 0;
+}
+
+.markdownBody table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+  overflow: auto;
+  display: block;
+}
+
+.markdownBody table th,
+.markdownBody table td {
+  padding: 6px 13px;
+  border: 1px solid var(--border, #333);
+}
+
+.markdownBody table tr:nth-child(2n) {
+  background-color: rgba(127, 127, 127, 0.05);
+}
+
+.markdownBody table th {
+  font-weight: 600;
+  background-color: rgba(127, 127, 127, 0.1);
+}
+
+.markdownBody img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 12px 0;
+  border-radius: 4px;
+}
+
+.markdownBody input[type="checkbox"] {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ── Code Syntax Highlighting Tokens ── */
+:global(.tok-keyword) {
+  color: #c678dd;
+  font-weight: 500;
+}
+:global(.tok-variableName) {
+  color: #61afef;
+}
+:global(.tok-typeName) {
+  color: #e5c07b;
+}
+:global(.tok-propertyName) {
+  color: #e06c75;
+}
+:global(.tok-string) {
+  color: #98c379;
+}
+:global(.tok-number) {
+  color: #d19a66;
+}
+:global(.tok-comment) {
+  color: #7f848e;
+  font-style: italic;
+}
+:global(.tok-operator) {
+  color: #56b6c2;
+}
+:global(.tok-punctuation) {
+  color: #abb2bf;
+}
+:global(.tok-tag) {
+  color: #e06c75;
+}

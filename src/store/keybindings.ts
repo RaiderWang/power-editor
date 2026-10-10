@@ -55,6 +55,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
 
   { id: 'view.lineWrap',     labelKey: 'keybinding.view.lineWrap',     category: 'view', defaultShortcut: 'Alt+Z',        editable: true },
   { id: 'view.columnMode',   labelKey: 'keybinding.view.columnMode',   category: 'view', defaultShortcut: 'Alt+C',        editable: true },
+  { id: 'view.markdownPreview', labelKey: 'keybinding.view.markdownPreview', category: 'view', defaultShortcut: 'Ctrl+Shift+V', editable: true },
   { id: 'view.fontSizeUp',   labelKey: 'keybinding.view.fontSizeUp',   category: 'view', defaultShortcut: 'Ctrl+=',       editable: true },
   { id: 'view.fontSizeDown', labelKey: 'keybinding.view.fontSizeDown', category: 'view', defaultShortcut: 'Ctrl+-',       editable: true },
   { id: 'view.toggleTheme',  labelKey: 'keybinding.view.toggleTheme',  category: 'view', defaultShortcut: '',              editable: true },

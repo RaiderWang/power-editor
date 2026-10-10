@@ -11,7 +11,17 @@ import {
   tabsAtom,
   reopenEncodingDialogOpenAtom,
 } from '../../store/atoms';
-import { splitLayoutAtom, secondaryActiveTabIdAtom } from '../../store/splitAtoms';
+import {
+  splitLayoutAtom,
+  secondaryModeAtom,
+  openSplitAtom,
+  closeSplitAtom,
+} from '../../store/splitAtoms';
+import {
+  canPreviewAtom,
+  isPreviewOpenAtom,
+  toggleMarkdownPreviewAtom,
+} from '../../store/previewAtoms';
 import { customKeybindingsAtom, keybindingsDialogOpenAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { useFile } from '../../hooks/useFile';
 import * as cmd from '../../store/tauriCommands';
@@ -26,6 +36,7 @@ import { getTabSaveDefaultPath } from '../../utils/tabFileName';
 import { deleteCurrentLine, transformCase } from '../../store/editorViewRegistry';
 import { useTranslation } from '../../i18n';
 import type { Locale } from '../../store/editorPrefs';
+import { resolveLangName, resolveLangExtension, getSelectableLanguages } from '../../utils/languageSelection';
 import styles from './MenuBar.module.css';
 
 const IS_WINDOWS = navigator.userAgent.includes('Windows');
@@ -160,8 +171,13 @@ export const MenuBar: React.FC = () => {
   const recentFiles = useAtomValue(recentFilesAtom);
   const [favoriteFiles, setFavoriteFiles] = useAtom(favoriteFilesAtom);
 
-  const [splitLayout, setSplitLayout] = useAtom(splitLayoutAtom);
-  const [, setSecondaryActiveTabId] = useAtom(secondaryActiveTabIdAtom);
+  const splitLayout = useAtomValue(splitLayoutAtom);
+  const secondaryMode = useAtomValue(secondaryModeAtom);
+  const openSplit = useSetAtom(openSplitAtom);
+  const closeSplit = useSetAtom(closeSplitAtom);
+  const canPreview = useAtomValue(canPreviewAtom);
+  const isPreviewOpen = useAtomValue(isPreviewOpenAtom);
+  const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
 
   const customs = useAtomValue(customKeybindingsAtom);
   const setKeybindingsDialogOpen = useSetAtom(keybindingsDialogOpenAtom);
@@ -364,16 +380,8 @@ export const MenuBar: React.FC = () => {
 
   const handleLanguage = useCallback((name: string) => {
     if (!activeTab) return;
-    if (!name) {
-      setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, language: null } : t));
-      return;
-    }
-    const def = langDefs.find((d) => d.name === name);
-    if (def && def.extensions.length > 0) {
-      setTabs((prev) =>
-        prev.map((t) => t.id === activeTab.id ? { ...t, language: def.extensions[0] } : t)
-      );
-    }
+    const ext = resolveLangExtension(name, langDefs);
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, language: ext } : t));
   }, [activeTab, langDefs, setTabs]);
 
   const handleImportWordfile = useCallback(async () => {
@@ -384,29 +392,35 @@ export const MenuBar: React.FC = () => {
       });
       if (typeof selected !== 'string' || !selected) return;
       const def = await cmd.saveImportedWordfile(selected);
-      setLangDefs((prev) => {
-        const incoming = def.languages;
-        // replace existing by name, append new
-        const merged = [...prev];
-        for (const lang of incoming) {
-          const idx = merged.findIndex((l) => l.name === lang.name);
-          if (idx >= 0) merged[idx] = lang;
-          else merged.push(lang);
-        }
-        return merged;
-      });
+      if (def.skipped_builtin && def.skipped_builtin.length > 0) {
+        await message(
+          t('wordfile.skippedBuiltin', { names: def.skipped_builtin.join(', ') }),
+          { title: 'Power Editor', kind: 'info' }
+        );
+      }
+      if (def.languages && def.languages.length > 0) {
+        setLangDefs((prev) => {
+          const incoming = def.languages;
+          // replace existing by name, append new
+          const merged = [...prev];
+          for (const lang of incoming) {
+            const idx = merged.findIndex((l) => l.name === lang.name);
+            if (idx >= 0) merged[idx] = lang;
+            else merged.push(lang);
+          }
+          return merged;
+        });
+      }
     } catch (err) {
       console.error('[MenuBar] import wordfile failed:', err);
     }
-  }, [setLangDefs]);
+  }, [setLangDefs, t]);
 
   // ── Current language display name ────────────────────
 
   const currentLangName = useMemo(() => {
-    if (!activeTab?.language) return '';
-    const def = langDefs.find((d) => d.extensions.includes(activeTab.language!));
-    return def ? def.name : '';
-  }, [activeTab, langDefs]);
+    return resolveLangName(activeTab?.language, langDefs);
+  }, [activeTab?.language, langDefs]);
 
   const currentEncoding = activeTab?.fileInfo.encoding ?? '';
   const currentLineEnding = activeTab?.fileInfo.line_ending === 'CRLF' ? 'CRLF' : 'LF';
@@ -556,34 +570,30 @@ export const MenuBar: React.FC = () => {
     },
     { kind: 'sep' },
     {
+      kind: 'item',
+      label: t('menu.view.markdownPreview'),
+      checked: isPreviewOpen,
+      disabled: !canPreview && !isPreviewOpen,
+      shortcut: shortcut('view.markdownPreview'),
+      onClick: () => toggleMarkdownPreview(),
+    },
+    { kind: 'sep' },
+    {
       kind: 'submenu',
       label: t('menu.view.split'),
       items: [
         {
-          label: `${t('menu.view.splitH')}${splitLayout === 'horizontal' ? ' ✓' : ''}`,
-          onClick: () => {
-            if (splitLayout === 'none') {
-              setSecondaryActiveTabId(activeTab?.id ?? null);
-            }
-            setSplitLayout('horizontal');
-          },
+          label: `${t('menu.view.splitH')}${splitLayout === 'horizontal' && secondaryMode === 'editor' ? ' ✓' : ''}`,
+          onClick: () => openSplit('horizontal', 'editor'),
         },
         {
-          label: `${t('menu.view.splitV')}${splitLayout === 'vertical' ? ' ✓' : ''}`,
-          onClick: () => {
-            if (splitLayout === 'none') {
-              setSecondaryActiveTabId(activeTab?.id ?? null);
-            }
-            setSplitLayout('vertical');
-          },
+          label: `${t('menu.view.splitV')}${splitLayout === 'vertical' && secondaryMode === 'editor' ? ' ✓' : ''}`,
+          onClick: () => openSplit('vertical', 'editor'),
         },
         {
           label: t('menu.view.closeSplit'),
           disabled: splitLayout === 'none',
-          onClick: () => {
-            setSplitLayout('none');
-            setSecondaryActiveTabId(null);
-          },
+          onClick: () => closeSplit(),
         },
       ],
     },
@@ -610,12 +620,12 @@ export const MenuBar: React.FC = () => {
 
   const languageMenu: MenuItem[] = [
     { kind: 'item', label: 'Plain Text', checked: !currentLangName, disabled: noTab, onClick: () => handleLanguage('') },
-    ...langDefs.map<MenuItem>((def) => ({
+    ...getSelectableLanguages(langDefs).map<MenuItem>((lang) => ({
       kind: 'item',
-      label: def.name,
-      checked: def.name === currentLangName,
+      label: lang.name,
+      checked: lang.name === currentLangName,
       disabled: noTab,
-      onClick: () => handleLanguage(def.name),
+      onClick: () => handleLanguage(lang.name),
     })),
     { kind: 'sep' },
     { kind: 'item', label: t('menu.language.importWordfile'), onClick: handleImportWordfile },

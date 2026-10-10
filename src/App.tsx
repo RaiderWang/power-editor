@@ -3,12 +3,13 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { activeTabAtom, tabsAtom, languageDefsAtom, supportedEncodingsAtom, editorPrefsAtom, reopenEncodingDialogOpenAtom } from './store/atoms';
 import { customKeybindingsAtom, initKeybindingsFromFile } from './store/keybindings';
 import { useTranslation } from './i18n';
-import { splitLayoutAtom } from './store/splitAtoms';
+import { splitLayoutAtom, secondaryModeAtom } from './store/splitAtoms';
 import { MenuBar } from './components/menubar/MenuBar';
 import { Toolbar } from './components/toolbar/Toolbar';
 import { TabBar } from './components/tabs/TabBar';
 import { Editor } from './components/editor/Editor';
 import { EditorPane } from './components/layout/EditorPane';
+import { MarkdownPreviewPane } from './components/preview/MarkdownPreviewPane';
 import { SearchPanel } from './components/editor/SearchPanel';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { CloseConfirmDialog } from './components/dialogs/CloseConfirmDialog';
@@ -34,6 +35,7 @@ export default function App() {
   const tabs = useAtomValue(tabsAtom);
   const prefs = useAtomValue(editorPrefsAtom);
   const splitLayout = useAtomValue(splitLayoutAtom);
+  const secondaryMode = useAtomValue(secondaryModeAtom);
   const setLanguageDefs = useSetAtom(languageDefsAtom);
   const setSupportedEncodings = useSetAtom(supportedEncodingsAtom);
   const setCustomKeybindings = useSetAtom(customKeybindingsAtom);
@@ -172,10 +174,14 @@ export default function App() {
             className={`split-handle ${splitLayout === 'horizontal' ? 'split-handle-h' : 'split-handle-v'}`}
             onMouseDown={handleDragStart}
           />
-          <EditorPane
-            paneId="secondary"
-            onCursorChange={handleCursorChange}
-          />
+          {secondaryMode === 'markdownPreview' ? (
+            <MarkdownPreviewPane />
+          ) : (
+            <EditorPane
+              paneId="secondary"
+              onCursorChange={handleCursorChange}
+            />
+          )}
         </div>
       )}
 

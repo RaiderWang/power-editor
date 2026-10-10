@@ -102,6 +102,10 @@ export function registerEditorView(bufferId: number, view: EditorView) {
   registry.set(bufferId, view);
 }
 
+export function getEditorView(bufferId: number): EditorView | null {
+  return registry.get(bufferId) ?? null;
+}
+
 export function unregisterEditorView(bufferId: number) {
   registry.delete(bufferId);
   peerSetterRegistry.delete(bufferId);

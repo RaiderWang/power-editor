@@ -51,6 +51,7 @@
   "menu.view.selectFont": "Select Font...",
   "menu.view.toLight": "Switch to Light Theme",
   "menu.view.toDark": "Switch to Dark Theme",
+  "menu.view.markdownPreview": "Markdown Preview",
   "menu.view.split": "Split Pane",
   "menu.view.splitH": "Side by Side",
   "menu.view.splitV": "Top and Bottom",
@@ -60,6 +61,15 @@
   "menu.format.lineEnding": "Line Ending",
 
   "menu.language.importWordfile": "Import Wordfile (.uew)...",
+  "wordfile.skippedBuiltin": "Markdown is built in (syntax highlighting + preview). Skipped from the wordfile: {names}.",
+
+  "preview.title": "Markdown Preview",
+  "preview.syncScroll": "Sync Scroll",
+  "preview.close": "Close Preview",
+  "preview.notMarkdown": "The active document is not a Markdown file",
+  "preview.tooLarge": "File size ({size}) exceeds the maximum preview limit (5 MB)",
+  "preview.loading": "Loading full document...",
+  "preview.empty": "No content",
 
   "dialog.openFailed": "Open Failed",
   "dialog.openError": "Cannot open file:\n{path}\n\n{err}",
@@ -224,6 +234,7 @@
   "keybinding.search.prevMatch": "Previous Match",
   "keybinding.view.lineWrap": "Word Wrap",
   "keybinding.view.columnMode": "Column Mode",
+  "keybinding.view.markdownPreview": "Markdown Preview",
   "keybinding.view.fontSizeUp": "Increase Font Size",
   "keybinding.view.fontSizeDown": "Decrease Font Size",
   "keybinding.view.toggleTheme": "Toggle Theme",

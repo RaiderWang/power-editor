@@ -14,6 +14,7 @@ import {
   ALargeSmall,
   Minus,
   Plus,
+  BookOpen,
 } from 'lucide-react';
 import {
   activeTabAtom,
@@ -31,6 +32,9 @@ import { useFile } from '../../hooks/useFile';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';
 import * as cmd from '../../store/tauriCommands';
 import { useTranslation } from '../../i18n';
+import { resolveLangName, resolveLangExtension, getSelectableLanguages } from '../../utils/languageSelection';
+import { canPreviewAtom, isPreviewOpenAtom, toggleMarkdownPreviewAtom } from '../../store/previewAtoms';
+import { isMarkdownLanguage } from '../../extensions/builtinLanguages';
 import styles from './Toolbar.module.css';
 import { open, save } from '@tauri-apps/plugin-dialog';
 
@@ -52,24 +56,19 @@ export const Toolbar: React.FC = () => {
   const t = useTranslation();
   const { openFile, newFile, saveFile, saveFileAs } = useFile();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const canPreview = useAtomValue(canPreviewAtom);
+  const isPreviewOpen = useAtomValue(isPreviewOpenAtom);
+  const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
 
   // Derive current language display name from tab.language + langDefs
   const currentLangName = useMemo(() => {
-    if (!activeTab?.language) return '';
-    const def = langDefs.find((d) => d.extensions.includes(activeTab.language!));
-    return def ? def.name : '';
-  }, [activeTab, langDefs]);
+    return resolveLangName(activeTab?.language, langDefs);
+  }, [activeTab?.language, langDefs]);
 
   const handleLanguageChange = useCallback((name: string) => {
     if (!activeTab) return;
-    if (!name) {
-      setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, language: null } : t));
-      return;
-    }
-    const def = langDefs.find((d) => d.name === name);
-    if (def && def.extensions.length > 0) {
-      setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, language: def.extensions[0] } : t));
-    }
+    const ext = resolveLangExtension(name, langDefs);
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, language: ext } : t));
   }, [activeTab, langDefs, setTabs]);
 
   const showError = useCallback((msg: string) => {
@@ -200,6 +199,17 @@ export const Toolbar: React.FC = () => {
         <Columns2 size={16} />
       </button>
 
+      {isMarkdownLanguage(activeTab?.language) && (
+        <button
+          className={`${styles.btn} ${isPreviewOpen ? styles.active : ''}`}
+          onClick={() => toggleMarkdownPreview()}
+          disabled={!canPreview && !isPreviewOpen}
+          title={`${t('preview.title')}${sk('view.markdownPreview')}`}
+        >
+          <BookOpen size={16} />
+        </button>
+      )}
+
       <div className={styles.separator} />
 
       <div className={styles.fontSizeGroup} title={t('toolbar.fontSize')}>
@@ -254,8 +264,8 @@ export const Toolbar: React.FC = () => {
             style={{ maxWidth: 100 }}
           >
             <option value="">Plain Text</option>
-            {langDefs.map((def) => (
-              <option key={def.name} value={def.name}>{def.name}</option>
+            {getSelectableLanguages(langDefs).map((lang) => (
+              <option key={lang.name} value={lang.name}>{lang.name}</option>
             ))}
           </select>
         </>

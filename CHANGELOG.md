@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.3] - 2026-10-10
+
+### Added / 新增
+- **Built-in Markdown Syntax Highlighting & Wordfile Skipping / 内置 Markdown 语法高亮与 Wordfile 重复过滤**: Added built-in CodeMirror Markdown language highlighting support (`.md`, `.markdown`). Imported UltraEdit wordfiles (`.uew`) containing Markdown language definitions are automatically filtered with user notification to preserve native highlighting and preview capabilities.
+  （增加内置 CodeMirror Markdown 语法高亮支持（`.md`、`.markdown`）。导入包含 Markdown 定义的 UltraEdit Wordfile 时自动过滤并弹出提示，优先使用原生语法高亮与预览。）
+- **Real-time Markdown Preview Pane & Scroll Sync / 实时 Markdown 预览面板与同步滚动**: Added dual-pane Markdown preview (`Ctrl+Shift+V` / View menu / toolbar button) powered by `marked` and DOMPurify. Supports GFM tables, task lists, blockquotes, editor-to-preview line interpolation scroll sync, local image asset protocol rendering, safe external link opening, and fenced code block syntax highlighting. Files exceeding 5 MB or still background loading are guarded with friendly status indicators.
+  （新增分屏 Markdown 实时预览功能（支持快捷键 `Ctrl+Shift+V`、视图菜单与工具栏按钮），基于 marked 与 DOMPurify 安全渲染。支持 GFM 表格、任务列表、引用块、编辑器至预览区行插值平滑同步滚动、本地相对路径图片通过 Tauri asset 协议安全显示、外部链接系统默认浏览器打开、以及代码块语法高亮。针对超过 5 MB 或后台加载中的大文件提供友好占位与状态指示。）
+
+---
+
 ## [0.2.2] - 2026-10-08
 
 ### Fixed / 修复
@@ -178,7 +188,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/RaiderWang/power-editor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/RaiderWang/power-editor/compare/v0.1.6...v0.2.0

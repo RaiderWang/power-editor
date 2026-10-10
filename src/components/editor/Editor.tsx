@@ -22,6 +22,7 @@ import { chromiumImeAutocorrectWorkaround } from '../../extensions/chromiumImeAu
 import { smartEnterKey } from '../../extensions/smartEnter';
 import { searchMatchField, searchHighlightTheme } from '../../extensions/searchHighlight';
 import { buildWordfileLanguage } from '../../extensions/wordfileSyntax';
+import { findBuiltinByExt } from '../../extensions/builtinLanguages';
 import {
   editorPrefsAtom,
   columnModeAtom,
@@ -54,6 +55,7 @@ import type { TabState } from '../../types';
 import type { PaneId } from '../../store/splitAtoms';
 import { useTranslation } from '../../i18n';
 import { formatBytes } from '../../utils/formatBytes';
+import { notifyDocChange, registerFullLoader, unregisterFullLoader } from '../../store/previewBridge';
 
 // Compartments allow hot-swapping extensions without rebuilding the full state
 const wrapComp = new Compartment();
@@ -534,16 +536,67 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     const ext = tab.language;
     if (!ext) return [];
 
-    // Check wordfile definitions first
+    // Check built-in languages first (e.g. Markdown)
+    const builtin = findBuiltinByExt(ext);
+    if (builtin) {
+      return builtin.build();
+    }
+
+    // Check wordfile definitions
     for (const def of langDefs) {
       if (def.extensions.includes(ext)) {
         return buildWordfileLanguage(def);
       }
     }
 
-    // Fall back to built-in CM6 languages loaded lazily
     return [];
   }, [tab.language, langDefs]);
+
+  // ── Load entire file into CodeMirror (used by selectAll & Markdown preview) ─
+  const loadFullDocument = useCallback(async (view: EditorView, bufferId: number): Promise<boolean> => {
+    while (isAppendingRef.current) {
+      await new Promise<void>((r) => setTimeout(r, 50));
+    }
+
+    if (windowStartLineRef.current === 0 && loadedEndLineRef.current >= totalLinesRef.current) {
+      return true;
+    }
+
+    isAppendingRef.current = true;
+    try {
+      await syncEditorToRust(bufferId);
+      const text = await getFullText(bufferId);
+      if (activeBufferIdRef.current !== bufferId) return false;
+
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+        annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
+        effects: [
+          lineNumComp.reconfigure(lineNumbers()),
+        ],
+      });
+      resetEditorHistory(view);
+
+      const textByteLen = new TextEncoder().encode(text).length;
+      windowStartLineRef.current = 0;
+      windowStartByteOffsetRef.current = 0;
+      loadedEndLineRef.current = view.state.doc.lines;
+      totalLinesRef.current = view.state.doc.lines;
+      setWindowRange(bufferId, 0, textByteLen);
+      updateScrollbar(view);
+      return true;
+    } catch (err) {
+      console.error('[Editor] loadFullDocument failed:', err);
+      return false;
+    } finally {
+      isAppendingRef.current = false;
+    }
+  }, [updateScrollbar]);
+
+  const loadFullDocumentRef = useRef(loadFullDocument);
+  useEffect(() => {
+    loadFullDocumentRef.current = loadFullDocument;
+  }, [loadFullDocument]);
 
   // ── Editor setup (runs once per mount) ────────────────────────
   useEffect(() => {
@@ -569,6 +622,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       }
       // Detect user text edits (excluding virtual loads from Rust).
       if (update.docChanged) {
+        notifyDocChange(tab.bufferId);
         const hasUserEdit = update.transactions.some(
           (tr) => tr.docChanged && !tr.annotation(virtualLoad)
         );
@@ -635,49 +689,13 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
 
       void (async () => {
         try {
-          while (isAppendingRef.current) {
-            await new Promise<void>((r) => setTimeout(r, 50));
-          }
-
-          // Another concurrent selectAll may have finished loading already
-          if (windowStartLineRef.current === 0 &&
-              loadedEndLineRef.current >= totalLinesRef.current) {
-            view.dispatch({
-              selection: { anchor: 0, head: view.state.doc.length },
-            });
-            return;
-          }
-
-          isAppendingRef.current = true;
-
-          await syncEditorToRust(bufferId);
-          const text = await getFullText(bufferId);
-          if (activeBufferIdRef.current !== bufferId) return;
-
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: text },
-            annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-            effects: [
-              lineNumComp.reconfigure(lineNumbers()),
-            ],
-          });
-          resetEditorHistory(view);
-
-          const textByteLen = new TextEncoder().encode(text).length;
-          windowStartLineRef.current = 0;
-          windowStartByteOffsetRef.current = 0;
-          loadedEndLineRef.current = view.state.doc.lines;
-          totalLinesRef.current = view.state.doc.lines;
-          setWindowRange(bufferId, 0, textByteLen);
-          updateScrollbar(view);
-
+          const ok = await loadFullDocument(view, bufferId);
+          if (!ok) return;
           view.dispatch({
             selection: { anchor: 0, head: view.state.doc.length },
           });
         } catch (err) {
           console.error('[Editor] selectAll full load failed:', err);
-        } finally {
-          isAppendingRef.current = false;
         }
       })();
 
@@ -731,6 +749,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     } else {
       registerEditorView(tab.bufferId, view);
       registerPeerSetter(tab.bufferId, setPeer);
+      registerFullLoader(tab.bufferId, () => loadFullDocumentRef.current(view, tab.bufferId));
     }
     registerJumpToLine(tab.bufferId, jumpToWindow);
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
@@ -758,6 +777,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       } else {
         unregisterEditorView(prevBufferIdRef.current);
         unregisterPeerSetter(prevBufferIdRef.current);
+        unregisterFullLoader(prevBufferIdRef.current);
       }
       unregisterJumpToLine(prevBufferIdRef.current);
       unregisterReloadWindow(prevBufferIdRef.current);
@@ -784,6 +804,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       unregisterSecondaryEditorView(prevId, () => { peerViewRef.current = null; });
     } else {
       unregisterPeerSetter(prevId);
+      unregisterFullLoader(prevId);
     }
 
     prevBufferIdRef.current = tab.bufferId;
@@ -794,6 +815,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     } else {
       registerEditorView(tab.bufferId, view);
       registerPeerSetter(tab.bufferId, setPeer);
+      registerFullLoader(tab.bufferId, () => loadFullDocumentRef.current(view, tab.bufferId));
     }
     registerJumpToLine(tab.bufferId, jumpToWindow);
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);

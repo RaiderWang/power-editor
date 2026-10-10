@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { tabsAtom, activeTabIdAtom } from '../../store/atoms';
 import {
-  splitLayoutAtom,
   secondaryActiveTabIdAtom,
   activePaneAtom,
+  closeSplitAtom,
   type PaneId,
 } from '../../store/splitAtoms';
 import { TabBar } from '../tabs/TabBar';
@@ -23,7 +23,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   const tabs = useAtomValue(tabsAtom);
   const [primaryActiveTabId, setPrimaryActiveTabId] = useAtom(activeTabIdAtom);
   const [secondaryActiveTabId, setSecondaryActiveTabId] = useAtom(secondaryActiveTabIdAtom);
-  const [, setSplitLayout] = useAtom(splitLayoutAtom);
+  const closeSplit = useSetAtom(closeSplitAtom);
   const [, setActivePane] = useAtom(activePaneAtom);
 
   const activeTabId = paneId === 'primary' ? primaryActiveTabId : secondaryActiveTabId;
@@ -34,10 +34,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   }, [onCursorChange]);
 
   const handleCloseSplit = useCallback(() => {
-    setSplitLayout('none');
-    setSecondaryActiveTabId(null);
-    setActivePane('primary');
-  }, [setSplitLayout, setSecondaryActiveTabId, setActivePane]);
+    closeSplit();
+  }, [closeSplit]);
 
   const handleFocus = useCallback(() => {
     setActivePane(paneId);

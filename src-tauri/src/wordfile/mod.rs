@@ -27,6 +27,19 @@ pub struct LanguageDef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WordfileDef {
     pub languages: Vec<LanguageDef>,
+    /// Language names skipped because they are already built-in to the editor (e.g. "Markdown")
+    #[serde(default)]
+    pub skipped_builtin: Vec<String>,
+}
+
+fn is_builtin_covered(header: &str, name: &str) -> bool {
+    header.to_ascii_uppercase().contains("MARKDOWN_LANG")
+        || name.eq_ignore_ascii_case("markdown")
+}
+
+struct ParsedSection {
+    def: LanguageDef,
+    skip: bool,
 }
 
 pub fn parse_wordfile(path: &Path) -> Result<WordfileDef> {
@@ -45,7 +58,8 @@ pub fn parse_wordfile(path: &Path) -> Result<WordfileDef> {
 
 pub fn parse_content(content: &str) -> WordfileDef {
     let mut languages: Vec<LanguageDef> = Vec::new();
-    let mut current: Option<LanguageDef> = None;
+    let mut skipped_builtin: Vec<String> = Vec::new();
+    let mut current: Option<ParsedSection> = None;
     let mut current_kw_group: Option<usize> = None;
 
     for line in content.lines() {
@@ -58,15 +72,24 @@ pub fn parse_content(content: &str) -> WordfileDef {
 
         // Language definition line: /L#"Name" ...
         if trimmed.starts_with("/L") && trimmed.len() > 2 {
-            if let Some(lang) = current.take() {
-                languages.push(lang);
+            if let Some(cur) = current.take() {
+                if cur.skip {
+                    if !skipped_builtin.contains(&cur.def.name) {
+                        skipped_builtin.push(cur.def.name);
+                    }
+                } else {
+                    languages.push(cur.def);
+                }
             }
             current_kw_group = None;
-            current = Some(parse_language_header(trimmed));
+            let header_def = parse_language_header(trimmed);
+            let skip = is_builtin_covered(trimmed, &header_def.name);
+            current = Some(ParsedSection { def: header_def, skip });
             continue;
         }
 
-        let Some(lang) = current.as_mut() else { continue };
+        let Some(cur) = current.as_mut() else { continue };
+        let lang = &mut cur.def;
 
         // Delimiter definition
         if trimmed.starts_with("/Delimiters") || trimmed.starts_with("/Delimiter") {
@@ -139,11 +162,20 @@ pub fn parse_content(content: &str) -> WordfileDef {
         }
     }
 
-    if let Some(lang) = current {
-        languages.push(lang);
+    if let Some(cur) = current.take() {
+        if cur.skip {
+            if !skipped_builtin.contains(&cur.def.name) {
+                skipped_builtin.push(cur.def.name);
+            }
+        } else {
+            languages.push(cur.def);
+        }
     }
 
-    WordfileDef { languages }
+    WordfileDef {
+        languages,
+        skipped_builtin,
+    }
 }
 
 fn parse_language_header(line: &str) -> LanguageDef {
@@ -322,3 +354,73 @@ pub fn load_wordfiles_from_dir(dir: &Path) -> Vec<WordfileDef> {
     }
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_skip_markdown_with_lang_marker() {
+        let content = r#"
+/L21"Markdown" MARKDOWN_LANG Noquote Nocase File Extensions = MD
+/Delimiters = ~!@%^&*()-+=|\/{}[]:;"'<>,.?
+/C1"Headers"
+# ## ###
+/C2"Format"
+** *
+"#;
+        let def = parse_content(content);
+        assert!(def.languages.is_empty());
+        assert_eq!(def.skipped_builtin, vec!["Markdown"]);
+    }
+
+    #[test]
+    fn test_skip_markdown_by_name_case_insensitive() {
+        let content = r#"
+/L1"markdown" Noquote Nocase File Extensions = MD
+/C1"Keywords"
+foo bar
+"#;
+        let def = parse_content(content);
+        assert!(def.languages.is_empty());
+        assert_eq!(def.skipped_builtin, vec!["markdown"]);
+    }
+
+    #[test]
+    fn test_multi_lang_keeps_non_markdown_and_preserves_keywords() {
+        let content = r#"
+/L1"C++" Line Comment = // Block Comment On = /* Block Comment Off = */ File Extensions = CPP
+/C1"Keywords"
+int return void
+
+/L2"Markdown" MARKDOWN_LANG File Extensions = MD
+/C1"Headers"
+header1 header2
+
+/L3"Python" Line Comment = # File Extensions = PY
+/C1"Keywords"
+def class import
+"#;
+        let def = parse_content(content);
+        assert_eq!(def.languages.len(), 2);
+        assert_eq!(def.languages[0].name, "C++");
+        assert_eq!(def.languages[0].keyword_groups[0], vec!["int", "return", "void"]);
+        assert_eq!(def.languages[1].name, "Python");
+        assert_eq!(def.languages[1].keyword_groups[0], vec!["def", "class", "import"]);
+        assert_eq!(def.skipped_builtin, vec!["Markdown"]);
+    }
+
+    #[test]
+    fn test_no_markdown_preserves_all() {
+        let content = r#"
+/L1"Rust" Line Comment = // File Extensions = RS
+/C1"Keywords"
+fn let mut
+"#;
+        let def = parse_content(content);
+        assert_eq!(def.languages.len(), 1);
+        assert_eq!(def.languages[0].name, "Rust");
+        assert!(def.skipped_builtin.is_empty());
+    }
+}
+

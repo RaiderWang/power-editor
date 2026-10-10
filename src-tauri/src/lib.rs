@@ -424,13 +424,15 @@ fn save_imported_wordfile(app: tauri::AppHandle, path: String) -> Result<Wordfil
     // Parse first to validate
     let def = wordfile::parse_wordfile(&src).map_err(|e| e.to_string())?;
 
-    // Persist to app data dir so it survives restarts
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let wordfiles_dir = data_dir.join("wordfiles");
-    std::fs::create_dir_all(&wordfiles_dir).map_err(|e| e.to_string())?;
+    if !def.languages.is_empty() {
+        // Persist to app data dir so it survives restarts
+        let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        let wordfiles_dir = data_dir.join("wordfiles");
+        std::fs::create_dir_all(&wordfiles_dir).map_err(|e| e.to_string())?;
 
-    let filename = src.file_name().ok_or("invalid filename")?;
-    std::fs::copy(&src, wordfiles_dir.join(filename)).map_err(|e| e.to_string())?;
+        let filename = src.file_name().ok_or("invalid filename")?;
+        std::fs::copy(&src, wordfiles_dir.join(filename)).map_err(|e| e.to_string())?;
+    }
 
     Ok(def)
 }

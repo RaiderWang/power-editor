@@ -72,6 +72,7 @@ export interface LanguageDef {
 
 export interface WordfileDef {
   languages: LanguageDef[];
+  skipped_builtin?: string[];
 }
 
 // ──────────────────────────────────────────────────────────────
