@@ -17,6 +17,7 @@ Most text editors struggle — or outright crash — when you open a log file, C
 - Developers inspecting large build logs, server logs, or data exports
 - Data engineers opening multi-hundred-MB CSV / TSV / JSON files
 - System administrators editing large config files or grep output dumps
+- Technical writers, document maintainers, and note-takers needing lightweight, instantaneous Markdown editing and side-by-side preview
 - Anyone who has ever seen "file too large" or a frozen editor
 
 ---
@@ -25,6 +26,15 @@ Most text editors struggle — or outright crash — when you open a log file, C
 
 ### ⚡ Open Files of Any Size — Instantly
 Open 100 MB+ files in under a second. The editor streams content progressively, so you can start reading and editing immediately while the rest loads in the background. No waiting, no memory bloat.
+
+### 📝 Markdown Editing & Real-Time Split Preview
+Native Markdown syntax highlighting combined with a lightweight, high-performance side-by-side preview (`Ctrl+Shift+V` or toolbar button):
+- **Full GFM Support**: Renders GitHub Flavored Markdown including tables, task lists, blockquotes, and rich formatting.
+- **Smooth Synchronized Scrolling**: Precise editor-to-preview line interpolation keeps your viewports perfectly aligned as you type and scroll. Toggle sync anytime with a single click.
+- **Local Images & Fenced Code Highlighting**: Automatically resolves relative local images via secure local asset protocol; fenced code blocks feature syntax highlighting for multiple languages (JS, TS, Python, Rust, SQL, HTML, CSS, etc.).
+- **Zero Bloat, Instant Performance**: Enjoy instantaneous previews without the sluggishness and high memory footprint of heavyweight IDEs or note-taking apps.
+
+![Power Editor Markdown editing and real-time split preview](docs/screenshots/markdown.png)
 
 ### 🔍 Lightning-Fast Search Across the Entire File
 Find and replace with full regex support, searching 100 MB of text in under 2 seconds. Results are listed with line numbers so you can jump straight to any match.
@@ -116,7 +126,8 @@ Download the `.dmg` installer corresponding to your architecture from [Releases]
 2. **Open a file**: drag-and-drop onto the window, use **File → Open**, or right-click a file in Windows Explorer → *Open with Power Editor*.
 3. **Search**: press `Ctrl+F` for Find, `Ctrl+H` for Find & Replace.
 4. **Switch encoding**: click the encoding label in the bottom status bar.
-5. **Add syntax highlighting**: go to **Language → Import Wordfile (.uew)…** and select your `.uew` syntax file.
+5. **Markdown preview**: press `Ctrl+Shift+V` or click the book icon in the toolbar when editing `.md` files for live split preview with synchronized scrolling.
+6. **Add syntax highlighting**: go to **Language → Import Wordfile (.uew)…** and select your `.uew` syntax file.
 
 ---
 
