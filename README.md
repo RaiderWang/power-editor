@@ -2,7 +2,7 @@
 
 **[中文](README.zh-CN.md) | English**
 
-> **A free, open-source, cross-platform text editor built for large files.** Open 100 MB, 1 GB, or even multi-gigabyte text files in seconds — no freezing, no crashing.
+> **A free, open-source, cross-platform text and Markdown editor built for large files.** Open 100 MB, 1 GB, or even multi-gigabyte text files in seconds — no freezing, no crashing; with native Markdown editing and smooth real-time split preview.
 
 ![Power Editor main window with syntax highlighting, multi-tab editing, and dark theme](docs/screenshots/power-editor.jpg)
 
@@ -10,7 +10,7 @@
 
 ## Why Power Editor?
 
-Most text editors struggle — or outright crash — when you open a log file, CSV dump, or source archive that's hundreds of megabytes large. Power Editor was designed from scratch to handle exactly that, using a native Rust backend to stream and index content while the editor stays snappy.
+Most text editors struggle — or outright crash — when you open a log file, CSV dump, or source archive that's hundreds of megabytes large. Power Editor was designed from scratch to handle exactly that, using a native Rust backend to stream and index content while the editor stays snappy. It also comes equipped with **native Markdown editing and split-pane real-time preview**, delivering an ultra-fast, zero-bloat writing environment alongside its heavy-duty file handling.
 
 **Who is it for?**
 
@@ -26,6 +26,8 @@ Most text editors struggle — or outright crash — when you open a log file, C
 
 ### ⚡ Open Files of Any Size — Instantly
 Open 100 MB+ files in under a second. The editor streams content progressively, so you can start reading and editing immediately while the rest loads in the background. No waiting, no memory bloat.
+
+![Power Editor opening large files: progressive streaming and instant responsiveness](docs/screenshots/big-file.png)
 
 ### 📝 Markdown Editing & Real-Time Split Preview
 Native Markdown syntax highlighting combined with a lightweight, high-performance side-by-side preview (`Ctrl+Shift+V` or toolbar button):
