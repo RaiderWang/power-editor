@@ -50,6 +50,7 @@ import {
   syncAnnotation,
 } from '../../store/editorViewRegistry';
 import type { ReloadWindowOptions } from '../../store/editorViewRegistry';
+import { notifyEditorFocused } from '../../print/selectionHelper';
 import { virtualLoad } from '../../store/virtualLoadAnnotation';
 import type { TabState } from '../../types';
 import type { PaneId } from '../../store/splitAtoms';
@@ -613,6 +614,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         );
         if (!isVirtualOrSync) {
           markCursorMoved(tab.bufferId);
+        }
+        if (!sel.empty) {
+          notifyEditorFocused();
         }
       }
       // Trigger incremental load when the user scrolls near the loaded-content bottom.

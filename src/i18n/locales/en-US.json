@@ -25,6 +25,8 @@
   "menu.file.favoriteFiles": "Favorite Files",
   "menu.file.save": "Save",
   "menu.file.saveAs": "Save As...",
+  "menu.file.print": "Print...",
+  "menu.file.printLineNumbers": "Print with Line Numbers",
   "menu.file.closeTab": "Close Tab",
   "menu.file.settings": "Settings",
   "menu.file.keybindSettings": "Keyboard Shortcuts...",
@@ -224,6 +226,7 @@
   "keybinding.file.reopenWithEncoding": "Reopen with Encoding",
   "keybinding.file.save": "Save",
   "keybinding.file.saveAs": "Save As",
+  "keybinding.file.print": "Print",
   "keybinding.file.closeTab": "Close Tab",
   "keybinding.edit.deleteLine": "Delete Line",
   "keybinding.edit.toUpperCase": "UPPERCASE",
@@ -263,5 +266,11 @@
   "untitled": "Untitled",
   "validate.nameEmpty": "File name cannot be empty",
   "validate.nameInvalid": "Invalid file name",
-  "validate.nameChars": "File name cannot contain \\ / : * ? \" < > |"
+  "validate.nameChars": "File name cannot contain \\ / : * ? \" < > |",
+
+  "print.title": "Print",
+  "print.loading": "The file is still loading in the background. Please wait until loading completes before printing.",
+  "print.tooLarge": "Plain text printing only supports files up to {max} MB.",
+  "print.empty": "The document is empty. Nothing to print.",
+  "print.failed": "Failed to initiate printing. Please check your system printer service."
 }

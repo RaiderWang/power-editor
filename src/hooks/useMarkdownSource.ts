@@ -3,11 +3,10 @@ import { useAtomValue } from 'jotai';
 import { activeTabAtom } from '../store/atoms';
 import { previewEligibilityAtom } from '../store/previewAtoms';
 import {
-  ensureFullyLoaded,
   getEditorView,
   subscribeDocChange,
 } from '../store/previewBridge';
-import { getFullText } from '../store/tauriCommands';
+import { loadFullText } from '../utils/loadFullText';
 
 export interface MarkdownSourceState {
   status: 'ready' | 'not_markdown' | 'loading' | 'too_large';
@@ -54,23 +53,7 @@ export function useMarkdownSource(): MarkdownSourceState {
 
     const loadContent = async () => {
       setIsDocLoading(true);
-
-      // Ensure complete document is loaded into CodeMirror
-      await ensureFullyLoaded(currentBufId);
-      if (isCancelled) return;
-
-      const view = getEditorView(currentBufId);
-      let text = '';
-      if (view) {
-        text = view.state.doc.toString();
-      } else {
-        try {
-          text = await getFullText(currentBufId);
-        } catch (err) {
-          console.error('[useMarkdownSource] getFullText error:', err);
-        }
-      }
-
+      const text = await loadFullText(currentBufId);
       if (isCancelled) return;
       setContent(text);
       setIsDocLoading(false);

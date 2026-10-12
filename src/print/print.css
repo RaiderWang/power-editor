@@ -1,0 +1,252 @@
+/* ── Print Container Styles (Screen Mode: Hidden) ── */
+#print-root {
+  display: none;
+}
+
+/* ── Print Media Styles (Paper & PDF Mode) ── */
+@media print {
+  @page {
+    size: auto;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body.is-printing .app {
+    display: none !important;
+  }
+
+  body.is-printing #print-root {
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    font-size: 10pt;
+    line-height: 1.6;
+    word-break: break-word;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Markdown Document Typography ── */
+  #print-root .markdown-body h1,
+  #print-root .markdown-body h2,
+  #print-root .markdown-body h3,
+  #print-root .markdown-body h4,
+  #print-root .markdown-body h5,
+  #print-root .markdown-body h6 {
+    color: #111111 !important;
+    font-weight: 600;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+    line-height: 1.25;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  #print-root .markdown-body h1 {
+    font-size: 18pt;
+    padding-bottom: 4pt;
+    border-bottom: 1px solid #d0d7de;
+  }
+
+  #print-root .markdown-body h2 {
+    font-size: 14pt;
+    padding-bottom: 3pt;
+    border-bottom: 1px solid #eaecef;
+  }
+
+  #print-root .markdown-body h3 {
+    font-size: 12pt;
+  }
+
+  #print-root .markdown-body h4 {
+    font-size: 10.5pt;
+  }
+
+  #print-root .markdown-body p,
+  #print-root .markdown-body blockquote,
+  #print-root .markdown-body ul,
+  #print-root .markdown-body ol,
+  #print-root .markdown-body dl,
+  #print-root .markdown-body table,
+  #print-root .markdown-body pre {
+    margin-top: 0;
+    margin-bottom: 8pt;
+  }
+
+  #print-root .markdown-body hr {
+    height: 1px;
+    background-color: #d0d7de;
+    border: 0;
+    margin: 12pt 0;
+  }
+
+  #print-root .markdown-body blockquote {
+    padding: 0 10pt;
+    color: #57606a !important;
+    border-left: 3pt solid #0969da;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #print-root .markdown-body ul,
+  #print-root .markdown-body ol {
+    padding-left: 18pt;
+  }
+
+  #print-root .markdown-body li + li {
+    margin-top: 2pt;
+  }
+
+  #print-root .markdown-body a {
+    color: #0969da !important;
+    text-decoration: underline;
+  }
+
+  #print-root .markdown-body code {
+    padding: 1pt 3pt;
+    font-size: 85%;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    background-color: #f6f8fa !important;
+    border-radius: 3px;
+    border: 1px solid #eaecef;
+    color: #24292f !important;
+  }
+
+  #print-root .markdown-body pre {
+    padding: 8pt 10pt;
+    font-size: 8.5pt;
+    line-height: 1.45;
+    background-color: #f6f8fa !important;
+    border-radius: 4px;
+    border: 1px solid #d0d7de;
+    white-space: pre-wrap;
+    word-break: break-all;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  #print-root .markdown-body pre code {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    white-space: pre-wrap;
+    background: transparent !important;
+    border: 0;
+  }
+
+  /* ── Tables ── */
+  #print-root .markdown-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 10pt;
+    font-size: 9pt;
+  }
+
+  #print-root .markdown-body table thead {
+    display: table-header-group;
+  }
+
+  #print-root .markdown-body table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #print-root .markdown-body table th,
+  #print-root .markdown-body table td {
+    padding: 4pt 8pt;
+    border: 1px solid #d0d7de;
+  }
+
+  #print-root .markdown-body table th {
+    font-weight: 600;
+    background-color: #f6f8fa !important;
+    color: #24292f !important;
+  }
+
+  #print-root .markdown-body table tr:nth-child(2n) {
+    background-color: #fafbfc !important;
+  }
+
+  /* ── Images ── */
+  #print-root .markdown-body img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 8pt auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #print-root .markdown-body input[type="checkbox"] {
+    margin-right: 4pt;
+    vertical-align: middle;
+  }
+
+  /* ── Light-Theme Syntax Highlighting in Print ── */
+  #print-root .tok-keyword { color: #a626a4 !important; font-weight: 600; }
+  #print-root .tok-variableName { color: #4078f2 !important; }
+  #print-root .tok-typeName { color: #b76b01 !important; }
+  #print-root .tok-propertyName { color: #e45649 !important; }
+  #print-root .tok-string { color: #50a14f !important; }
+  #print-root .tok-number { color: #986801 !important; }
+  #print-root .tok-comment { color: #6a737d !important; font-style: italic; }
+  #print-root .tok-operator { color: #0184bc !important; }
+  #print-root .tok-punctuation { color: #383a42 !important; }
+  #print-root .tok-tag { color: #e45649 !important; }
+
+  /* ── Plain Text Printing ── */
+  #print-root .print-plain {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 8.5pt;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
+    tab-size: 4;
+    color: #111111 !important;
+  }
+
+  #print-root .print-plain-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #print-root .print-line-row {
+    display: table-row;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #print-root .print-line-no {
+    display: table-cell;
+    width: 38pt;
+    min-width: 38pt;
+    padding-right: 8pt;
+    text-align: right;
+    color: #8c959f !important;
+    user-select: none;
+    vertical-align: top;
+    border-right: 1px solid #d0d7de;
+  }
+
+  #print-root .print-line-text {
+    display: table-cell;
+    padding-left: 8pt;
+    vertical-align: top;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}

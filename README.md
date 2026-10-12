@@ -38,6 +38,12 @@ Native Markdown syntax highlighting combined with a lightweight, high-performanc
 
 ![Power Editor Markdown editing and real-time split preview](docs/screenshots/markdown.png)
 
+### 🖨 Document Printing (Rendered Markdown & Monospace Text)
+Clean, cross-platform printing (`Ctrl+P` or **File → Print...**):
+- **Markdown Preview Mode**: Prints fully rendered HTML documents (GFM tables, task lists, code blocks with syntax highlighting, and local images) directly without needing to open the preview pane first.
+- **Monospace Plain Text**: Prints code and logs with clean wrapping and optional line numbers (toggle via **File → Print with Line Numbers**).
+- **Ink-Saving Layout**: Specially formatted with light, high-contrast `@media print` styling to ensure pristine paper and PDF output.
+
 ### 🔍 Lightning-Fast Search Across the Entire File
 Find and replace with full regex support, searching 100 MB of text in under 2 seconds. Results are listed with line numbers so you can jump straight to any match.
 

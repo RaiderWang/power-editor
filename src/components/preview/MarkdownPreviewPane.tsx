@@ -21,6 +21,7 @@ import {
   postProcessCodeBlocks,
 } from '../../preview/postProcess';
 import { setupScrollSync } from '../../preview/scrollSync';
+import { setCachedPreviewSelection } from '../../print/selectionHelper';
 import styles from './MarkdownPreviewPane.module.css';
 
 export const MarkdownPreviewPane: React.FC = () => {
@@ -69,6 +70,39 @@ export const MarkdownPreviewPane: React.FC = () => {
 
     return setupScrollSync(view, el, () => syncScrollRef.current);
   }, [bufferId, status]);
+
+  // Track preview selection for intelligent print detection
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const container = contentRef.current;
+      if (!container) return;
+
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        return;
+      }
+
+      const range = sel.getRangeAt(0);
+      if (
+        container.contains(range.commonAncestorContainer) ||
+        container.contains(sel.anchorNode) ||
+        container.contains(sel.focusNode)
+      ) {
+        const text = sel.toString();
+        if (text.trim()) {
+          const wrapper = document.createElement('div');
+          wrapper.appendChild(range.cloneContents());
+          setCachedPreviewSelection({ html: wrapper.innerHTML, text });
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      setCachedPreviewSelection(null);
+    };
+  }, []);
 
   const renderContent = () => {
     if (status === 'not_markdown') {
@@ -144,7 +178,11 @@ export const MarkdownPreviewPane: React.FC = () => {
           </button>
         </div>
       </div>
-      <div ref={contentRef} className={styles.contentContainer}>
+      <div
+        ref={contentRef}
+        data-preview-container="true"
+        className={styles.contentContainer}
+      >
         {renderContent()}
       </div>
     </div>

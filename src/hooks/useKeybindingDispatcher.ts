@@ -20,6 +20,7 @@ import { deleteCurrentLine, transformCase } from '../store/editorViewRegistry';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getTabSaveDefaultPath } from '../utils/tabFileName';
 import { toggleMarkdownPreviewAtom } from '../store/previewAtoms';
+import { usePrintActiveTab } from './usePrintActiveTab';
 
 type ActionHandler = () => void;
 
@@ -38,6 +39,7 @@ export function useKeybindingDispatcher() {
   const setSearchTrigger = useSetAtom(searchTriggerAtom);
   const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
+  const { handlePrint } = usePrintActiveTab();
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
@@ -77,6 +79,8 @@ export function useKeybindingDispatcher() {
             if (savePath) saveFileAs(tab.id, savePath).catch(console.error);
           }).catch(console.error);
         };
+      case 'file.print':
+        return () => { handlePrint().catch(console.error); };
       case 'file.closeTab':
         return () => { if (tab) closeTab(tab.id).catch(console.error); };
       case 'edit.deleteLine':
@@ -115,7 +119,7 @@ export function useKeybindingDispatcher() {
       default:
         return null;
     }
-  }, [activeTab, newFile, openFile, saveFile, saveFileAs, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
+  }, [activeTab, newFile, openFile, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

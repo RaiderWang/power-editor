@@ -12,6 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.4] - 2026-10-12
+
+### Added / 新增
+- **Cross-Platform Document Printing (`Ctrl+P`) / 跨平台文档打印功能 (`Ctrl+P`)**:
+  - **Rendered Markdown Printing**: Markdown documents print the fully formatted preview representation (GFM tables, blockquotes, syntax-highlighted code blocks, local images) instead of raw source code, without requiring the preview pane to be open.
+    （**Markdown 渲染打印**：打印 Markdown 文件时直接输出渲染后的排版视图，包括 GFM 表格、引用块、带语法高亮的代码块及本地图片，无需预先开启预览面板。）
+  - **Monospace Plain Text Printing with Line Numbers**: Non-markdown files (code, logs, text) print in clean, wrapped monospace format with an optional line numbers toggle in the File menu (with large file guard up to 10 MB).
+    （**等宽纯文本打印与行号支持**：代码、日志、文本等非 Markdown 文件以整洁的等宽字体打印，支持在“文件”菜单中切换开启/关闭行号，并提供 10 MB 纯文本打印保护限制。）
+  - **Printer-Friendly Styling**: High-contrast, ink-saving light typography (`@media print`) across all platforms (Windows, macOS, Linux) with page-break optimizations for tables, headers, and code blocks.
+    （**环保高对比度打印样式**：跨平台（Windows / macOS / Linux）统一采用白底黑字省墨排版，自动优化标题分页、表格跨页表头重复及代码块分页行为。）
+  - **Intelligent Selection Printing & Markdown Preview Text Selection / 智能选区打印与 Markdown 预览文本选择**:
+    - Enabled native mouse text selection and copying inside the Markdown preview pane.
+      （**启用 Markdown 预览文本选择**：恢复 Markdown 预览面板的内容划选与右键/快捷键复制能力。）
+    - Added contextual selection printing: when text is selected in the source editor, printing outputs the raw monospace source text (with actual source file line numbering); when text is selected in the Markdown preview pane, printing directly outputs the formatted rich-text snippet (retaining tables, syntax highlighting, and local images). Without selection, prints the whole document as before.
+      （**智能区分源码选区与预览选区打印**：在源码编辑区选中文本时，按打印仅输出选中的等宽源码文本（行号与原文件真实行号精准对齐）；在 Markdown 预览面板划选文本时，按打印输出所选的排版富文本片段（完整保留高亮代码块、表格与图片）。未选中文本时无缝回退至原有的全篇打印。）
+
+
+---
+
 ## [0.2.3] - 2026-10-10
 
 ### Added / 新增
@@ -188,7 +207,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/RaiderWang/power-editor/compare/v0.2.0...v0.2.1

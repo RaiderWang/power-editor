@@ -3,6 +3,7 @@ pub mod csv;
 pub mod file_io;
 pub mod file_watcher;
 pub mod keybindings;
+pub mod print;
 pub mod search;
 pub mod session;
 pub mod shell_integration;
@@ -692,6 +693,8 @@ pub fn run() {
             // Keybindings persistence
             keybindings::load_keybindings,
             keybindings::save_keybindings,
+            // Printing
+            print::print_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

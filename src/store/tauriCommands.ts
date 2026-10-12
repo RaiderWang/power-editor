@@ -209,3 +209,12 @@ export const loadKeybindings = (): Promise<string> =>
 /** Save custom keybindings JSON to app_data_dir/keybindings.json. */
 export const saveKeybindingsToFile = (data: string): Promise<void> =>
   invoke('save_keybindings', { data });
+
+// ──────────────────────────────────────────────────────────────
+// Printing
+// ──────────────────────────────────────────────────────────────
+
+/** Trigger native window printing (useful for macOS WKWebView). */
+export const printWindow = (): Promise<void> =>
+  invoke('print_window');
+

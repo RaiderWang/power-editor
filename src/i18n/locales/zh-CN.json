@@ -25,6 +25,8 @@
   "menu.file.favoriteFiles": "收藏的文件",
   "menu.file.save": "保存",
   "menu.file.saveAs": "另存为...",
+  "menu.file.print": "打印...",
+  "menu.file.printLineNumbers": "打印包含行号",
   "menu.file.closeTab": "关闭标签页",
   "menu.file.settings": "设置",
   "menu.file.keybindSettings": "快捷键设置...",
@@ -224,6 +226,7 @@
   "keybinding.file.reopenWithEncoding": "以编码重新打开",
   "keybinding.file.save": "保存",
   "keybinding.file.saveAs": "另存为",
+  "keybinding.file.print": "打印",
   "keybinding.file.closeTab": "关闭标签页",
   "keybinding.edit.deleteLine": "删除行",
   "keybinding.edit.toUpperCase": "转为大写",
@@ -263,5 +266,11 @@
   "untitled": "无标题",
   "validate.nameEmpty": "文件名不能为空",
   "validate.nameInvalid": "文件名无效",
-  "validate.nameChars": "文件名不能包含 \\ / : * ? \" < > |"
+  "validate.nameChars": "文件名不能包含 \\ / : * ? \" < > |",
+
+  "print.title": "打印",
+  "print.loading": "文件仍在后台加载中，请等待加载完成后再打印。",
+  "print.tooLarge": "纯文本打印仅支持不超过 {max} MB 的文件。",
+  "print.empty": "当前文档为空，没有可打印的内容。",
+  "print.failed": "启动打印失败，请检查系统打印机服务。"
 }

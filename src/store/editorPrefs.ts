@@ -10,6 +10,7 @@ export interface EditorPrefs {
   tabSize: number;
   theme: 'dark' | 'light';
   locale: Locale;
+  printLineNumbers: boolean;
 }
 
 export const DEFAULT_PREFS: EditorPrefs = {
@@ -20,6 +21,7 @@ export const DEFAULT_PREFS: EditorPrefs = {
   tabSize: 4,
   theme: 'dark',
   locale: 'en-US',
+  printLineNumbers: false,
 };
 
 /** Load editor prefs from localStorage, merging with defaults to handle missing keys. */

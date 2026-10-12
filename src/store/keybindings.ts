@@ -42,6 +42,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'file.reopenWithEncoding', labelKey: 'keybinding.file.reopenWithEncoding', category: 'file', defaultShortcut: '', editable: true },
   { id: 'file.save',      labelKey: 'keybinding.file.save',      category: 'file', defaultShortcut: 'Ctrl+S',       editable: true },
   { id: 'file.saveAs',    labelKey: 'keybinding.file.saveAs',    category: 'file', defaultShortcut: 'Ctrl+Shift+S', editable: true },
+  { id: 'file.print',     labelKey: 'keybinding.file.print',     category: 'file', defaultShortcut: 'Ctrl+P',       editable: true },
   { id: 'file.closeTab',  labelKey: 'keybinding.file.closeTab',  category: 'file', defaultShortcut: 'Ctrl+W',       editable: true },
 
   { id: 'edit.deleteLine',  labelKey: 'keybinding.edit.deleteLine',  category: 'edit', defaultShortcut: 'Ctrl+Shift+K', editable: true },

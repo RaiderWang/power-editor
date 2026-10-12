@@ -24,6 +24,7 @@ import {
 } from '../../store/previewAtoms';
 import { customKeybindingsAtom, keybindingsDialogOpenAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { useFile } from '../../hooks/useFile';
+import { usePrintActiveTab } from '../../hooks/usePrintActiveTab';
 import * as cmd from '../../store/tauriCommands';
 import { ask, message, open, save } from '@tauri-apps/plugin-dialog';
 import { recentFilesAtom } from '../../store/recentFiles';
@@ -183,6 +184,11 @@ export const MenuBar: React.FC = () => {
   const setKeybindingsDialogOpen = useSetAtom(keybindingsDialogOpenAtom);
   const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const shortcut = useCallback((id: string) => getEffectiveShortcut(id, customs), [customs]);
+  const { handlePrint } = usePrintActiveTab();
+
+  const handleTogglePrintLineNumbers = useCallback(() => {
+    setPrefs((p) => ({ ...p, printLineNumbers: !p.printLineNumbers }));
+  }, [setPrefs]);
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [showFontPicker, setShowFontPicker] = useState(false);
@@ -492,6 +498,14 @@ export const MenuBar: React.FC = () => {
     { kind: 'sep' },
     { kind: 'item', label: t('menu.file.save'), shortcut: shortcut('file.save'), disabled: !activeTab, onClick: handleSave },
     { kind: 'item', label: t('menu.file.saveAs'), shortcut: shortcut('file.saveAs'), disabled: !activeTab, onClick: handleSaveAs },
+    { kind: 'sep' },
+    { kind: 'item', label: t('menu.file.print'), shortcut: shortcut('file.print'), disabled: !activeTab, onClick: handlePrint },
+    {
+      kind: 'item',
+      label: t('menu.file.printLineNumbers'),
+      checked: prefs.printLineNumbers,
+      onClick: handleTogglePrintLineNumbers,
+    },
     { kind: 'sep' },
     { kind: 'item', label: t('menu.file.closeTab'), shortcut: shortcut('file.closeTab'), disabled: !activeTab, onClick: handleCloseTab },
     { kind: 'sep' },
