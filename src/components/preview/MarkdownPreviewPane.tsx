@@ -57,8 +57,11 @@ export const MarkdownPreviewPane: React.FC = () => {
     if (!el || status !== 'ready') return;
 
     postProcessImages(el, filePath);
-    void postProcessCodeBlocks(el);
-  }, [rendered.html, filePath, status]);
+    void postProcessCodeBlocks(el, {
+      copyTitle: t('preview.copyCode'),
+      copiedTitle: t('preview.copied'),
+    });
+  }, [rendered.html, filePath, status, t]);
 
   // Editor -> Preview scroll sync
   useEffect(() => {

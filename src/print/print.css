@@ -125,6 +125,17 @@
     color: #24292f !important;
   }
 
+  #print-root .codeBlockActions {
+    display: none !important;
+  }
+
+  #print-root .codeBlockContainer {
+    border: none !important;
+    background: transparent !important;
+    margin: 0 0 8pt 0 !important;
+    padding: 0 !important;
+  }
+
   #print-root .markdown-body pre {
     padding: 8pt 10pt;
     font-size: 8.5pt;

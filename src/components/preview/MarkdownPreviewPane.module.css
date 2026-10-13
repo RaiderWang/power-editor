@@ -7,6 +7,60 @@
   color: var(--app-fg, #d4d4d4);
   overflow: hidden;
   position: relative;
+
+  /* ── Dark Theme Defaults ── */
+  --preview-border: rgba(255, 255, 255, 0.15);
+  --code-border: rgba(255, 255, 255, 0.16);
+  --code-border-hover: rgba(255, 255, 255, 0.32);
+  --code-btn-border: rgba(255, 255, 255, 0.14);
+  --code-btn-bg: rgba(30, 30, 30, 0.75);
+  --code-btn-hover-bg: rgba(60, 60, 60, 0.85);
+  --code-default-fg: #d4d4d4;
+  --inline-code-bg: rgba(255, 255, 255, 0.08);
+  --inline-code-border: rgba(255, 255, 255, 0.14);
+  --inline-code-fg: #e2e8f0;
+
+  /* One Dark Syntax Highlighting */
+  --tok-keyword: #c678dd;
+  --tok-variable: #61afef;
+  --tok-type: #e5c07b;
+  --tok-property: #e06c75;
+  --tok-string: #98c379;
+  --tok-number: #d19a66;
+  --tok-bool: #d19a66;
+  --tok-comment: #7f848e;
+  --tok-operator: #56b6c2;
+  --tok-punctuation: #abb2bf;
+  --tok-tag: #e06c75;
+  --tok-special: #56b6c2;
+}
+
+:global([data-theme="light"]) .pane {
+  /* ── Light Theme Overrides ── */
+  --preview-border: #d0d7de;
+  --code-border: #d0d7de;
+  --code-border-hover: #0969da;
+  --code-btn-border: #d0d7de;
+  --code-btn-bg: rgba(255, 255, 255, 0.85);
+  --code-btn-hover-bg: #eaeef2;
+  --code-default-fg: #24292f;
+  --inline-code-bg: rgba(0, 0, 0, 0.04);
+  --inline-code-border: rgba(0, 0, 0, 0.1);
+  --inline-code-fg: #1f2328;
+
+  /* One Light / GitHub Light High-Contrast Syntax Highlighting */
+  --tok-keyword: #a626a4;
+  --tok-variable: #4078f2;
+  --tok-type: #b76b01;
+  --tok-property: #e45649;
+  --tok-string: #50a14f;
+  --tok-number: #986801;
+  --tok-bool: #986801;
+  --tok-comment: #6a737d;
+  --tok-operator: #0184bc;
+  --tok-punctuation: #383a42;
+  --tok-tag: #e45649;
+  --tok-special: #0184bc;
 }
 
 .header {
@@ -156,13 +210,13 @@
 .markdownBody h1 {
   font-size: 2em;
   padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--border, #333);
+  border-bottom: 1px solid var(--preview-border, #333);
 }
 
 .markdownBody h2 {
   font-size: 1.5em;
   padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--border, #333);
+  border-bottom: 1px solid var(--preview-border, #333);
 }
 
 .markdownBody h3 {
@@ -188,7 +242,7 @@
   height: 2px;
   padding: 0;
   margin: 24px 0;
-  background-color: var(--border, #333);
+  background-color: var(--preview-border, #333);
   border: 0;
 }
 
@@ -217,22 +271,48 @@
 }
 
 .markdownBody code {
-  padding: 0.2em 0.4em;
-  margin: 0;
-  font-size: 85%;
-  background-color: rgba(127, 127, 127, 0.15);
+  padding: 0.18em 0.42em;
+  margin: 0 0.15em;
+  font-size: 86%;
+  background-color: var(--inline-code-bg);
+  border: 1px solid var(--inline-code-border);
   border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: var(--inline-code-fg);
+}
+
+/* ── Code Block Container (Transparent Background, Crisp Border) ── */
+:global(.codeBlockContainer) {
+  position: relative;
+  margin-top: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--code-border);
+  border-radius: 6px;
+  background-color: transparent;
+  transition: border-color 0.15s ease;
+}
+
+:global(.codeBlockContainer:hover) {
+  border-color: var(--code-border-hover);
 }
 
 .markdownBody pre {
-  padding: 14px 16px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 14px 18px;
   overflow: auto;
-  font-size: 85%;
-  line-height: 1.45;
-  background-color: rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  line-height: 1.55;
+  background-color: transparent;
   border-radius: 6px;
-  border: 1px solid rgba(127, 127, 127, 0.15);
+  border: 1px solid var(--code-border);
+  color: var(--code-default-fg);
+}
+
+:global(.codeBlockContainer) > pre {
+  margin: 0;
+  border: none;
+  background: transparent;
 }
 
 .markdownBody pre code {
@@ -243,6 +323,72 @@
   white-space: pre;
   background: transparent;
   border: 0;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+/* ── Code Block Floating Actions (Lang Badge + Copy Button) ── */
+:global(.codeBlockActions) {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: auto;
+  user-select: none;
+}
+
+:global(.codeLangBadge) {
+  font-size: 11px;
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-transform: lowercase;
+  color: var(--app-fg-muted, #888);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--code-btn-border);
+  background: var(--code-btn-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+:global(.codeCopyBtn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid var(--code-btn-border);
+  background: var(--code-btn-bg);
+  color: var(--app-fg-muted, #888);
+  cursor: pointer;
+  opacity: 0.6;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+:global(.codeBlockContainer:hover) :global(.codeCopyBtn) {
+  opacity: 0.9;
+}
+
+:global(.codeCopyBtn:hover) {
+  opacity: 1 !important;
+  color: var(--app-fg, #d4d4d4);
+  background: var(--code-btn-hover-bg);
+  border-color: var(--code-border-hover);
+}
+
+:global(.codeCopyBtn.copied) {
+  opacity: 1 !important;
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .markdownBody table {
@@ -257,7 +403,7 @@
 .markdownBody table th,
 .markdownBody table td {
   padding: 6px 13px;
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--preview-border, #333);
 }
 
 .markdownBody table tr:nth-child(2n) {
@@ -282,36 +428,48 @@
   vertical-align: middle;
 }
 
-/* ── Code Syntax Highlighting Tokens ── */
+/* ── Code Syntax Highlighting Tokens (Theme Adaptive) ── */
 :global(.tok-keyword) {
-  color: #c678dd;
-  font-weight: 500;
+  color: var(--tok-keyword, #c678dd);
+  font-weight: 600;
 }
 :global(.tok-variableName) {
-  color: #61afef;
+  color: var(--tok-variable, #61afef);
 }
 :global(.tok-typeName) {
-  color: #e5c07b;
+  color: var(--tok-type, #e5c07b);
 }
 :global(.tok-propertyName) {
-  color: #e06c75;
+  color: var(--tok-property, #e06c75);
 }
 :global(.tok-string) {
-  color: #98c379;
+  color: var(--tok-string, #98c379);
 }
 :global(.tok-number) {
-  color: #d19a66;
+  color: var(--tok-number, #d19a66);
+}
+:global(.tok-bool) {
+  color: var(--tok-bool, #d19a66);
 }
 :global(.tok-comment) {
-  color: #7f848e;
+  color: var(--tok-comment, #7f848e);
   font-style: italic;
 }
 :global(.tok-operator) {
-  color: #56b6c2;
+  color: var(--tok-operator, #56b6c2);
 }
 :global(.tok-punctuation) {
-  color: #abb2bf;
+  color: var(--tok-punctuation, #abb2bf);
 }
 :global(.tok-tag) {
-  color: #e06c75;
+  color: var(--tok-tag, #e06c75);
+}
+:global(.tok-special) {
+  color: var(--tok-special, #56b6c2);
+}
+:global(.tok-attributeName) {
+  color: var(--tok-number, #d19a66);
+}
+:global(.tok-attributeValue) {
+  color: var(--tok-string, #98c379);
 }

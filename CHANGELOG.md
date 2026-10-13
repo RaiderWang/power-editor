@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.2.6] - 2026-10-13
+
+### Improved / 优化
+- **Markdown Code Block Appearance & High-Contrast Readability / Markdown 代码块视觉风格与可读性优化**:
+  - **Border-Only Minimalist Styling / 极简透明线框风格**: Removed murky dark semi-transparent background in code blocks and inline code, switching to a clean border-only appearance (`border: 1px solid var(--code-border)`) that blends seamlessly with the editor canvas.
+    （**极简无底色边框设计**：移除代码块及行内代码原有暗沉半透明底色，改为极简通透线框风格，与页面底色自然相融。）
+  - **Dual-Theme Adaptive Syntax Highlighting / 双主题自适应高对比度语法高亮**: Adapted syntax token styling dynamically to Light and Dark modes. Light theme now uses high-contrast One Light / GitHub Light palettes (crisp dark slate punctuation, deep violet keywords, rich blue variables, amber types), resolving invisible punctuation and washed-out text on light backgrounds.
+    （**双主题自适应高对比度语法配色**：代码高亮 token 全面适配浅色与深色主题。浅色模式下采用 One Light / GitHub Light 高对比度方案，标点符号使用深灰炭黑，关键字、类型名、变量色彩分明，彻底告别浅黄泛白与标点符号隐形问题。）
+  - **Floating Action Bar (Language Badge & One-Click Copy) / 浮动工具栏（语言标签与一键复制代码）**: Added a pinned top-right floating toolbar on code blocks featuring a language pill badge (e.g. `ts`, `json`) and a one-click copy button with instant checkmark feedback and full i18n support.
+    （**浮动工具栏（语言标签与一键复制代码）**：代码块右上角新增精致浮动工具栏，包含小巧语言角标及一键复制代码按钮，支持即时复制反馈与双语国际化提示。）
+
 
 ## [0.2.5] - 2026-10-13
 
@@ -247,7 +258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...v0.2.3

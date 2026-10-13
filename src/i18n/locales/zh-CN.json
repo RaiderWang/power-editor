@@ -73,6 +73,8 @@
   "preview.title": "Markdown 预览",
   "preview.syncScroll": "滚动同步",
   "preview.close": "关闭预览",
+  "preview.copyCode": "复制代码",
+  "preview.copied": "已复制",
   "preview.notMarkdown": "当前活动文件不是 Markdown 文件",
   "preview.tooLarge": "文件大小超过预览上限（5 MB），无法开启 Markdown 预览",
   "preview.loading": "正在加载全文...",
