@@ -70,6 +70,8 @@ const lineNumComp = new Compartment();
 // History compartment: reconfigured (reset) after virtual-window jumps so that
 // stale undo entries from the previous window don't corrupt the new content.
 const historyComp = new Compartment();
+const readOnlyComp = new Compartment();
+const editableComp = new Compartment();
 
 /**
  * Properly reset the CM undo/redo history to empty.
@@ -96,6 +98,7 @@ interface EditorProps {
   tab: TabState;
   onCursorChange: (line: number, col: number) => void;
   paneId?: PaneId;
+  isActive?: boolean;
 }
 
 // Lines per IPC fetch; also the size of the initial viewport load.
@@ -106,7 +109,7 @@ const SELECT_ALL_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 // lines of the end of already-loaded content.
 const PREFETCH_LINES = 80;
 
-export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'primary' }) => {
+export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'primary', isActive }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   /** Reference to the other pane's EditorView (when split is active and same bufferId). */
@@ -190,6 +193,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   }, []);
 
   // ── Append next chunk when scrolling near the loaded-content end ─
+  const maybeLoadMoreRef = useRef<(view: EditorView) => void>(() => {});
   const maybeLoadMore = useCallback((view: EditorView) => {
     if (isAppendingRef.current) return;
     const bufferId = activeBufferIdRef.current;
@@ -236,11 +240,12 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           const vpTo2 = Math.min(view.viewport.to, view.state.doc.length - 1);
           const lastVis2 = view.state.doc.lineAt(vpTo2).number;
           if (lastVis2 >= newDocLines - PREFETCH_LINES) {
-            setTimeout(() => maybeLoadMore(view), 0);
+            setTimeout(() => maybeLoadMoreRef.current(view), 0);
           }
         }
       });
-  }, []);
+  }, [updateScrollbar]);
+  maybeLoadMoreRef.current = maybeLoadMore;
 
   // ── Slide the virtual-document window to cover a target line ──────
   // Called by highlightSearchMatches when the active search match falls outside
@@ -269,7 +274,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     const size = vsbSizeRef.current;
     const linesInView = Math.max(1, Math.ceil(totalLines * size));
     const maxFirstLine = Math.max(0, totalLines - linesInView);
-    const seekToBottom = targetLine >= maxFirstLine;
+    const seekToBottom = maxFirstLine > 0 && targetLine >= maxFirstLine;
 
     // Wait for any concurrent maybeLoadMore to finish first.
     while (isAppendingRef.current) {
@@ -497,6 +502,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // their reset values (0) at that point, maybeLoadMore would fetch line 0 again
       // and append a duplicate of the content — visible as doubled text on small files.
       loadedEndLineRef.current = chunk.lines.length;
+      if (chunk.total_lines > totalLinesRef.current) {
+        totalLinesRef.current = chunk.total_lines;
+      }
       setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
@@ -633,13 +641,49 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         if (hasUserEdit) {
           markTextEdited(tab.bufferId);
           const bufId = tab.bufferId;
+
+          // Keep total lines and loaded range in sync with user edits
+          const newDocLines = update.state.doc.lines;
+          const oldDocLines = update.startState.doc.lines;
+          const deltaLines = newDocLines - oldDocLines;
+
+          const isFullDoc =
+            windowStartLineRef.current === 0 &&
+            loadedEndLineRef.current >= totalLinesRef.current;
+
+          if (isFullDoc) {
+            totalLinesRef.current = newDocLines;
+            loadedEndLineRef.current = newDocLines;
+          } else if (deltaLines !== 0) {
+            loadedEndLineRef.current = Math.max(
+              windowStartLineRef.current + newDocLines,
+              loadedEndLineRef.current + deltaLines,
+            );
+            totalLinesRef.current = Math.max(
+              loadedEndLineRef.current,
+              totalLinesRef.current + deltaLines,
+            );
+          }
+
+          const currentTotalLines = totalLinesRef.current;
           setTabsRef.current((prev) =>
-            prev.map((t) =>
-              t.bufferId === bufId && !t.fileInfo.is_modified
-                ? { ...t, fileInfo: { ...t.fileInfo, is_modified: true } }
-                : t
-            )
+            prev.map((t) => {
+              if (t.bufferId !== bufId) return t;
+              const modifiedChanged = !t.fileInfo.is_modified;
+              const linesChanged = t.fileInfo.total_lines !== currentTotalLines;
+              if (!modifiedChanged && !linesChanged) return t;
+              return {
+                ...t,
+                fileInfo: {
+                  ...t.fileInfo,
+                  is_modified: true,
+                  total_lines: currentTotalLines,
+                },
+              };
+            })
           );
+          updateScrollbar(update.view);
+
           // Forward text changes to the peer view (split view sync).
           // Skip virtualLoad transactions and transactions that already carry
           // the syncAnnotation to prevent infinite forwarding loops.
@@ -739,6 +783,8 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           '.cm-scroller': { fontFamily: prefs.fontFamily, overflow: 'auto' },
           '.cm-content': { fontFamily: prefs.fontFamily, minHeight: '100%' },
         })),
+        readOnlyComp.of(EditorState.readOnly.of(Boolean(tab.readOnly))),
+        editableComp.of(EditorView.editable.of(!tab.readOnly)),
         chromiumImeAutocorrectWorkaround(),
       ],
     });
@@ -828,6 +874,21 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     view.focus();
   }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn, reloadFromStartFn]);
 
+  // ── Auto-focus when this editor tab becomes active ───────────
+  useEffect(() => {
+    if (isActive) {
+      const view = viewRef.current;
+      if (view) {
+        view.focus();
+        requestAnimationFrame(() => {
+          if (viewRef.current && !viewRef.current.hasFocus) {
+            viewRef.current.focus();
+          }
+        });
+      }
+    }
+  }, [isActive]);
+
   // ── Hot-swap: line wrap ────────────────────────────────────────
   useEffect(() => {
     viewRef.current?.dispatch({
@@ -848,6 +909,16 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       effects: columnComp.reconfigure(columnMode ? columnModeExtension() : []),
     });
   }, [columnMode]);
+
+  // ── Hot-swap: read-only mode ───────────────────────────────────
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: [
+        readOnlyComp.reconfigure(EditorState.readOnly.of(Boolean(tab.readOnly))),
+        editableComp.reconfigure(EditorView.editable.of(!tab.readOnly)),
+      ],
+    });
+  }, [tab.readOnly]);
 
   // ── Hot-swap: language ─────────────────────────────────────────
   useEffect(() => {
@@ -872,6 +943,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   // process it once the current jump finishes instead of queuing many jumps.
   const pendingSeekLineRef = useRef<number | null>(null);
   const seekingRef = useRef(false);
+  const doSeekLineRef = useRef<(line: number) => void>(() => {});
 
   const doSeekLine = useCallback((line: number) => {
     if (seekingRef.current) {
@@ -885,14 +957,39 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       const pending = pendingSeekLineRef.current;
       if (pending !== null) {
         pendingSeekLineRef.current = null;
-        doSeekLine(pending);
+        doSeekLineRef.current(pending);
       }
     });
   }, [jumpToWindow]);
+  doSeekLineRef.current = doSeekLine;
 
   const handleSeek = useCallback((ratio: number) => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    // Fast path: when the entire document is loaded into CodeMirror,
+    // scroll directly via scrollDOM.scrollTop for smooth, exact positioning.
+    const isFullDoc =
+      windowStartLineRef.current === 0 &&
+      loadedEndLineRef.current >= totalLinesRef.current;
+
+    if (isFullDoc) {
+      const { scrollHeight, clientHeight } = view.scrollDOM;
+      const maxScroll = scrollHeight - clientHeight;
+      if (maxScroll <= 0) {
+        view.scrollDOM.scrollTop = 0;
+      } else {
+        const size = vsbSizeRef.current;
+        const scrollFraction =
+          size >= 1 - 1e-9 ? 0 : Math.max(0, Math.min(1, ratio / (1 - size)));
+        view.scrollDOM.scrollTop = scrollFraction * maxScroll;
+      }
+      updateScrollbar(view);
+      return;
+    }
+
     doSeekLine(ratioToFirstVisibleLine(ratio));
-  }, [doSeekLine, ratioToFirstVisibleLine]);
+  }, [doSeekLine, ratioToFirstVisibleLine, updateScrollbar]);
 
   return (
     <div style={{ position: 'relative', flex: 1, display: 'flex', overflow: 'hidden' }}>

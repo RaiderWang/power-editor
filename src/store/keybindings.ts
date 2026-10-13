@@ -39,6 +39,7 @@ export interface ParsedShortcut {
 export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'file.new',       labelKey: 'keybinding.file.new',       category: 'file', defaultShortcut: 'Ctrl+N',       editable: true },
   { id: 'file.open',      labelKey: 'keybinding.file.open',      category: 'file', defaultShortcut: 'Ctrl+O',       editable: true },
+  { id: 'file.openFolder', labelKey: 'keybinding.file.openFolder', category: 'file', defaultShortcut: 'Ctrl+Shift+O', editable: true },
   { id: 'file.reopenWithEncoding', labelKey: 'keybinding.file.reopenWithEncoding', category: 'file', defaultShortcut: '', editable: true },
   { id: 'file.save',      labelKey: 'keybinding.file.save',      category: 'file', defaultShortcut: 'Ctrl+S',       editable: true },
   { id: 'file.saveAs',    labelKey: 'keybinding.file.saveAs',    category: 'file', defaultShortcut: 'Ctrl+Shift+S', editable: true },
@@ -54,6 +55,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'search.nextMatch', labelKey: 'keybinding.search.nextMatch', category: 'search', defaultShortcut: 'F3',           editable: true },
   { id: 'search.prevMatch', labelKey: 'keybinding.search.prevMatch', category: 'search', defaultShortcut: 'Shift+F3',     editable: true },
 
+  { id: 'view.toggleSidebar', labelKey: 'keybinding.view.toggleSidebar', category: 'view', defaultShortcut: 'Ctrl+B',     editable: true },
   { id: 'view.lineWrap',     labelKey: 'keybinding.view.lineWrap',     category: 'view', defaultShortcut: 'Alt+Z',        editable: true },
   { id: 'view.columnMode',   labelKey: 'keybinding.view.columnMode',   category: 'view', defaultShortcut: 'Alt+C',        editable: true },
   { id: 'view.markdownPreview', labelKey: 'keybinding.view.markdownPreview', category: 'view', defaultShortcut: 'Ctrl+Shift+V', editable: true },

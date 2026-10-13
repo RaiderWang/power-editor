@@ -1,8 +1,8 @@
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingLargeFileAtom } from '../store/atoms';
-import type { PendingLargeFile } from '../store/atoms';
+import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom } from '../store/atoms';
+import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
@@ -17,39 +17,9 @@ export function useFile() {
   const setActiveTabId = useSetAtom(activeTabIdAtom);
   const setPendingCloseTabId = useSetAtom(pendingCloseTabIdAtom);
   const setPendingLargeFile = useSetAtom(pendingLargeFileAtom);
+  const setPendingBinaryFile = useSetAtom(pendingBinaryFileAtom);
   const setRecentFiles = useSetAtom(recentFilesAtom);
-
-  /** Actually perform the open (after any size confirmation). */
-  const doOpen = useCallback(async (path: string): Promise<TabState> => {
-    const requestId = uuidv4();
-
-    let fileInfo;
-    try {
-      fileInfo = await cmd.openFile(path, requestId);
-    } catch (err) {
-      console.error('[useFile] doOpen failed for', path, err);
-      throw err;
-    }
-
-    const ext = path.split('.').pop()?.toLowerCase() ?? '';
-    const tab: TabState = {
-      id: uuidv4(),
-      bufferId: fileInfo.id,
-      fileInfo,
-      cursorLine: 0,
-      cursorCol: 0,
-      scrollTop: 0,
-      language: ext || null,
-    };
-    setTabs((prev) => [...prev, tab]);
-    setActiveTabId(tab.id);
-    setRecentFiles((prev) => {
-      const next = addToRecent(prev, path);
-      saveRecentFiles(next);
-      return next;
-    });
-    return tab;
-  }, [setTabs, setActiveTabId, setRecentFiles]);
+  const prefs = useAtomValue(editorPrefsAtom);
 
   const openFile = useCallback(async (path: string) => {
     // If the file is already open in a tab, switch to it instead of duplicating.
@@ -61,12 +31,10 @@ export function useFile() {
       return existing;
     }
 
-    // Large file size check
-    let fileSize = 0;
+    // Large file size guard (metadata check, zero content I/O)
     try {
-      fileSize = await cmd.getFileSize(path);
-      if (fileSize >= LARGE_FILE_WARN_BYTES) {
-        // Show confirmation dialog and wait for user decision
+      const fileSize = await cmd.getFileSize(path);
+      if (fileSize >= LARGE_FILE_WARN_BYTES && prefs.warnOnLargeFile) {
         const confirmed = await new Promise<boolean>((resolve) => {
           const pending: PendingLargeFile = {
             path,
@@ -80,11 +48,59 @@ export function useFile() {
         if (!confirmed) return undefined;
       }
     } catch {
-      // If size check fails, proceed anyway (the open itself will report errors)
+      // If metadata check fails, proceed to open (Tauri will report file open errors)
     }
 
-    return doOpen(path);
-  }, [tabs, setActiveTabId, setPendingLargeFile, doOpen]);
+    // Unified single-pass open: Phase 1 reads first chunk and detects both encoding & binary characteristics in one step
+    const requestId = uuidv4();
+    let fileInfo;
+    try {
+      fileInfo = await cmd.openFile(path, requestId);
+    } catch (err) {
+      console.error('[useFile] openFile failed for', path, err);
+      throw err;
+    }
+
+    // Binary file detected: prompt user for read-only vs cancel
+    if (fileInfo.is_binary) {
+      const decision = await new Promise<'readonly' | 'cancel'>((resolve) => {
+        const pending: PendingBinaryFile = {
+          path,
+          sizeBytes: fileInfo.total_bytes,
+          resolve: () => resolve('readonly'),
+          reject: () => resolve('cancel'),
+        };
+        setPendingBinaryFile(pending);
+      });
+      setPendingBinaryFile(null);
+
+      if (decision === 'cancel') {
+        // User cancelled: discard buffer immediately from Rust registry
+        await cmd.closeBuffer(fileInfo.id).catch(console.error);
+        return undefined;
+      }
+    }
+
+    const ext = path.split('.').pop()?.toLowerCase() ?? '';
+    const tab: TabState = {
+      id: uuidv4(),
+      bufferId: fileInfo.id,
+      fileInfo,
+      cursorLine: 0,
+      cursorCol: 0,
+      scrollTop: 0,
+      language: ext || null,
+      readOnly: fileInfo.is_read_only,
+    };
+    setTabs((prev) => [...prev, tab]);
+    setActiveTabId(tab.id);
+    setRecentFiles((prev) => {
+      const next = addToRecent(prev, path);
+      saveRecentFiles(next);
+      return next;
+    });
+    return tab;
+  }, [tabs, setActiveTabId, setPendingBinaryFile, setPendingLargeFile, setTabs, setRecentFiles, prefs.warnOnLargeFile]);
 
   const newFile = useCallback(async () => {
     const fileInfo = await cmd.newBuffer();
@@ -130,6 +146,11 @@ export function useFile() {
   const saveFile = useCallback(async (tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;
+    if (tab.readOnly || tab.fileInfo.is_read_only) {
+      // Direct overwrite forbidden for read-only / binary files to prevent corruption.
+      console.warn('[useFile] saveFile blocked: tab is read-only');
+      return;
+    }
     if (!tab.fileInfo.path) return; // needs saveAs
     await syncEditorToRust(tab.bufferId);
     await cmd.saveBuffer(tab.bufferId);
@@ -147,8 +168,16 @@ export function useFile() {
     if (!tab) return;
     await syncEditorToRust(tab.bufferId);
     const fileInfo = await cmd.saveBufferAs(tab.bufferId, path);
+    if (tab.readOnly || tab.fileInfo.is_read_only) {
+      await cmd.setReadOnly(tab.bufferId, false).catch(() => {});
+    }
     setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, fileInfo, untitledName: undefined } : t))
+      prev.map((t) => (t.id === tabId ? {
+        ...t,
+        fileInfo: { ...fileInfo, is_read_only: false },
+        readOnly: false,
+        untitledName: undefined,
+      } : t))
     );
     setRecentFiles((prev) => {
       const next = addToRecent(prev, path);

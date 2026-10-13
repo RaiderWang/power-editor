@@ -4,11 +4,106 @@ use anyhow::{anyhow, Result};
 use chardetng::EncodingDetector;
 use encoding_rs::{Encoding, UTF_8};
 use ropey::Rope;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::BufReader;
 use std::path::Path;
 
 use crate::buffer::{Buffer, BufferRegistry, LineEnding};
+
+/// File metadata and binary check result returned to frontend.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FileCheckResult {
+    pub size_bytes: u64,
+    pub is_binary: bool,
+}
+
+/// Heuristic binary detector based on sample bytes (up to 8 KB).
+///
+/// Returns true if the sample looks like a binary (non-text) file:
+/// 1. If starts with UTF-16 BOM (LE or BE), validates UTF-16 code units.
+/// 2. If starts with UTF-8 BOM, skips BOM bytes.
+/// 3. If null byte (`0x00`) is found, returns true.
+/// 4. If non-printable control characters (< 0x20, excluding \t, \n, \r, FF, ESC) exceed 5%, returns true.
+pub fn is_binary_sample(bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return false;
+    }
+
+    // UTF-16 BOM handling
+    if bytes.starts_with(b"\xFF\xFE") || bytes.starts_with(b"\xFE\xFF") {
+        let is_le = bytes.starts_with(b"\xFF\xFE");
+        let payload = &bytes[2..];
+        if payload.is_empty() {
+            return false;
+        }
+        let u16_iter = payload.chunks_exact(2).map(|c| {
+            if is_le {
+                u16::from_le_bytes([c[0], c[1]])
+            } else {
+                u16::from_be_bytes([c[0], c[1]])
+            }
+        });
+        let mut null_count = 0;
+        for r in char::decode_utf16(u16_iter) {
+            match r {
+                Ok('\0') => null_count += 1,
+                Err(_) => return true, // invalid UTF-16 surrogate
+                _ => {}
+            }
+        }
+        return null_count > 0;
+    }
+
+    // UTF-8 BOM
+    let sample = if bytes.starts_with(b"\xEF\xBB\xBF") {
+        &bytes[3..]
+    } else {
+        bytes
+    };
+
+    if sample.is_empty() {
+        return false;
+    }
+
+    // 1. Fast null byte check via SIMD memchr
+    if memchr::memchr(0, sample).is_some() {
+        return true;
+    }
+
+    // 2. Control characters ratio check
+    let mut control_count = 0;
+    for &b in sample {
+        if b < 0x20 && b != b'\t' && b != b'\n' && b != b'\r' && b != 0x0C && b != 0x1B {
+            control_count += 1;
+        }
+    }
+
+    (control_count * 100 / sample.len()) > 5
+}
+
+/// Check file size and whether it's binary by sampling up to 8 KB from the file head.
+pub fn check_file_metadata(path: &Path) -> Result<FileCheckResult> {
+    let metadata = fs::metadata(path)?;
+    let size_bytes = metadata.len();
+    if size_bytes == 0 {
+        return Ok(FileCheckResult {
+            size_bytes: 0,
+            is_binary: false,
+        });
+    }
+
+    let mut file = fs::File::open(path)?;
+    let sample_len = (size_bytes as usize).min(8192);
+    let mut buf = vec![0u8; sample_len];
+    let n = std::io::Read::read(&mut file, &mut buf)?;
+    let is_binary = is_binary_sample(&buf[..n]);
+
+    Ok(FileCheckResult {
+        size_bytes,
+        is_binary,
+    })
+}
 
 /// Detect the encoding of a byte slice (sample).
 ///
@@ -113,11 +208,11 @@ pub fn open_file(
 pub(crate) fn open_file_quick(
     registry: &BufferRegistry,
     path: &Path,
-) -> Result<(u64, Option<streaming::StreamContinuation>)> {
+) -> Result<(u64, Option<streaming::StreamContinuation>, bool)> {
     let file = fs::File::open(path)?;
     let reader = BufReader::new(file);
 
-    let (rope, enc_name, line_ending, continuation) =
+    let (rope, enc_name, line_ending, continuation, is_binary) =
         streaming::decode_stream_start(reader, None)?;
 
     let id = BufferRegistry::next_id();
@@ -127,10 +222,16 @@ pub(crate) fn open_file_quick(
     let mut buffer = Buffer::from_rope(id, rope, Some(path.to_path_buf()), enc_name, line_ending);
     buffer.mtime = mtime;
     buffer.file_total_bytes = total_bytes;
-    buffer.is_fully_loaded = continuation.is_none();
+    buffer.is_binary = is_binary;
+    if is_binary {
+        buffer.is_read_only = true;
+        buffer.is_fully_loaded = true;
+    } else {
+        buffer.is_fully_loaded = continuation.is_none();
+    }
     registry.insert(buffer);
 
-    Ok((id, continuation))
+    Ok((id, continuation, is_binary))
 }
 
 /// Re-open a file with a user-specified encoding (streaming decode).
@@ -327,6 +428,41 @@ mod tests {
 
         assert!(change_encoding(&registry, id, "INVALID_ENCODING").is_err());
         assert!(change_encoding(&registry, 999999, "UTF-8").is_err());
+    }
+
+    #[test]
+    fn test_is_binary_sample_empty_and_text() {
+        assert!(!is_binary_sample(b""));
+        assert!(!is_binary_sample(b"Hello, world!\nLine 2\r\nLine 3\tTabbed"));
+        assert!(!is_binary_sample("这是纯中文 UTF-8 文本内容".as_bytes()));
+    }
+
+    #[test]
+    fn test_is_binary_sample_utf8_bom() {
+        let mut with_bom = vec![0xEF, 0xBB, 0xBF];
+        with_bom.extend_from_slice(b"Text with BOM");
+        assert!(!is_binary_sample(&with_bom));
+    }
+
+    #[test]
+    fn test_is_binary_sample_utf16() {
+        // UTF-16LE: "Hi" -> [0xFF, 0xFE, 0x48, 0x00, 0x69, 0x00]
+        let utf16_le = vec![0xFF, 0xFE, 0x48, 0x00, 0x69, 0x00];
+        assert!(!is_binary_sample(&utf16_le));
+    }
+
+    #[test]
+    fn test_is_binary_sample_binary_data() {
+        // Contains null byte
+        assert!(is_binary_sample(b"Text with \0 null byte"));
+
+        // Windows PE Header starts with MZ and contains zeros
+        let pe_header = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff";
+        assert!(is_binary_sample(pe_header));
+
+        // PNG Header
+        let png_header = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR";
+        assert!(is_binary_sample(png_header));
     }
 }
 

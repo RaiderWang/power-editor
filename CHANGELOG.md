@@ -8,7 +8,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] / [未发布]
+## [0.2.5] - 2026-10-13
+
+### Added / 新增
+- **VS Code-Style Open Folder & File Explorer Sidebar / VS Code 风格打开文件夹与侧边栏文件浏览面板**:
+  - **Directory Tree & Lazy Loading**: Opens workspace folders via native directory picker (`Ctrl+Shift+O`), displaying file hierarchies with folders listed first and on-demand subfolder lazy loading (`list_directory`) to maintain instant responsiveness even for massive projects.
+    （**目录树与按需懒加载**：支持通过原生系统对话框打开工程文件夹（`Ctrl+Shift+O`），文件夹置顶排列；子目录采用按需懒加载（Lazy Loading）架构，杜绝巨型工程一次性遍历卡顿。）
+  - **Collapsible & Resizable Sidebar**: Left file explorer sidebar width is smoothly adjustable via mouse drag handle (160px–600px) with `localStorage` persistence; toggleable via toolbar button, View menu, or `Ctrl+B` shortcut.
+    （**可折叠与自由调节侧边栏**：左侧文件面板支持鼠标自由拖拽调节宽度（160px ~ 600px）并自动持久化记忆；可通过工具栏按钮、视图菜单或 `Ctrl+B` 快捷键瞬间切换显隐。）
+  - **Rich File Type Icons**: Differentiates entries with distinct visual icons for folders (open/closed) and common file extensions (Code, Markdown, JSON, CSV, Images, plain text).
+    （**丰富的文件类型图标**：根据扩展名智能匹配专属视觉图标，支持文件夹（展开/折叠）、代码、Markdown、JSON、CSV、图片、普通文本等多种类型。）
+  - **Tab Synchronization & One-Click Open**: Left-clicking a file opens it in editor tabs (or smoothly focuses the existing tab if already opened); switching the active editor tab automatically synchronizes tree selection.
+    （**标签页深度联动与单击打开**：左键单击文件秒开标签页（若已打开则自动切换激活并避免重复打开）；切换激活标签页时目录树自动高亮定位对应文件。）
+  - **Comprehensive Context Menu & File Operations**: Right-click context menu supporting Open File, New File, New Folder, Inline Renaming, Deletion (with safety confirmation dialog and open-tab closing), Copy Full Path, Copy Relative Path, and Reveal in Windows File Explorer.
+    （**完整上下文右键菜单与文件管理**：右键菜单支持打开文件、新建文件、新建文件夹、内联重命名、删除（带二次防误删确认并联动关闭已打开标签）、复制完整路径、复制相对路径以及在系统文件资源管理器中定位。）
+  - **Header Controls & UI Entry Points**: Features quick header action buttons (New File, New Folder, Refresh, Collapse All, Close Folder), Welcome Screen open button, File menu integration ("Open Folder...", "Close Folder"), and View menu integration.
+    （**顶栏快捷操作与全局入口整合**：文件面板头部提供新建文件、新建文件夹、刷新、全部折叠、关闭文件夹等快捷操作；同步打通欢迎页、菜单栏（文件与视图）及工具栏入口。）
+- **Binary File Detection & Read-Only Safety Protection / 非文本二进制文件智能拦截与只读安全保护**:
+  - **Unified Single-Pass Stream Pipeline**: Merged binary heuristic detection into the primary streaming decode pipeline (`decode_stream_start`). The initial chunk sample detects both character encoding and binary characteristics in a single file open, eliminating redundant I/O and IPC round-trips for regular text files.
+    （**单次 I/O 统一流式流水线**：将二进制启发式检测深度合并进主文件流式解码链路（`decode_stream_start`），在单次文件读取的同一内存样本上并行完成字符编码识别与二进制特征检测，普通文本文件秒开零冗余 I/O。）
+  - **Heuristic Null-Byte & Control Character Check**: Employs SIMD `memchr` for instant null-byte (`0x00`) detection alongside control character ratio analysis, while respecting UTF-16 LE/BE and UTF-8 BOM markers to prevent false positives on wide-character text.
+    （**空字节与控制字符启发式检测**：基于 SIMD `memchr` 极速探测空字节（`0x00`）及非打印控制字符比例；同时深度兼容 UTF-16 LE/BE 和 UTF-8 BOM，杜绝正常宽字符文本误报。）
+  - **Deferred Confirmation & Resource Guard**: Intercepts binary files upon completion of Phase 1 chunk decoding without spawning heavy background loading tasks (Phase 2 continuation suppressed for binaries). Users can choose to open safely in read-only mode or cleanly discard the buffer without CPU/memory waste.
+    （**资源保护与交互拦截**：在 Phase 1 首块读取后精准拦截二进制文件，彻底压制巨额后台流式解码（Phase 2），弹出确认框供用户选择“以只读模式打开”或“取消”；取消时立即释放 Rust 缓冲区，杜绝内存与 CPU 浪费。）
+  - **Anti-Corruption Read-Only Lock**: When confirmed, the tab and CodeMirror editor enter read-only mode (`EditorState.readOnly` & `EditorView.editable`). Overwrite saves (`Ctrl+S`) are blocked both frontend and backend to protect binary assets (`.exe`, `.zip`, `.png`, etc.) from irreversible corruption, while permitting "Save As" to export content as new text files.
+    （**防覆盖破坏只读锁定**：确认打开后，标签页与 CodeMirror 编辑器自动进入只读保护状态，前端与后端双重拦截原路覆盖保存（`Ctrl+S`），彻底杜绝破坏原文件；支持通过“另存为”将内容输出为新文件。）
+  - **Visual Read-Only Badges**: Displays `[Read-Only]` / `[只读]` badges in the tab title and a dedicated 🔒 lock indicator with tooltips on the status bar.
+    （**全方位只读状态指示**：在标签页标题后缀显示 `[只读]` 标识，并在底部状态栏常驻 🔒 只读图标与提示。）
+- **Dedicated Markdown Formatting Toolbar / Markdown 专属格式化工具栏**:
+  - **Contextual Auto-Display**: Automatically displays a compact dedicated formatting toolbar directly beneath the main toolbar when editing Markdown documents (`.md`, `.markdown`, etc.), and collapses completely for non-Markdown files without occupying vertical editing space.
+    （**上下文感知自适应展示**：编辑 Markdown 文档（`.md`、`.markdown` 等）时，在主工具栏下方平滑展现专属格式化工具栏；切换至非 Markdown 代码或文本时自动收起，零占用编辑区垂直视野。）
+  - **Comprehensive Markdown Actions**:
+    - **Headings (H1–H4)**: Quick heading level switching and toggling on current/selected lines.
+      （**各级标题 (H1–H4)**：对当前光标行或选中行快速设置、切换及取消标题。）
+    - **Inline Styles**: Bold (`**`), Italic (`*`), Strikethrough (`~~`), and Inline Code (`` ` ``) with smart wrap/unwrap toggle and placeholder selection.
+      （**行内样式**：粗体、斜体、删除线、行内代码，支持选区智能包裹、反向解包及未选中文本时的占位高亮。）
+    - **Lists & Quotes**: Blockquote (`>`), Bullet List (`-`), Numbered List (`1.`), and Task List (`- [ ]`) with multi-line batch application.
+      （**引用与列表**：引用块、无序列表、自动序号列表及待办勾选框，支持多行批量格式化。）
+    - **Block Insertions**: Code Blocks (```` ``` ````), Link with auto-selected URL placeholder (`[title](url)`), standard 3x3 Table template, and Horizontal Rule (`---`).
+      （**结构化插入**：多行代码块、带链接占位自动聚焦的超链接插入、3x3 标准表格模版及分割线。）
+  - **Zero-Distraction & Focus Preservation**: Pinned non-intrusive layout preventing text occlusion; toolbar button clicks preserve CodeMirror 6 editor focus and selection seamlessly with full undo/redo history support.
+    （**防遮挡与焦点保持**：顶栏固定布局彻底避免悬浮窗遮挡代码的问题；点击操作天然保持 CodeMirror 编辑器焦点与光标选区，完美支持 `Ctrl+Z` / `Ctrl+Y` 撤销重做。）
 
 ---
 
@@ -207,7 +247,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/RaiderWang/power-editor/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/RaiderWang/power-editor/compare/v0.2.1...v0.2.2

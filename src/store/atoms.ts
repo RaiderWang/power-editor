@@ -83,6 +83,19 @@ export interface PendingLargeFile {
 export const pendingLargeFileAtom = atom<PendingLargeFile | null>(null);
 
 // ──────────────────────────────────────────────────────────────
+// Binary file open confirmation
+// ──────────────────────────────────────────────────────────────
+
+export interface PendingBinaryFile {
+  path: string;
+  sizeBytes: number;
+  resolve: (readOnly: boolean) => void;
+  reject: () => void;
+}
+
+export const pendingBinaryFileAtom = atom<PendingBinaryFile | null>(null);
+
+// ──────────────────────────────────────────────────────────────
 // File open progress
 // ──────────────────────────────────────────────────────────────
 

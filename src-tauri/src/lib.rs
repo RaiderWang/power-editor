@@ -1,5 +1,6 @@
 pub mod buffer;
 pub mod csv;
+pub mod explorer;
 pub mod file_io;
 pub mod file_watcher;
 pub mod keybindings;
@@ -15,7 +16,7 @@ use file_watcher::FileWatcherRegistry;
 use search::{FindResult, SearchParams};
 use serde::Serialize;
 use tauri::{Emitter, Manager};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use tauri::State;
@@ -53,18 +54,24 @@ async fn get_file_size(path: String) -> Result<u64, String> {
 }
 
 #[tauri::command]
+async fn check_file_preview(path: String) -> Result<file_io::FileCheckResult, String> {
+    file_io::check_file_metadata(Path::new(&path)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn open_file(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     path: String,
     request_id: String,
+    read_only: Option<bool>,
 ) -> Result<FileInfo, String> {
     let p = PathBuf::from(&path);
     let total_bytes = std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
     let registry = state.registry.clone();
 
     // ── Phase 1: read first chunk only → return immediately ──
-    let (id, continuation) = tokio::task::spawn_blocking({
+    let (id, continuation, is_binary) = tokio::task::spawn_blocking({
         let registry = registry.clone();
         let p = p.clone();
         move || file_io::open_file_quick(&registry, &p)
@@ -75,15 +82,24 @@ async fn open_file(
 
     state.watcher.watch_buffer(id, p);
 
+    let is_ro = read_only.unwrap_or(false) || is_binary;
     let info = {
-        let buffers = state.registry.buffers.lock().unwrap();
-        buffers[&id].file_info()
+        let mut buffers = state.registry.buffers.lock().unwrap();
+        if let Some(buf) = buffers.get_mut(&id) {
+            if is_ro {
+                buf.is_read_only = true;
+            }
+            buf.file_info()
+        } else {
+            return Err("Buffer missing after creation".to_string());
+        }
     };
 
-    // ── Phase 2: background loading of remaining chunks (detached) ──
+    // ── Phase 2: background loading of remaining chunks (detached, normal text files only) ──
     if let Some(continuation) = continuation {
-        let registry = registry.clone();
-        let app_handle = app.clone();
+        if !is_binary {
+            let registry = registry.clone();
+            let app_handle = app.clone();
         let rid = request_id;
         tokio::task::spawn_blocking(move || {
             let mut cont = continuation;
@@ -142,6 +158,7 @@ async fn open_file(
                 let _ = app_handle.emit("file:load-complete", updated_info);
             }
         });
+        }
     }
 
     Ok(info)
@@ -176,10 +193,21 @@ fn save_buffer(state: State<AppState>, buffer_id: u64) -> Result<(), String> {
     state.watcher.record_save(buffer_id);
     let mut buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    if buf.is_read_only {
+        return Err("Cannot overwrite a read-only or binary file. Use Save As instead.".to_string());
+    }
     if !buf.is_fully_loaded {
         return Err("Cannot save while the file is still loading".to_string());
     }
     buf.save().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_read_only(state: State<AppState>, buffer_id: u64, read_only: bool) -> Result<FileInfo, String> {
+    let mut buffers = state.registry.buffers.lock().unwrap();
+    let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    buf.is_read_only = read_only;
+    Ok(buf.file_info())
 }
 
 #[tauri::command]
@@ -648,11 +676,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // File operations
             get_file_size,
+            check_file_preview,
             open_file,
             new_buffer,
             close_buffer,
             save_buffer,
             save_buffer_as,
+            set_read_only,
             rename_buffer,
             reload_buffer,
             // Text access
@@ -695,6 +725,13 @@ pub fn run() {
             keybindings::save_keybindings,
             // Printing
             print::print_window,
+            // File explorer operations
+            explorer::list_directory,
+            explorer::create_file,
+            explorer::create_directory,
+            explorer::rename_path,
+            explorer::delete_path,
+            explorer::reveal_in_explorer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

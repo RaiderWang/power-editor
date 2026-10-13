@@ -24,7 +24,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   const [primaryActiveTabId, setPrimaryActiveTabId] = useAtom(activeTabIdAtom);
   const [secondaryActiveTabId, setSecondaryActiveTabId] = useAtom(secondaryActiveTabIdAtom);
   const closeSplit = useSetAtom(closeSplitAtom);
-  const [, setActivePane] = useAtom(activePaneAtom);
+  const [activePane, setActivePane] = useAtom(activePaneAtom);
 
   const activeTabId = paneId === 'primary' ? primaryActiveTabId : secondaryActiveTabId;
   const setActiveTabId = paneId === 'primary' ? setPrimaryActiveTabId : setSecondaryActiveTabId;
@@ -64,6 +64,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             >
               <Editor
                 tab={tab}
+                isActive={tab.id === activeTabId && activePane === paneId}
                 onCursorChange={handleCursorChange}
                 paneId={paneId}
               />

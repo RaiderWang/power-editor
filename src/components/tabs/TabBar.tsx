@@ -7,8 +7,10 @@ import {
   splitLayoutAtom,
   openSplitAtom,
   closeSplitAtom,
+  activePaneAtom,
   type PaneId,
 } from '../../store/splitAtoms';
+import { focusEditor } from '../../store/editorViewRegistry';
 import { useFile } from '../../hooks/useFile';
 import { getTabFileName, getTabSaveDefaultPath, getTabTitle } from '../../utils/tabFileName';
 import { RenameDialog } from '../dialogs/RenameDialog';
@@ -46,6 +48,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   const splitLayout = useAtomValue(splitLayoutAtom);
   const openSplit = useSetAtom(openSplitAtom);
   const closeSplit = useSetAtom(closeSplitAtom);
+  const setActivePane = useSetAtom(activePaneAtom);
 
   // In split mode the parent passes controlled values; in standalone mode use
   // the internal atom directly.
@@ -58,6 +61,12 @@ export const TabBar: React.FC<TabBarProps> = ({
       setInternalActiveTabId(id);
     }
   }, [isControlled, onSetActiveTabId, setInternalActiveTabId]);
+
+  const handleTabClick = useCallback((tab: typeof tabs[number]) => {
+    setActivePane(paneId);
+    setActiveTabId(tab.id);
+    focusEditor(tab.bufferId, paneId);
+  }, [paneId, setActivePane, setActiveTabId]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [renameTabId, setRenameTabId] = useState<string | null>(null);
@@ -106,12 +115,13 @@ export const TabBar: React.FC<TabBarProps> = ({
     }
   }, [tabs]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, tabId: string) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, tab: typeof tabs[number]) => {
     e.preventDefault();
     e.stopPropagation();
-    setActiveTabId(tabId);
-    setContextMenu({ x: e.clientX, y: e.clientY, tabId });
-  }, [setActiveTabId]);
+    setActivePane(paneId);
+    setActiveTabId(tab.id);
+    setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
+  }, [paneId, setActivePane, setActiveTabId]);
 
   const menuItems: TabContextMenuItem[] = useMemo(() => {
     if (!contextTab) return [];
@@ -174,13 +184,21 @@ export const TabBar: React.FC<TabBarProps> = ({
               <div
                 key={tab.id}
                 className={`${styles.tab} ${active ? styles.active : ''}`}
-                onClick={() => setActiveTabId(tab.id)}
-                onContextMenu={(e) => handleContextMenu(e, tab.id)}
+                onClick={() => handleTabClick(tab)}
+                onMouseDown={(e) => {
+                  if (e.button === 0 && !(e.target as HTMLElement).closest(`.${styles.close}`)) {
+                    handleTabClick(tab);
+                  }
+                }}
+                onContextMenu={(e) => handleContextMenu(e, tab)}
                 title={getTabTitle(tab, t)}
               >
                 <span className={styles.title}>
                   {modified && <span className={styles.dot}>●</span>}
                   {fileName}
+                  {Boolean(tab.readOnly || tab.fileInfo.is_read_only) && (
+                    <span style={{ fontSize: '11px', opacity: 0.7, marginLeft: '4px' }}>[{t('common.readOnly')}]</span>
+                  )}
                 </span>
                 <button
                   className={styles.close}

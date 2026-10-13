@@ -87,6 +87,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
           <span className={`${styles.item} ${styles.modified}`}>{t('status.modified')}</span>
         </>
       )}
+      {Boolean(activeTab.readOnly || fileInfo.is_read_only) && (
+        <>
+          <span className={styles.separator}>|</span>
+          <span className={styles.item} style={{ color: '#e5a50a', fontWeight: 500 }} title={t('status.readOnlyHint')}>
+            🔒 {t('common.readOnly')}
+          </span>
+        </>
+      )}
       <span className={styles.spacer} />
       <span className={styles.item} title={t('status.filePath')}>
         {getTabTitle(activeTab, t)}

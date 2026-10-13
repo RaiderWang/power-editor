@@ -12,6 +12,10 @@ export interface FileInfo {
   is_modified: boolean;
   /** `false` while the file is still being loaded in the background. */
   is_fully_loaded: boolean;
+  /** `true` when the file is opened in read-only mode (e.g. binary file safety protection). */
+  is_read_only: boolean;
+  /** `true` when binary/non-text content was detected. */
+  is_binary: boolean;
 }
 
 export interface LineChunk {
@@ -89,4 +93,6 @@ export interface TabState {
   cursorCol: number;
   scrollTop: number;
   language: string | null;
+  /** Whether the tab is currently in read-only mode */
+  readOnly?: boolean;
 }

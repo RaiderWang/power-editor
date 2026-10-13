@@ -15,6 +15,8 @@ import {
   Minus,
   Plus,
   BookOpen,
+  Folder,
+  PanelLeft,
 } from 'lucide-react';
 import {
   activeTabAtom,
@@ -29,6 +31,7 @@ import {
 import { customKeybindingsAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { undoEdit, redoEdit } from '../../store/editorViewRegistry';
 import { useFile } from '../../hooks/useFile';
+import { useExplorer } from '../../hooks/useExplorer';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';
 import * as cmd from '../../store/tauriCommands';
 import { useTranslation } from '../../i18n';
@@ -55,6 +58,7 @@ export const Toolbar: React.FC = () => {
   }, [customs]);
   const t = useTranslation();
   const { openFile, newFile, saveFile, saveFileAs } = useFile();
+  const { openFolder, toggleSidebar, sidebarVisible } = useExplorer();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const canPreview = useAtomValue(canPreviewAtom);
   const isPreviewOpen = useAtomValue(isPreviewOpenAtom);
@@ -161,6 +165,16 @@ export const Toolbar: React.FC = () => {
       </button>
       <button className={styles.btn} onClick={handleOpen} title={`${t('toolbar.open')}${sk('file.open')}`}>
         <FolderOpen size={16} />
+      </button>
+      <button className={styles.btn} onClick={openFolder} title={`${t('toolbar.openFolder')}${sk('file.openFolder')}`}>
+        <Folder size={16} />
+      </button>
+      <button
+        className={`${styles.btn} ${sidebarVisible ? styles.active : ''}`}
+        onClick={toggleSidebar}
+        title={`${t('toolbar.toggleSidebar')}${sk('view.toggleSidebar')}`}
+      >
+        <PanelLeft size={16} />
       </button>
       <button className={styles.btn} onClick={handleSave} title={`${t('toolbar.save')}${sk('file.save')}`} disabled={!activeTab}>
         <Save size={16} />

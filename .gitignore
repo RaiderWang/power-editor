@@ -7,3 +7,4 @@ src-tauri/target/
 .cursor/
 AGENTS.md
 scripts/
+__pycache__/

@@ -11,6 +11,7 @@ export interface EditorPrefs {
   theme: 'dark' | 'light';
   locale: Locale;
   printLineNumbers: boolean;
+  warnOnLargeFile: boolean;
 }
 
 export const DEFAULT_PREFS: EditorPrefs = {
@@ -22,6 +23,7 @@ export const DEFAULT_PREFS: EditorPrefs = {
   theme: 'dark',
   locale: 'en-US',
   printLineNumbers: false,
+  warnOnLargeFile: true,
 };
 
 /** Load editor prefs from localStorage, merging with defaults to handle missing keys. */

@@ -8,6 +8,7 @@ import type {
   WordfileDef,
 } from '../types';
 import type { AppSession } from '../types/session';
+import type { FileEntry } from '../types/explorer';
 
 // ──────────────────────────────────────────────────────────────
 // File operations
@@ -17,8 +18,8 @@ import type { AppSession } from '../types/session';
 export const getFileSize = (path: string): Promise<number> =>
   invoke('get_file_size', { path });
 
-export const openFile = (path: string, requestId: string): Promise<FileInfo> =>
-  invoke('open_file', { path, requestId });
+export const openFile = (path: string, requestId: string, readOnly?: boolean): Promise<FileInfo> =>
+  invoke('open_file', { path, requestId, readOnly: readOnly ?? false });
 
 export const newBuffer = (): Promise<FileInfo> =>
   invoke('new_buffer');
@@ -31,6 +32,9 @@ export const saveBuffer = (bufferId: number): Promise<void> =>
 
 export const saveBufferAs = (bufferId: number, path: string): Promise<FileInfo> =>
   invoke('save_buffer_as', { bufferId, path });
+
+export const setReadOnly = (bufferId: number, readOnly: boolean): Promise<FileInfo> =>
+  invoke('set_read_only', { bufferId, readOnly });
 
 export const renameBuffer = (bufferId: number, newName: string): Promise<FileInfo> =>
   invoke('rename_buffer', { bufferId, newName });
@@ -217,4 +221,27 @@ export const saveKeybindingsToFile = (data: string): Promise<void> =>
 /** Trigger native window printing (useful for macOS WKWebView). */
 export const printWindow = (): Promise<void> =>
   invoke('print_window');
+
+// ──────────────────────────────────────────────────────────────
+// File Explorer operations
+// ──────────────────────────────────────────────────────────────
+
+export const listDirectory = (path: string): Promise<FileEntry[]> =>
+  invoke('list_directory', { path });
+
+export const createFile = (path: string): Promise<void> =>
+  invoke('create_file', { path });
+
+export const createDirectory = (path: string): Promise<void> =>
+  invoke('create_directory', { path });
+
+export const renamePath = (oldPath: string, newPath: string): Promise<void> =>
+  invoke('rename_path', { oldPath, newPath });
+
+export const deletePath = (path: string): Promise<void> =>
+  invoke('delete_path', { path });
+
+export const revealInExplorer = (path: string): Promise<void> =>
+  invoke('reveal_in_explorer', { path });
+
 

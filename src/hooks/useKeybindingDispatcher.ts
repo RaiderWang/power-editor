@@ -16,6 +16,7 @@ import {
   reopenEncodingDialogOpenAtom,
 } from '../store/atoms';
 import { useFile } from './useFile';
+import { useExplorer } from './useExplorer';
 import { deleteCurrentLine, transformCase } from '../store/editorViewRegistry';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getTabSaveDefaultPath } from '../utils/tabFileName';
@@ -41,6 +42,7 @@ export function useKeybindingDispatcher() {
   const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
   const { handlePrint } = usePrintActiveTab();
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
+  const { openFolder, toggleSidebar } = useExplorer();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
 
@@ -56,6 +58,8 @@ export function useKeybindingDispatcher() {
             if (typeof selected === 'string' && selected) openFile(selected).catch(console.error);
           }).catch(console.error);
         };
+      case 'file.openFolder':
+        return () => { openFolder(); };
       case 'file.reopenWithEncoding':
         return () => {
           if (!tab?.fileInfo.path) return;
@@ -104,6 +108,8 @@ export function useKeybindingDispatcher() {
         return () => {
           document.dispatchEvent(new CustomEvent('keybinding:search.prevMatch'));
         };
+      case 'view.toggleSidebar':
+        return () => { toggleSidebar(); };
       case 'view.lineWrap':
         return () => { setPrefs((p) => ({ ...p, lineWrap: !p.lineWrap })); };
       case 'view.columnMode':
@@ -119,7 +125,7 @@ export function useKeybindingDispatcher() {
       default:
         return null;
     }
-  }, [activeTab, newFile, openFile, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
+  }, [activeTab, newFile, openFile, openFolder, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

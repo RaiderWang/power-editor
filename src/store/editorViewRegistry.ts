@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view';
 import { applyEdit } from './tauriCommands';
 import { setMatchRanges, setCurrentMatch } from '../extensions/searchHighlight';
 import type { SearchMatch } from '../types';
+import type { PaneId } from './splitAtoms';
 
 /**
  * Annotation used to mark CM transactions that originate from peer-sync
@@ -102,8 +103,29 @@ export function registerEditorView(bufferId: number, view: EditorView) {
   registry.set(bufferId, view);
 }
 
-export function getEditorView(bufferId: number): EditorView | null {
+export function getEditorView(bufferId: number, paneId: PaneId = 'primary'): EditorView | null {
+  if (paneId === 'secondary') {
+    return secondaryRegistry.get(bufferId) ?? null;
+  }
   return registry.get(bufferId) ?? null;
+}
+
+/**
+ * Focuses the EditorView for the specified buffer and pane.
+ * Performs immediate focus and schedules a requestAnimationFrame retry
+ * to handle asynchronous DOM display updates and pending mouse events.
+ */
+export function focusEditor(bufferId: number, paneId: PaneId = 'primary'): void {
+  const view = getEditorView(bufferId, paneId);
+  if (view) {
+    view.focus();
+  }
+  requestAnimationFrame(() => {
+    const v = getEditorView(bufferId, paneId);
+    if (v && !v.hasFocus) {
+      v.focus();
+    }
+  });
 }
 
 export function unregisterEditorView(bufferId: number) {

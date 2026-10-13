@@ -1,0 +1,64 @@
+.markdownToolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  min-height: 32px;
+  user-select: none;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--toolbar-btn-color);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--toolbar-btn-hover-bg);
+  border-color: var(--toolbar-btn-hover-border);
+  color: var(--app-fg);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.separator {
+  width: 1px;
+  height: 16px;
+  background: var(--toolbar-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-fg-muted);
+  margin-right: 4px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: var(--toolbar-field-bg);
+  border: 1px solid var(--toolbar-border);
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}

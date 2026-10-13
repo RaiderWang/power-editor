@@ -1,0 +1,255 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--app-bg);
+  border-right: 1px solid var(--toolbar-border);
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 35px;
+  min-height: 35px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--toolbar-border);
+  background-color: var(--toolbar-bg);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--app-fg-muted);
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--app-fg);
+  font-size: 11px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--toolbar-btn-color);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.actionBtn:hover {
+  background-color: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg);
+}
+
+.treeContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  outline: none;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--app-fg-muted);
+  gap: 12px;
+}
+
+.emptyText {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.openFolderBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background-color: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.openFolderBtn:hover {
+  background-color: var(--toolbar-btn-hover-border);
+}
+
+/* ── Tree Node Styles ── */
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  min-height: 24px;
+  padding-right: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--app-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.treeRow:hover {
+  background-color: var(--list-row-hover-bg);
+}
+
+.treeRow.selected {
+  background-color: var(--list-active-bg);
+  color: #ffffff;
+}
+
+.treeRow.selected:hover {
+  background-color: var(--list-active-bg-hover);
+}
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--app-fg-muted);
+  flex-shrink: 0;
+}
+
+.chevronHidden {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.folderIcon {
+  color: #dcb67a;
+}
+
+.label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inlineInput {
+  flex: 1;
+  height: 20px;
+  padding: 0 4px;
+  background-color: var(--toolbar-field-bg);
+  color: var(--app-fg);
+  border: 1px solid #007acc;
+  border-radius: 2px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+/* ── Context Menu ── */
+
+.contextMenuOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+}
+
+.contextMenu {
+  position: absolute;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 5px;
+  box-shadow: var(--panel-shadow);
+  padding: 4px 0;
+  min-width: 180px;
+  z-index: 10000;
+  font-size: 12px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: var(--app-fg);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  gap: 12px;
+}
+
+.menuItem:hover {
+  background-color: var(--list-active-bg);
+  color: #ffffff;
+}
+
+.menuItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menuSeparator {
+  height: 1px;
+  background-color: var(--toolbar-border);
+  margin: 4px 0;
+}
+
+.shortcut {
+  font-size: 11px;
+  color: var(--app-fg-muted);
+}
+
+.menuItem:hover .shortcut {
+  color: rgba(255, 255, 255, 0.8);
+}

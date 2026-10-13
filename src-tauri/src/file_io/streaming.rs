@@ -238,7 +238,7 @@ impl StreamContinuation {
 pub(crate) fn decode_stream_start(
     mut reader: BufReader<std::fs::File>,
     forced_encoding: Option<&'static Encoding>,
-) -> Result<(Rope, String, LineEnding, Option<StreamContinuation>)> {
+) -> Result<(Rope, String, LineEnding, Option<StreamContinuation>, bool)> {
     let mut raw_buf = vec![0u8; READ_BUF_SIZE];
 
     let first_n = read_chunk(&mut reader, &mut raw_buf)?;
@@ -248,9 +248,12 @@ pub(crate) fn decode_stream_start(
             "UTF-8".to_string(),
             LineEnding::Lf,
             None,
+            false,
         ));
     }
 
+    // Single-pass dual detection: detect binary characteristics and encoding on the same raw sample
+    let is_binary = super::is_binary_sample(&raw_buf[..first_n.min(8192)]);
     let encoding = forced_encoding.unwrap_or_else(|| super::resolve_encoding(&raw_buf[..first_n]));
 
     let mut decoder = encoding.new_decoder_with_bom_removal();
@@ -269,12 +272,12 @@ pub(crate) fn decode_stream_start(
         &mut state,
     );
 
-    if is_complete {
-        // Entire file fits in one chunk
+    if is_complete || is_binary {
+        // Entire file fits in one chunk OR binary file (suppress background continuation)
         state.finish(&mut builder);
         let rope = builder.finish();
         let le = state.line_ending();
-        Ok((rope, encoding.name().to_string(), le, None))
+        Ok((rope, encoding.name().to_string(), le, None, is_binary))
     } else {
         let rope = builder.finish();
         let le = state.line_ending(); // preliminary
@@ -287,7 +290,7 @@ pub(crate) fn decode_stream_start(
             decoded_buf,
             finished: false,
         };
-        Ok((rope, encoding.name().to_string(), le, Some(cont)))
+        Ok((rope, encoding.name().to_string(), le, Some(cont), false))
     }
 }
 

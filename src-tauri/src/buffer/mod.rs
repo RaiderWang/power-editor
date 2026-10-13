@@ -23,6 +23,10 @@ pub struct FileInfo {
     pub is_modified: bool,
     /// `false` while a large file is still being loaded in the background.
     pub is_fully_loaded: bool,
+    /// `true` when the file is opened in read-only mode (e.g. binary file safety protection).
+    pub is_read_only: bool,
+    /// `true` when binary/non-text content was detected during decode stream start.
+    pub is_binary: bool,
 }
 
 /// A chunk of text lines returned to the frontend
@@ -69,6 +73,10 @@ pub struct Buffer {
     /// the frontend shows the real file size even when the Rope is only partially
     /// loaded.
     pub file_total_bytes: u64,
+    /// `true` when the buffer is marked read-only.
+    pub is_read_only: bool,
+    /// `true` when the buffer was detected as binary data.
+    pub is_binary: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -100,6 +108,8 @@ impl Buffer {
             mtime: None,
             is_fully_loaded: true,
             file_total_bytes: 0,
+            is_read_only: false,
+            is_binary: false,
         }
     }
 
@@ -121,6 +131,8 @@ impl Buffer {
             line_ending: self.line_ending.as_str().to_string(),
             is_modified: self.is_modified,
             is_fully_loaded: self.is_fully_loaded,
+            is_read_only: self.is_read_only,
+            is_binary: self.is_binary,
         }
     }
 

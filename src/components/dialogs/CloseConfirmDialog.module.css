@@ -62,3 +62,20 @@
   color: var(--text-primary, #e0e0e0);
   border-color: var(--border, #555) !important;
 }
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxRow input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent, #0e639c);
+  margin: 0;
+}
+

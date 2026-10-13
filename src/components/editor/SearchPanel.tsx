@@ -25,7 +25,9 @@ import {
   hasCursorMoved,
   clearCursorMoved,
   getEditorDocLength,
+  focusEditor,
 } from '../../store/editorViewRegistry';
+import { activePaneAtom, secondaryActiveTabAtom } from '../../store/splitAtoms';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
 import { LineListDialog } from './LineListDialog';
@@ -50,6 +52,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const [total, setTotal] = useAtom(searchTotalAtom);
   const [currentIdx, setCurrentIdx] = useAtom(currentMatchIndexAtom);
   const activeTab = useAtomValue(activeTabAtom);
+  const activePane = useAtomValue(activePaneAtom);
+  const secondaryActiveTab = useAtomValue(secondaryActiveTabAtom);
   const searchTrigger = useAtomValue(searchTriggerAtom);
 
   const setTabs = useSetAtom(tabsAtom);
@@ -100,13 +104,20 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTrigger]);
 
-  // 关闭面板时清除所有标签页的高亮（Bug 1 修复）
-  // 仅清除当前活动标签不够：其他标签页可能因之前的搜索留有高亮装饰
+  // 关闭面板时清除所有标签页的高亮，并将焦点归还给当前活动的编辑器
+  const prevOpenRef = useRef(open);
   useEffect(() => {
     if (!open) {
       clearAllSearchHighlights();
+      if (prevOpenRef.current) {
+        const tabToFocus = activePane === 'secondary' ? (secondaryActiveTab ?? activeTab) : activeTab;
+        if (tabToFocus) {
+          focusEditor(tabToFocus.bufferId, activePane);
+        }
+      }
     }
-  }, [open]);
+    prevOpenRef.current = open;
+  }, [open, activeTab, secondaryActiveTab, activePane]);
 
   // 展开替换区时自动填入最近一次替换历史（仅在替换框为空时）
   useEffect(() => {
@@ -385,7 +396,15 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   if (!open) return null;
 
   return (
-    <div className={`${styles.panel} ${searching ? styles.panelSearching : ''}`}>
+    <div
+      className={`${styles.panel} ${searching ? styles.panelSearching : ''}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
       <div className={styles.header}>
         <span className={styles.title}>{t('search.title')}</span>
         <button className={styles.closeBtn} onClick={() => setOpen(false)} title={t('search.close')}>
@@ -400,7 +419,11 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
           onChange={(v) => setParams({ ...params, pattern: v })}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              e.shiftKey ? gotoPrev() : gotoNext();
+              if (e.shiftKey) {
+                gotoPrev();
+              } else {
+                gotoNext();
+              }
             }
             if (e.key === 'Escape') setOpen(false);
           }}
@@ -489,7 +512,11 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
             onChange={setReplaceText}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                e.shiftKey ? doReplaceOne() : doReplaceAll();
+                if (e.shiftKey) {
+                  doReplaceOne();
+                } else {
+                  doReplaceAll();
+                }
               }
               if (e.key === 'Escape') setOpen(false);
             }}

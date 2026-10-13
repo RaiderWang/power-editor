@@ -24,6 +24,7 @@ import {
 } from '../../store/previewAtoms';
 import { customKeybindingsAtom, keybindingsDialogOpenAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { useFile } from '../../hooks/useFile';
+import { useExplorer } from '../../hooks/useExplorer';
 import { usePrintActiveTab } from '../../hooks/usePrintActiveTab';
 import * as cmd from '../../store/tauriCommands';
 import { ask, message, open, save } from '@tauri-apps/plugin-dialog';
@@ -62,6 +63,7 @@ interface ScrollListItem {
 
 interface SubMenuItem {
   label: string;
+  checked?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }
@@ -122,7 +124,7 @@ const DropdownPanel: React.FC<DropdownPanelProps> = ({ items, offsetLeft, onClos
                   {item.items.map((si, j) => (
                     <button
                       key={j}
-                      className={styles.dropdownItem}
+                      className={`${styles.dropdownItem} ${si.checked ? styles.checked : ''}`}
                       disabled={si.disabled}
                       onClick={() => { if (!si.disabled) { si.onClick(); onClose(); } }}
                       title={si.label}
@@ -169,6 +171,7 @@ export const MenuBar: React.FC = () => {
 
   const t = useTranslation();
   const { openFile, newFile, closeTab, saveFile, saveFileAs, renameFile } = useFile();
+  const { currentFolderPath, openFolder, closeFolder, toggleSidebar, sidebarVisible } = useExplorer();
   const recentFiles = useAtomValue(recentFilesAtom);
   const [favoriteFiles, setFavoriteFiles] = useAtom(favoriteFilesAtom);
 
@@ -441,6 +444,11 @@ export const MenuBar: React.FC = () => {
 
   const settingsSubmenuItems: SubMenuItem[] = [
     { label: t('menu.file.keybindSettings'), onClick: () => setKeybindingsDialogOpen(true) },
+    {
+      label: t('menu.file.warnOnLargeFile'),
+      checked: prefs.warnOnLargeFile,
+      onClick: () => setPrefs((p) => ({ ...p, warnOnLargeFile: !p.warnOnLargeFile })),
+    },
     ...(IS_WINDOWS ? [
       {
         label: integrationStatus === 'registered'
@@ -466,6 +474,8 @@ export const MenuBar: React.FC = () => {
   const fileMenu: MenuItem[] = [
     { kind: 'item', label: t('menu.file.new'), shortcut: shortcut('file.new'), onClick: handleNewFile },
     { kind: 'item', label: t('menu.file.open'), shortcut: shortcut('file.open'), onClick: handleOpen },
+    { kind: 'item', label: t('menu.file.openFolder'), shortcut: shortcut('file.openFolder'), onClick: openFolder },
+    { kind: 'item', label: t('menu.file.closeFolder'), disabled: !currentFolderPath, onClick: closeFolder },
     {
       kind: 'item',
       label: t('menu.file.reopenWithEncoding'),
@@ -543,6 +553,14 @@ export const MenuBar: React.FC = () => {
   ];
 
   const viewMenu: MenuItem[] = [
+    {
+      kind: 'item',
+      label: t('menu.view.toggleSidebar'),
+      shortcut: shortcut('view.toggleSidebar'),
+      checked: sidebarVisible,
+      onClick: toggleSidebar,
+    },
+    { kind: 'sep' },
     {
       kind: 'item',
       label: t('menu.view.lineWrap'),

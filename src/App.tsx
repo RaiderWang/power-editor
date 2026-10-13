@@ -6,6 +6,8 @@ import { useTranslation } from './i18n';
 import { splitLayoutAtom, secondaryModeAtom } from './store/splitAtoms';
 import { MenuBar } from './components/menubar/MenuBar';
 import { Toolbar } from './components/toolbar/Toolbar';
+import { MarkdownToolbar } from './components/toolbar/MarkdownToolbar';
+import { isMarkdownLanguage } from './extensions/builtinLanguages';
 import { TabBar } from './components/tabs/TabBar';
 import { Editor } from './components/editor/Editor';
 import { EditorPane } from './components/layout/EditorPane';
@@ -15,9 +17,12 @@ import { StatusBar } from './components/statusbar/StatusBar';
 import { CloseConfirmDialog } from './components/dialogs/CloseConfirmDialog';
 import { ExternalChangeDialog } from './components/dialogs/ExternalChangeDialog';
 import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDialog';
+import { BinaryFileConfirmDialog } from './components/dialogs/BinaryFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
 import { EncodingPicker } from './components/statusbar/EncodingPicker';
+import { FileExplorer } from './components/explorer/FileExplorer';
 import { useFile } from './hooks/useFile';
+import { useExplorer } from './hooks/useExplorer';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useFileOpenProgress } from './hooks/useFileOpenProgress';
 import { useSessionRestore } from './hooks/useSessionRestore';
@@ -42,6 +47,7 @@ export default function App() {
   const encodings = useAtomValue(supportedEncodingsAtom);
   const [reopenEncodingOpen, setReopenEncodingOpen] = useAtom(reopenEncodingDialogOpenAtom);
   const { newFile, openFile, reopenWithEncoding } = useFile();
+  const { sidebarVisible, setSidebarWidth, openFolder } = useExplorer();
 
   useSessionRestore();
   useWindowClose();
@@ -134,62 +140,97 @@ export default function App() {
     window.addEventListener('mouseup', onUp);
   }, [splitLayout]);
 
+  // ── Sidebar-resizer drag logic ─────────────────────────────────
+  const sidebarDragRef = useRef(false);
+  const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    sidebarDragRef.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!sidebarDragRef.current) return;
+      const newWidth = Math.min(600, Math.max(160, ev.clientX));
+      setSidebarWidth(newWidth);
+    };
+    const onUp = () => {
+      sidebarDragRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [setSidebarWidth]);
+
   return (
     <div className="app" data-theme={prefs.theme}>
       <MenuBar />
       <Toolbar />
+      {isMarkdownLanguage(activeTab?.language) && <MarkdownToolbar />}
 
-      {splitLayout === 'none' ? (
-        /* ── Single-pane layout (original) ── */
-        <>
-          <TabBar />
-          <div className="editor-area">
-            {tabs.length === 0 ? (
-              <WelcomeScreen onNew={newFile} />
-            ) : (
-              tabs.map((tab) => (
-                <div
-                  key={tab.id}
-                  style={{ display: tab.id === activeTab?.id ? 'contents' : 'none' }}
-                >
-                  <Editor tab={tab} onCursorChange={handleCursorChange} />
-                </div>
-              ))
-            )}
-          </div>
-        </>
-      ) : (
-        /* ── Split-pane layout ── */
-        <div
-          ref={splitContainerRef}
-          className={`editor-area editor-split ${splitLayout === 'horizontal' ? 'editor-split-h' : 'editor-split-v'}`}
-        >
-          <div ref={primaryPaneRef} className="split-primary">
-            <EditorPane
-              paneId="primary"
-              onCursorChange={handleCursorChange}
-            />
-          </div>
-          <div
-            className={`split-handle ${splitLayout === 'horizontal' ? 'split-handle-h' : 'split-handle-v'}`}
-            onMouseDown={handleDragStart}
-          />
-          {secondaryMode === 'markdownPreview' ? (
-            <MarkdownPreviewPane />
+      <div className="workspace-container">
+        {sidebarVisible && (
+          <>
+            <FileExplorer />
+            <div className="sidebar-resizer" onMouseDown={handleSidebarDragStart} />
+          </>
+        )}
+        <div className="workspace-main">
+          {splitLayout === 'none' ? (
+            /* ── Single-pane layout (original) ── */
+            <>
+              <TabBar />
+              <div className="editor-area">
+                {tabs.length === 0 ? (
+                  <WelcomeScreen onNew={newFile} onOpenFolder={openFolder} />
+                ) : (
+                  tabs.map((tab) => (
+                    <div
+                      key={tab.id}
+                      style={{ display: tab.id === activeTab?.id ? 'contents' : 'none' }}
+                    >
+                      <Editor
+                        tab={tab}
+                        isActive={tab.id === activeTab?.id}
+                        onCursorChange={handleCursorChange}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           ) : (
-            <EditorPane
-              paneId="secondary"
-              onCursorChange={handleCursorChange}
-            />
+            /* ── Split-pane layout ── */
+            <div
+              ref={splitContainerRef}
+              className={`editor-area editor-split ${splitLayout === 'horizontal' ? 'editor-split-h' : 'editor-split-v'}`}
+            >
+              <div ref={primaryPaneRef} className="split-primary">
+                <EditorPane
+                  paneId="primary"
+                  onCursorChange={handleCursorChange}
+                />
+              </div>
+              <div
+                className={`split-handle ${splitLayout === 'horizontal' ? 'split-handle-h' : 'split-handle-v'}`}
+                onMouseDown={handleDragStart}
+              />
+              {secondaryMode === 'markdownPreview' ? (
+                <MarkdownPreviewPane />
+              ) : (
+                <EditorPane
+                  paneId="secondary"
+                  onCursorChange={handleCursorChange}
+                />
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       <SearchPanel onMatchesFound={handleMatchesFound} />
       <StatusBar cursorLine={cursorLine} cursorCol={cursorCol} />
       <CloseConfirmDialog />
       <ExternalChangeDialog />
       <LargeFileConfirmDialog />
+      <BinaryFileConfirmDialog />
       <KeyboardShortcutsDialog />
       {reopenEncodingOpen && activeTab && activeTab.fileInfo.path && (
         <EncodingPicker
@@ -205,7 +246,7 @@ export default function App() {
   );
 }
 
-function WelcomeScreen({ onNew }: { onNew: () => void }) {
+function WelcomeScreen({ onNew, onOpenFolder }: { onNew: () => void; onOpenFolder: () => void }) {
   const t = useTranslation();
   return (
     <div className="welcome">
@@ -214,6 +255,7 @@ function WelcomeScreen({ onNew }: { onNew: () => void }) {
         <p>{t('app.tagline')}</p>
         <div className="welcome-actions">
           <button onClick={onNew}>{t('app.newFile')}</button>
+          <button onClick={onOpenFolder}>{t('app.openFolder')}</button>
           <span className="hint">{t('app.dropHint')}</span>
         </div>
         <ul className="features">
