@@ -20,6 +20,7 @@ import { useExplorer } from './useExplorer';
 import { deleteCurrentLine, transformCase } from '../store/editorViewRegistry';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getTabSaveDefaultPath } from '../utils/tabFileName';
+import { writeClipboardText } from '../utils/clipboard';
 import { toggleMarkdownPreviewAtom } from '../store/previewAtoms';
 import { usePrintActiveTab } from './usePrintActiveTab';
 
@@ -96,7 +97,7 @@ export function useKeybindingDispatcher() {
       case 'edit.copyPath':
         return () => {
           const path = tab?.fileInfo.path;
-          if (path) navigator.clipboard.writeText(path).catch(console.error);
+          if (path) void writeClipboardText(path);
         };
       case 'search.find':
         return () => { setSearchOpen(true); setSearchTrigger((n) => n + 1); };

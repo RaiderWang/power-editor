@@ -29,6 +29,7 @@ import { useSessionRestore } from './hooks/useSessionRestore';
 import { useWindowClose } from './hooks/useWindowClose';
 import { usePrefsPersist } from './hooks/usePrefsPersist';
 import { useKeybindingDispatcher } from './hooks/useKeybindingDispatcher';
+import { useBlockNativeContextMenu } from './hooks/useBlockNativeContextMenu';
 import * as cmd from './store/tauriCommands';
 import { listen } from '@tauri-apps/api/event';
 import { highlightSearchMatches } from './store/editorViewRegistry';
@@ -55,6 +56,7 @@ export default function App() {
   useFileWatcher();
   useFileOpenProgress();
   useKeybindingDispatcher();
+  useBlockNativeContextMenu();
 
   useEffect(() => {
     initKeybindingsFromFile().then((data) => {

@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+
+## [0.2.7] - 2026-10-14
+
+### Added / 新增
+- **Custom Editor Context Menu / 编辑器定制右键上下文菜单**:
+  - **Native Context Menu Suppression**: Suppressed WebView2 default context menus (Back, Reload, Print, Inspect) across the application, while keeping native menus for text input elements (`<input>`, `<textarea>`) and enabling DevTools inspect via Shift+Right-Click in dev mode.
+    （**原生右键菜单屏蔽**：全局拦截 WebView2 默认的浏览器右键上下文菜单（后退、刷新、打印等），同时保留文本输入框（`<input>`/`<textarea>`）的原生剪贴板功能，开发环境下支持按住 Shift 右键呼出检查元素。）
+  - **Power Editor Native Ecosystem Context Menu**: Designed a dedicated, theme-aligned custom context menu for CodeMirror editor tabs featuring Undo/Redo, Cut/Copy/Paste, Select All (respecting large-file virtual document limits), Find & Replace, Delete Line, Case Transformations (UPPERCASE/lowercase), Word Wrap, Column Mode, Markdown Preview toggle, and Copy File Path.
+    （**专属编辑器生态右键菜单**：专为 CodeMirror 设计契合 Power Editor 视觉风格的高性能右键菜单，提供撤销/重做、剪切/复制/粘贴、全选（兼容大文件虚拟加载限制）、查找替换、删除整行、大小写转换、自动换行与列模式切换、Markdown 预览切换及复制文件路径等功能。）
+  - **System Clipboard Integration**: Clipboard read/write now goes through `tauri-plugin-clipboard-manager`; writing falls back to `navigator.clipboard` if the plugin fails. The menu and the Copy File Path shortcut share the same clipboard helper.
+    （**系统剪贴板集成**：剪贴板读写改用 `tauri-plugin-clipboard-manager`，写入失败时回退到 `navigator.clipboard`；菜单与“复制文件路径”快捷键共用同一剪贴板工具。）
+  - **Read-only tabs and split panes**: The menu also opens on read-only tabs (edit items disabled), and Uppercase/Lowercase act on the pane that was right-clicked.
+    （**只读标签页与分屏**：只读标签页同样可弹出菜单（编辑类项目禁用）；转大写/小写作用于被右键点击的窗格。）
+  - **Keyboard handling**: While the menu is open, Arrow keys / Enter / Esc are handled by the menu only and no longer also act on the editor; other keys close the menu.
+    （**键盘处理**：菜单打开时，方向键/回车/Esc 仅由菜单处理，不再同时作用于编辑器；其他按键会关闭菜单。）
+
+### Known limitations / 已知限制
+- Pasting into multiple cursors or column selections inserts the full clipboard text at every selection.
+  （多光标或列选区下粘贴时，每个选区都会插入完整的剪贴板文本。）
+
 ## [0.2.6] - 2026-10-13
 
 ### Improved / 优化
@@ -258,7 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/RaiderWang/power-editor/compare/v0.2.3...v0.2.4

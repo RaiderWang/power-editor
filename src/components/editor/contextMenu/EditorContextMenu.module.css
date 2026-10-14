@@ -1,0 +1,72 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 220px;
+  background: var(--toolbar-bg, #2d2d2d);
+  border: 1px solid var(--toolbar-border, #555555);
+  border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 4px 0;
+  user-select: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 12px;
+  font-size: 13px;
+  color: var(--app-fg, #d4d4d4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  gap: 16px;
+  transition: background 0.08s;
+  outline: none;
+}
+
+.itemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.item:hover:not(:disabled),
+.item.focused:not(:disabled) {
+  background: var(--toolbar-btn-hover-bg, #505050);
+}
+
+.item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.shortcut {
+  font-size: 11px;
+  color: var(--app-fg-muted, #999999);
+  margin-left: auto;
+}
+
+.separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--toolbar-border, #555555);
+}

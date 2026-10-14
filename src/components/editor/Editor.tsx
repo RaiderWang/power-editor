@@ -13,16 +13,19 @@ import {
   keymap,
 } from '@codemirror/view';
 import type { ViewUpdate } from '@codemirror/view';
-import { defaultKeymap, historyKeymap, history, indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, historyKeymap, history, indentWithTab, selectAll } from '@codemirror/commands';
 import { foldGutter, indentOnInput, bracketMatching, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { oneDark } from '@codemirror/theme-one-dark';
 
 import { columnModeExtension } from '../../extensions/columnMode';
 import { chromiumImeAutocorrectWorkaround } from '../../extensions/chromiumImeAutocorrectWorkaround';
 import { smartEnterKey } from '../../extensions/smartEnter';
+import { editorContextMenuExtension } from '../../extensions/editorContextMenu';
 import { searchMatchField, searchHighlightTheme } from '../../extensions/searchHighlight';
 import { buildWordfileLanguage } from '../../extensions/wordfileSyntax';
 import { findBuiltinByExt } from '../../extensions/builtinLanguages';
+import { EditorContextMenu } from './contextMenu/EditorContextMenu';
+import type { ContextMenuState } from './contextMenu/types';
 import {
   editorPrefsAtom,
   columnModeAtom,
@@ -143,6 +146,18 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   const t = useTranslation();
   const tRef = useRef(t);
   useEffect(() => { tRef.current = t; }, [t]);
+
+  // ── Context menu state ─────────────────────────────────────────
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const selectAllRef = useRef<(view: EditorView) => boolean>(() => false);
+  const handleSelectAll = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const handled = selectAllRef.current(view);
+    if (!handled) {
+      selectAll(view);
+    }
+  }, []);
 
   // ── Update virtual-scrollbar thumb position and size ─────────────
   // Called whenever the CM viewport changes or the virtual window shifts.
@@ -749,6 +764,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
 
       return true;
     };
+    selectAllRef.current = selectAllHandler;
 
     const state = EditorState.create({
       doc: '',
@@ -786,12 +802,14 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         readOnlyComp.of(EditorState.readOnly.of(Boolean(tab.readOnly))),
         editableComp.of(EditorView.editable.of(!tab.readOnly)),
         chromiumImeAutocorrectWorkaround(),
+        editorContextMenuExtension({
+          onOpen: (coords, v) => setContextMenu({ ...coords, view: v }),
+        }),
       ],
     });
 
     const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
-
     const setPeer = (v: EditorView | null) => { peerViewRef.current = v; };
 
     if (paneId === 'secondary') {
@@ -836,6 +854,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       viewRef.current = null;
       loadingRef.current = false;
       peerViewRef.current = null;
+      setContextMenu(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -844,6 +863,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   useEffect(() => {
     const view = viewRef.current;
     if (!view || tab.bufferId === prevBufferIdRef.current) return;
+    setContextMenu(null);
 
     const prevId = prevBufferIdRef.current;
     unregisterJumpToLine(prevId);
@@ -999,6 +1019,15 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         style={{ flex: 1, overflow: 'hidden', fontFamily: prefs.fontFamily }}
       />
       <VirtualScrollbar top={vsbInfo.top} size={vsbInfo.size} onSeek={handleSeek} />
+      {contextMenu && (
+        <EditorContextMenu
+          position={contextMenu}
+          view={contextMenu.view}
+          tab={tab}
+          onSelectAll={handleSelectAll}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };
