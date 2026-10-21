@@ -37,6 +37,7 @@ import { AboutDialog } from '../dialogs/AboutDialog';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';
 import { deleteCurrentLine, transformCase } from '../../store/editorViewRegistry';
 import { useTranslation } from '../../i18n';
+import { useUpdater } from '../../hooks/useUpdater';
 import type { Locale } from '../../store/editorPrefs';
 import { resolveLangName, resolveLangExtension, getSelectableLanguages } from '../../utils/languageSelection';
 import styles from './MenuBar.module.css';
@@ -188,6 +189,7 @@ export const MenuBar: React.FC = () => {
   const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const shortcut = useCallback((id: string) => getEffectiveShortcut(id, customs), [customs]);
   const { handlePrint } = usePrintActiveTab();
+  const { checkForUpdates } = useUpdater();
 
   const handleTogglePrintLineNumbers = useCallback(() => {
     setPrefs((p) => ({ ...p, printLineNumbers: !p.printLineNumbers }));
@@ -449,6 +451,11 @@ export const MenuBar: React.FC = () => {
       checked: prefs.warnOnLargeFile,
       onClick: () => setPrefs((p) => ({ ...p, warnOnLargeFile: !p.warnOnLargeFile })),
     },
+    {
+      label: t('menu.file.autoCheckUpdates'),
+      checked: prefs.autoCheckUpdates,
+      onClick: () => setPrefs((p) => ({ ...p, autoCheckUpdates: !p.autoCheckUpdates })),
+    },
     ...(IS_WINDOWS ? [
       {
         label: integrationStatus === 'registered'
@@ -666,6 +673,8 @@ export const MenuBar: React.FC = () => {
   // ── Menu list ────────────────────────────────────────
 
   const helpMenu: MenuItem[] = [
+    { kind: 'item', label: t('menu.help.checkUpdates'), onClick: () => checkForUpdates(false) },
+    { kind: 'sep' },
     { kind: 'item', label: t('menu.help.about'), onClick: () => setShowAboutDialog(true) },
   ];
 

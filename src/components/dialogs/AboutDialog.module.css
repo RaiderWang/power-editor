@@ -91,11 +91,29 @@
 }
 
 .actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 4px;
 }
 
+.btnCheck {
+  padding: 6px 16px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--toolbar-border);
+  background: transparent;
+  color: var(--app-fg);
+  transition: background-color 0.15s, opacity 0.15s;
+}
+
+.btnCheck:hover {
+  background: var(--toolbar-hover);
+}
+
 .btnClose {
-  padding: 6px 24px;
+  padding: 6px 20px;
   border-radius: 5px;
   font-size: 13px;
   cursor: pointer;

@@ -12,6 +12,8 @@ export interface EditorPrefs {
   locale: Locale;
   printLineNumbers: boolean;
   warnOnLargeFile: boolean;
+  autoCheckUpdates: boolean;
+  skippedUpdateVersion: string;
 }
 
 export const DEFAULT_PREFS: EditorPrefs = {
@@ -24,6 +26,8 @@ export const DEFAULT_PREFS: EditorPrefs = {
   locale: 'en-US',
   printLineNumbers: false,
   warnOnLargeFile: true,
+  autoCheckUpdates: true,
+  skippedUpdateVersion: '',
 };
 
 /** Load editor prefs from localStorage, merging with defaults to handle missing keys. */
