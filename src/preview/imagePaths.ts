@@ -26,13 +26,31 @@ function setAssetSrc(img: HTMLImageElement, absolutePath: string): void {
   }
 }
 
+const MAX_CACHE_ENTRIES = 1000;
+const imageCache = new Map<string, string>();
+
+function cacheSet(key: string, value: string): void {
+  if (imageCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = imageCache.keys().next().value;
+    if (firstKey) imageCache.delete(firstKey);
+  }
+  imageCache.set(key, value);
+}
+
+/** Clears the in-memory resolved image path cache. */
+export function clearImageCache(): void {
+  imageCache.clear();
+}
+
 /**
  * Rewrites local image sources to Tauri's asset protocol.
  *
  * - Absolute paths are used as-is.
  * - Relative paths are resolved by the Rust backend (`resolve_image_paths`), which tries the
- *   document folder, every parent folder (covers Obsidian vault-root-relative links such as
- *   `Readwise/Tweets/attachments/a.jpg`) and finally a vault-wide shortest-path lookup.
+ *   document folder, every parent folder up to vault root (covers Obsidian vault-root-relative
+ *   links such as `Readwise/Tweets/attachments/a.jpg`) and finally a vault-wide shortest-path lookup.
+ * - Resolved paths are cached in-memory so subsequent keystrokes update images synchronously,
+ *   preventing broken-image flicker and avoiding redundant filesystem scans.
  * - Links that cannot be found fall back to `<document folder>/<link>` (shows a broken image).
  */
 export async function postProcessImages(
@@ -51,6 +69,15 @@ export async function postProcessImages(
       return;
     }
     if (!currentFilePath) return;
+
+    const cacheKey = `${currentFilePath}\0${clean}`;
+    if (imageCache.has(cacheKey)) {
+      const cached = imageCache.get(cacheKey);
+      if (cached) {
+        setAssetSrc(img, cached);
+      }
+      return;
+    }
 
     const group = pending.get(clean);
     if (group) group.push(img);
@@ -71,6 +98,8 @@ export async function postProcessImages(
   links.forEach((link, i) => {
     const target = resolved[i] ?? (baseDir ? `${baseDir}/${link}` : null);
     if (!target) return;
+    cacheSet(`${currentFilePath}\0${link}`, target);
     pending.get(link)?.forEach((img) => setAssetSrc(img, target));
   });
 }
+

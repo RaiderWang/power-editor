@@ -36,7 +36,9 @@ function escapeAttr(text: string): string {
  * - `![[image.png|300|Alt description]]`
  */
 export function parseWikiImage(rawText: string): WikiImageInfo | null {
-  const parts = rawText.split('|').map((s) => s.trim());
+  // Support escaped pipe (\|) commonly used in GFM markdown tables
+  const normalized = rawText.replace(/\\\|/g, '|');
+  const parts = normalized.split('|').map((s) => s.trim());
   const target = parts[0];
   if (!target) return null;
 
