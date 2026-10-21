@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added / 新增
+- **In-App Auto/Manual Updates / 应用内自动与手动更新**:
+  - **Tauri v2 Updater Pipeline & Cryptographic Verification**: Integrated `tauri-plugin-updater` and `tauri-plugin-process` backed by Minisign/Ed25519 digital signature verification (`.sig`), fetching release manifests (`latest.json`) directly from GitHub Releases with passive background installation on Windows and in-place `.app` replacement on macOS.
+    （**官方更新流水线与安全签名校验**：基于 `tauri-plugin-updater` 与 `tauri-plugin-process` 构建，集成 Minisign/Ed25519 密码学签名校验（`.sig`），直接对接 GitHub Releases 静态清单（`latest.json`），Windows 端支持静默被动安装，macOS 端进程内解压替换免除 Quarantine 隔离属性拦截。）
+  - **Unsaved Session & Virtual Buffer Protection**: Engineered a pre-install session persistence guard (`persistAppSession`). Before executing update installation or restarting, Power Editor automatically flushes all CodeMirror virtual window modifications to Rust Rope buffers, exports modified documents to scratch files, and updates `session.json`, allowing `useSessionRestore` to seamlessly restore all open tabs, unsaved edits, and cursor positions upon relaunch.
+    （**未保存缓冲与工作现场零丢失保护**：针对大文件虚拟窗口机制设计了更新前安全落盘逻辑（`persistAppSession`）。在执行更新安装与重启前，自动将 CodeMirror 视图的修改刷入 Rust Rope，将未保存标签页导出为 `scratch` 临时文件并更新 `session.json`，确保新版本重启后无缝恢复所有打开的文件、未保存内容及光标位置。）
+  - **Non-Intrusive Status Bar Badge & Update Modal**: Checks silently 3 seconds after startup without interrupting editing. When a new version is detected, a green capsule badge (`⬆ vX.Y.Z`) appears unobtrusively on the status bar. Clicking the badge opens the dedicated `UpdateDialog`, displaying release notes parsed from `CHANGELOG.md`, a real-time progress bar (bytes / percentage), options to update immediately, skip this version, or download manually.
+    （**状态栏非打扰式徽标与更新详情弹窗**：应用启动 3 秒后在后台静默检测，零弹窗干扰编辑；检测到新版本时在状态栏右侧呈现醒目的绿色胶囊徽标（`⬆ vX.Y.Z`）。点击即可唤起专属更新弹窗，展示当前版本的 Markdown 格式更新日志、实时下载字节与百分比进度条，支持“立即更新”、“跳过此版本”及网络受限时的“手动下载”兜底。）
+  - **Entry Points & Preference Settings**: Added "Check for Updates..." to the `Help` menu and About dialog; added an "Automatically Check for Updates" toggle in `File -> Settings` submenu with preference persistence.
+    （**全局入口与自动更新设置**：在 `帮助` 菜单与 `关于` 弹窗中提供“检查更新...”手动入口；在 `文件 -> 设置` 子菜单中提供“自动检查更新”开关，支持偏好记忆。）
+  - **CI Release Manifest Automation**: Updated `.github/workflows/release.yml` and `.github/update_release_notes.py` to sign release artifacts and automatically inject the parsed version notes from `CHANGELOG.md` into `latest.json` on release publication.
+    （**CI 自动化更新说明注入**：更新 `.github/workflows/release.yml` 与 `.github/update_release_notes.py`，在构建发布时自动执行密钥签名，并将 `CHANGELOG.md` 中提取的版本变更说明同步注入至 `latest.json` 的 `notes` 字段。）
 - **WikiLink Image Embed Syntax Compatibility / WikiLink（双链）图片嵌入语法兼容**:
   - **Obsidian / WikiLink Image Rendering**: Added native preview and print support for WikiLink image embeds (`![[path/to/image.png]]`), parsing them into standard responsive `<img>` elements while leaving non-image embeds (notes, PDFs) untransformed.
     （**Obsidian / WikiLink 图片嵌入渲染**：Markdown 预览和打印模块原生支持双中括号图片语法（`![[path/to/image.png]]`），自动解析为标准自适应 `<img>` 元素，非图片资源链接（笔记、PDF 等）保持原样。）

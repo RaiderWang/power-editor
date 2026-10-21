@@ -1,6 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { ArrowUpCircle } from 'lucide-react';
 import { activeTabAtom, openProgressAtom, supportedEncodingsAtom } from '../../store/atoms';
+import { updateStatusAtom, updateDetailsAtom, updateDialogOpenAtom } from '../../store/updaterAtoms';
 import { getTabTitle } from '../../utils/tabFileName';
 import { useFile } from '../../hooks/useFile';
 import { EncodingPicker } from './EncodingPicker';
@@ -17,6 +19,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
   const activeTab = useAtomValue(activeTabAtom);
   const encodings = useAtomValue(supportedEncodingsAtom);
   const openProgress = useAtomValue(openProgressAtom);
+  const updateStatus = useAtomValue(updateStatusAtom);
+  const updateDetails = useAtomValue(updateDetailsAtom);
+  const setUpdateDialogOpen = useSetAtom(updateDialogOpenAtom);
   const { reopenWithEncoding } = useFile();
   const [pickerOpen, setPickerOpen] = useState(false);
   const encodingRef = useRef<HTMLButtonElement>(null);
@@ -39,7 +44,22 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
   }, [activeTab, reopenWithEncoding]);
 
   if (!activeTab) {
-    return <div className={styles.bar} />;
+    return (
+      <div className={styles.bar}>
+        <span className={styles.spacer} />
+        {updateStatus === 'available' && updateDetails && (
+          <button
+            type="button"
+            className={styles.updateBadge}
+            onClick={() => setUpdateDialogOpen(true)}
+            title={t('update.badgeHint', { version: updateDetails.version })}
+          >
+            <ArrowUpCircle size={12} />
+            <span>v{updateDetails.version}</span>
+          </button>
+        )}
+      </div>
+    );
   }
 
   const { fileInfo } = activeTab;
@@ -96,6 +116,22 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
         </>
       )}
       <span className={styles.spacer} />
+
+      {updateStatus === 'available' && updateDetails && (
+        <>
+          <button
+            type="button"
+            className={styles.updateBadge}
+            onClick={() => setUpdateDialogOpen(true)}
+            title={t('update.badgeHint', { version: updateDetails.version })}
+          >
+            <ArrowUpCircle size={12} />
+            <span>v{updateDetails.version}</span>
+          </button>
+          <span className={styles.separator}>|</span>
+        </>
+      )}
+
       <span className={styles.item} title={t('status.filePath')}>
         {getTabTitle(activeTab, t)}
       </span>

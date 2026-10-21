@@ -19,6 +19,8 @@ import { ExternalChangeDialog } from './components/dialogs/ExternalChangeDialog'
 import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDialog';
 import { BinaryFileConfirmDialog } from './components/dialogs/BinaryFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
+import { UpdateDialog } from './components/dialogs/UpdateDialog';
+import { useUpdater } from './hooks/useUpdater';
 import { EncodingPicker } from './components/statusbar/EncodingPicker';
 import { FileExplorer } from './components/explorer/FileExplorer';
 import { useFile } from './hooks/useFile';
@@ -57,6 +59,7 @@ export default function App() {
   useFileOpenProgress();
   useKeybindingDispatcher();
   useBlockNativeContextMenu();
+  useUpdater();
 
   useEffect(() => {
     initKeybindingsFromFile().then((data) => {
@@ -234,6 +237,7 @@ export default function App() {
       <LargeFileConfirmDialog />
       <BinaryFileConfirmDialog />
       <KeyboardShortcutsDialog />
+      <UpdateDialog />
       {reopenEncodingOpen && activeTab && activeTab.fileInfo.path && (
         <EncodingPicker
           currentEncoding={activeTab.fileInfo.encoding}

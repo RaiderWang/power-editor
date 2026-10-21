@@ -7,7 +7,6 @@
   "app.feature.wordfile": "UltraEdit Wordfile syntax highlighting",
   "app.feature.encoding": "Multi-encoding support & conversion",
   "app.feature.tools": "Column mode, find & replace, line ending conversion",
-
   "menu.file": "File",
   "menu.edit": "Edit",
   "menu.view": "View",
@@ -15,7 +14,6 @@
   "menu.language": "Language",
   "menu.help": "Help",
   "menu.help.about": "About Power Editor",
-
   "menu.file.new": "New",
   "menu.file.open": "Open File...",
   "menu.file.openFolder": "Open Folder...",
@@ -41,7 +39,6 @@
   "menu.file.langLabel": "界面语言 / Language",
   "menu.file.langZh": "中文",
   "menu.file.langEn": "English",
-
   "menu.edit.findReplace": "Find & Replace...",
   "menu.edit.deleteLine": "Delete Line",
   "menu.edit.toUpperCase": "UPPERCASE",
@@ -49,7 +46,6 @@
   "menu.edit.rename": "Rename...",
   "menu.edit.copyPath": "Copy File Path",
   "menu.edit.csvToFixed": "CSV to Fixed Width...",
-
   "menu.view.toggleSidebar": "Toggle File Explorer",
   "menu.view.lineWrap": "Word Wrap",
   "menu.view.columnMode": "Column Mode",
@@ -63,13 +59,10 @@
   "menu.view.splitH": "Side by Side",
   "menu.view.splitV": "Top and Bottom",
   "menu.view.closeSplit": "Close Split",
-
   "menu.format.encoding": "Encoding",
   "menu.format.lineEnding": "Line Ending",
-
   "menu.language.importWordfile": "Import Wordfile (.uew)...",
   "wordfile.skippedBuiltin": "Markdown is built in (syntax highlighting + preview). Skipped from the wordfile: {names}.",
-
   "preview.title": "Markdown Preview",
   "preview.syncScroll": "Sync Scroll",
   "preview.close": "Close Preview",
@@ -79,7 +72,6 @@
   "preview.tooLarge": "File size ({size}) exceeds the maximum preview limit (5 MB)",
   "preview.loading": "Loading full document...",
   "preview.empty": "No content",
-
   "dialog.openFailed": "Open Failed",
   "dialog.openError": "Cannot open file:\n{path}\n\n{err}",
   "dialog.openErrorFav": "Cannot open file:\n{path}\n\nRemove from favorites?",
@@ -91,7 +83,6 @@
   "dialog.explorerRegFail": "Registration failed: {err}",
   "dialog.explorerUnregDone": "Removed from Explorer context menu.",
   "dialog.explorerUnregFail": "Unregister failed: {err}",
-
   "toolbar.new": "New",
   "toolbar.open": "Open File",
   "toolbar.openFolder": "Open Folder",
@@ -115,7 +106,6 @@
   "toolbar.saveFail": "Save failed: {err}",
   "toolbar.encodingFail": "Encoding change failed: {err}",
   "toolbar.lineEndingFail": "Line ending change failed: {err}",
-
   "tabs.saveAs": "Save As...",
   "tabs.rename": "Rename...",
   "tabs.copyPath": "Copy File Path",
@@ -126,7 +116,6 @@
   "tabs.newTab": "New Tab (Ctrl+N)",
   "tabs.closeSplit": "Close Split",
   "tabs.splitView": "Split View",
-
   "status.cursorPos": "Cursor Position",
   "status.line": "Ln {line}, Col {col}",
   "status.totalLines": "Total Lines",
@@ -139,9 +128,7 @@
   "status.modified": "Modified",
   "status.loading": "Loading…",
   "status.filePath": "File Path",
-
   "encoding.reopenHeader": "Reopen with Encoding",
-
   "search.title": "Find",
   "search.close": "Close (Esc)",
   "search.placeholder": "Find... (Enter to search)",
@@ -161,15 +148,12 @@
   "search.replaceAll": "Replace All",
   "search.replacedCount": "Replaced {count} occurrences",
   "search.replaceAllNoUndo": "The document is very large. Replace All will not be undoable. Continue?",
-
   "history.title": "History",
   "history.ariaLabel": "Show history",
-
   "lineList.header": "Matching lines ({count} lines)",
   "lineList.saveTitle": "Save all matching lines to new tab",
   "lineList.saveBtn": "Save to New File",
   "lineList.close": "Close",
-
   "close.saveAs": "Save As",
   "close.message": "\"{fileName}\" has unsaved changes. Save before closing?",
   "close.saveAndClose": "Save & Close",
@@ -177,15 +161,12 @@
   "common.cancel": "Cancel",
   "common.ok": "OK",
   "common.close": "Close",
-
   "external.message": "\"{fileName}\" has been modified by another program. Reload from disk and discard local changes?",
   "external.reload": "Reload",
   "external.keepLocal": "Keep Local Changes",
-
   "rename.title": "Rename",
   "rename.label": "File Name",
   "rename.hint": "Not yet saved to disk. This only changes the tab name and default Save As filename.",
-
   "csv.title": "CSV to Fixed Width",
   "csv.quoteSection": "Quote Handling",
   "csv.ignoreSingle": "Ignore delimiters inside single quotes",
@@ -201,7 +182,6 @@
   "csv.invalidWidths": "Please enter valid field widths (comma-separated positive integers)",
   "csv.converting": "Converting…",
   "csv.convert": "Convert",
-
   "font.title": "Select Editor Font",
   "font.unavailableHint": "This font is not installed on this system",
   "font.unavailableBadge": "Not installed",
@@ -210,7 +190,6 @@
   "font.previewLabel": "Preview (current selection)",
   "font.previewText": "The quick brown fox jumps over the lazy dog 0123456789",
   "font.apply": "Apply",
-
   "keybinding.title": "Keyboard Shortcuts",
   "keybinding.searchPlaceholder": "Search actions or shortcuts...",
   "keybinding.noResults": "No matching shortcuts",
@@ -223,13 +202,11 @@
   "keybinding.resetDefault": "Reset to default: {shortcut}",
   "keybinding.footerHint": "Click shortcut to edit · Backspace to clear · Esc to cancel",
   "keybinding.resetAll": "Reset All Defaults",
-
   "keybinding.cat.file": "File",
   "keybinding.cat.edit": "Edit",
   "keybinding.cat.search": "Search",
   "keybinding.cat.view": "View",
   "keybinding.cat.editor": "Editor",
-
   "keybinding.file.new": "New",
   "keybinding.file.open": "Open File",
   "keybinding.file.openFolder": "Open Folder",
@@ -260,39 +237,30 @@
   "keybinding.editor.selectAll": "Select All",
   "keybinding.editor.indent": "Indent",
   "keybinding.editor.dedent": "Dedent",
-
   "largeFile.confirmMessage": "\"{fileName}\" is a very large file ({size}). Opening may take some time and use significant memory. Continue?",
   "largeFile.continue": "Continue",
   "largeFile.dontAskAgain": "Don't ask again",
-
   "binaryFile.title": "Binary File Detected",
   "binaryFile.confirmMessage": "\"{fileName}\" appears to be a binary file. Opening as text may display corrupted characters. To prevent file damage, it will be opened in read-only mode (direct overwriting is disabled). Open anyway?",
   "binaryFile.openReadOnly": "Open in Read-Only Mode",
   "common.readOnly": "Read-Only",
   "status.readOnlyHint": "This file is protected in read-only mode to prevent corruption (use Save As to save a new file)",
-  "common.cancel": "Cancel",
-
   "editor.selectAllStillLoading": "The file is still loading in the background. Please wait until loading completes before using Select All.",
   "editor.selectAllTooLarge": "Select All is not available for files larger than {limit} (current file: {size}). The file is too large to load entirely into the editor.",
-
   "progress.opening": "Opening file…",
-
   "special.newline": "Line break (CRLF/LF)",
   "special.tab": "Tab character",
   "special.space": "Space",
   "special.caret": "Literal ^",
-
   "untitled": "Untitled",
   "validate.nameEmpty": "File name cannot be empty",
   "validate.nameInvalid": "Invalid file name",
   "validate.nameChars": "File name cannot contain \\ / : * ? \" < > |",
-
   "print.title": "Print",
   "print.loading": "The file is still loading in the background. Please wait until loading completes before printing.",
   "print.tooLarge": "Plain text printing only supports files up to {max} MB.",
   "print.empty": "The document is empty. Nothing to print.",
   "print.failed": "Failed to initiate printing. Please check your system printer service.",
-
   "markdown.badgeTip": "Markdown Formatting Toolbar",
   "markdown.h1": "Heading 1 (H1)",
   "markdown.h2": "Heading 2 (H2)",
@@ -310,7 +278,6 @@
   "markdown.link": "Insert Link",
   "markdown.table": "Insert Table",
   "markdown.horizontalRule": "Horizontal Rule",
-
   "explorer.title": "Explorer",
   "explorer.noFolder": "No folder opened",
   "explorer.openFolder": "Open Folder",
@@ -327,5 +294,23 @@
   "explorer.deleteCancel": "Cancel",
   "explorer.copyPath": "Copy Path",
   "explorer.copyRelativePath": "Copy Relative Path",
-  "explorer.revealInExplorer": "Reveal in File Explorer"
+  "explorer.revealInExplorer": "Reveal in File Explorer",
+  "menu.help.checkUpdates": "Check for Updates...",
+  "menu.file.autoCheckUpdates": "Automatically Check for Updates",
+  "update.title": "Power Editor Update",
+  "update.checkUpdates": "Check for Updates...",
+  "update.checking": "Checking for updates...",
+  "update.upToDate": "Power Editor is up to date! (v{version})",
+  "update.currentIs": "(Current: v{version})",
+  "update.downloading": "Downloading update...",
+  "update.downloadHint": "Please keep Power Editor open during download.",
+  "update.installing": "Saving session and installing update... Power Editor will restart shortly.",
+  "update.failed": "Update Failed",
+  "update.unknownError": "An unexpected error occurred while updating.",
+  "update.skipVersion": "Skip this Version",
+  "update.later": "Later",
+  "update.updateNow": "Update Now",
+  "update.retry": "Retry",
+  "update.manualDownload": "Manual Download",
+  "update.badgeHint": "New version v{version} available. Click to update."
 }

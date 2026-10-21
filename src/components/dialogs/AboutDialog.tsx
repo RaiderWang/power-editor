@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-shell';
+import { useUpdater } from '../../hooks/useUpdater';
 import { useTranslation } from '../../i18n';
 import styles from './AboutDialog.module.css';
 
@@ -11,12 +12,18 @@ interface AboutDialogProps {
 export const AboutDialog: React.FC<AboutDialogProps> = ({ onClose }) => {
   const t = useTranslation();
   const [version, setVersion] = useState<string>('...');
+  const { checkForUpdates } = useUpdater();
 
   useEffect(() => {
     getVersion()
       .then(setVersion)
       .catch(() => setVersion('?'));
   }, []);
+
+  const handleCheckUpdate = () => {
+    onClose();
+    checkForUpdates(false).catch(console.error);
+  };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -38,6 +45,9 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ onClose }) => {
           </button>
         </div>
         <div className={styles.actions}>
+          <button className={styles.btnCheck} onClick={handleCheckUpdate}>
+            {t('update.checkUpdates')}
+          </button>
           <button className={styles.btnClose} onClick={onClose}>
             {t('common.close')}
           </button>

@@ -7,7 +7,6 @@
   "app.feature.wordfile": "兼容 UltraEdit Wordfile 语法高亮",
   "app.feature.encoding": "多文件编码支持与转换",
   "app.feature.tools": "列模式编辑、查找替换、换行符转换",
-
   "menu.file": "文件",
   "menu.edit": "编辑",
   "menu.view": "视图",
@@ -15,7 +14,6 @@
   "menu.language": "语言",
   "menu.help": "帮助",
   "menu.help.about": "关于 Power Editor",
-
   "menu.file.new": "新建",
   "menu.file.open": "打开文件...",
   "menu.file.openFolder": "打开文件夹...",
@@ -41,7 +39,6 @@
   "menu.file.langLabel": "界面语言 / Language",
   "menu.file.langZh": "中文",
   "menu.file.langEn": "English",
-
   "menu.edit.findReplace": "查找替换...",
   "menu.edit.deleteLine": "删除行",
   "menu.edit.toUpperCase": "转为大写",
@@ -49,7 +46,6 @@
   "menu.edit.rename": "重命名...",
   "menu.edit.copyPath": "复制文件路径",
   "menu.edit.csvToFixed": "CSV 转固定宽度...",
-
   "menu.view.toggleSidebar": "切换文件浏览面板",
   "menu.view.lineWrap": "自动换行",
   "menu.view.columnMode": "列模式",
@@ -63,13 +59,10 @@
   "menu.view.splitH": "左右分栏",
   "menu.view.splitV": "上下分栏",
   "menu.view.closeSplit": "关闭分屏",
-
   "menu.format.encoding": "编码",
   "menu.format.lineEnding": "换行符",
-
   "menu.language.importWordfile": "导入 Wordfile (.uew)...",
   "wordfile.skippedBuiltin": "已内置 Markdown 支持（语法高亮 + 预览），已跳过 wordfile 中的语言段：{names}",
-
   "preview.title": "Markdown 预览",
   "preview.syncScroll": "滚动同步",
   "preview.close": "关闭预览",
@@ -79,7 +72,6 @@
   "preview.tooLarge": "文件大小超过预览上限（5 MB），无法开启 Markdown 预览",
   "preview.loading": "正在加载全文...",
   "preview.empty": "暂无内容",
-
   "dialog.openFailed": "打开失败",
   "dialog.openError": "文件无法打开：\n{path}\n\n{err}",
   "dialog.openErrorFav": "文件无法打开：\n{path}\n\n是否将其从收藏中移除？",
@@ -91,7 +83,6 @@
   "dialog.explorerRegFail": "注册失败：{err}",
   "dialog.explorerUnregDone": "已从资源管理器右键菜单中注销。",
   "dialog.explorerUnregFail": "注销失败：{err}",
-
   "toolbar.new": "新建",
   "toolbar.open": "打开文件",
   "toolbar.openFolder": "打开文件夹",
@@ -115,7 +106,6 @@
   "toolbar.saveFail": "保存失败: {err}",
   "toolbar.encodingFail": "切换编码失败: {err}",
   "toolbar.lineEndingFail": "切换换行符失败: {err}",
-
   "tabs.saveAs": "另存为...",
   "tabs.rename": "重命名...",
   "tabs.copyPath": "复制文件路径",
@@ -126,7 +116,6 @@
   "tabs.newTab": "新建标签页 (Ctrl+N)",
   "tabs.closeSplit": "关闭分屏",
   "tabs.splitView": "分裂为左右视图",
-
   "status.cursorPos": "光标位置",
   "status.line": "行 {line}, 列 {col}",
   "status.totalLines": "总行数",
@@ -139,9 +128,7 @@
   "status.modified": "已修改",
   "status.loading": "加载中…",
   "status.filePath": "文件路径",
-
   "encoding.reopenHeader": "以编码重新打开",
-
   "search.title": "查找",
   "search.close": "关闭 (Esc)",
   "search.placeholder": "查找... (Enter 搜索)",
@@ -161,15 +148,12 @@
   "search.replaceAll": "全部替换",
   "search.replacedCount": "已替换 {count} 处",
   "search.replaceAllNoUndo": "文档内容较大，全部替换后将无法撤销。是否继续？",
-
   "history.title": "历史记录",
   "history.ariaLabel": "显示历史记录",
-
   "lineList.header": "匹配行（共 {count} 行）",
   "lineList.saveTitle": "将所有匹配行保存到新标签",
   "lineList.saveBtn": "保存到新文件",
   "lineList.close": "关闭",
-
   "close.saveAs": "另存为",
   "close.message": "「{fileName}」有未保存的更改，关闭前是否保存？",
   "close.saveAndClose": "保存并关闭",
@@ -177,15 +161,12 @@
   "common.cancel": "取消",
   "common.ok": "确定",
   "common.close": "关闭",
-
   "external.message": "「{fileName}」已被外部程序修改。是否放弃本地更改并从磁盘重新加载？",
   "external.reload": "重新加载",
   "external.keepLocal": "保留本地更改",
-
   "rename.title": "重命名",
   "rename.label": "文件名",
   "rename.hint": "尚未保存到磁盘，仅更改标签显示名称与「另存为」默认文件名。",
-
   "csv.title": "CSV 转固定宽度",
   "csv.quoteSection": "引号处理",
   "csv.ignoreSingle": "忽略单引号中的分隔符",
@@ -201,7 +182,6 @@
   "csv.invalidWidths": "请输入有效的字段宽度（逗号分隔的正整数）",
   "csv.converting": "转换中…",
   "csv.convert": "转换",
-
   "font.title": "选择编辑器字体",
   "font.unavailableHint": "此字体在当前系统中未安装",
   "font.unavailableBadge": "未安装",
@@ -210,7 +190,6 @@
   "font.previewLabel": "预览（当前选择）",
   "font.previewText": "The quick brown fox — 快速的棕色狐狸 0123456789",
   "font.apply": "应用",
-
   "keybinding.title": "快捷键设置",
   "keybinding.searchPlaceholder": "搜索功能或快捷键...",
   "keybinding.noResults": "没有匹配的快捷键",
@@ -223,13 +202,11 @@
   "keybinding.resetDefault": "恢复默认: {shortcut}",
   "keybinding.footerHint": "点击快捷键修改 · Backspace 清除 · Esc 取消",
   "keybinding.resetAll": "全部恢复默认",
-
   "keybinding.cat.file": "文件",
   "keybinding.cat.edit": "编辑",
   "keybinding.cat.search": "搜索",
   "keybinding.cat.view": "视图",
   "keybinding.cat.editor": "编辑器",
-
   "keybinding.file.new": "新建",
   "keybinding.file.open": "打开文件",
   "keybinding.file.openFolder": "打开文件夹",
@@ -260,39 +237,30 @@
   "keybinding.editor.selectAll": "全选",
   "keybinding.editor.indent": "增加缩进",
   "keybinding.editor.dedent": "减少缩进",
-
   "largeFile.confirmMessage": "「{fileName}」是一个较大的文件（{size}），打开可能需要一些时间并占用较多内存。是否继续？",
   "largeFile.continue": "继续打开",
   "largeFile.dontAskAgain": "下次不再提醒",
-
   "binaryFile.title": "检测到二进制文件",
   "binaryFile.confirmMessage": "「{fileName}」包含二进制数据，以纯文本方式打开可能显示乱码。为防止文件损坏，打开后将被设为只读模式（禁止覆盖保存原文件）。是否仍要强制打开？",
   "binaryFile.openReadOnly": "以只读模式打开",
   "common.readOnly": "只读",
   "status.readOnlyHint": "该文件处于只读保护状态，禁止覆盖保存原文件（可通过“另存为”保存新文件）",
-  "common.cancel": "取消",
-
   "editor.selectAllStillLoading": "文件仍在后台加载中，请等待加载完成后再使用全选。",
   "editor.selectAllTooLarge": "全选功能不适用于大于 {limit} 的文件（当前文件 {size}）。文件过大，无法完整加载到编辑器中。",
-
   "progress.opening": "正在打开文件…",
-
   "special.newline": "换行符（CRLF/LF）",
   "special.tab": "制表符（Tab）",
   "special.space": "空格",
   "special.caret": "字面量 ^",
-
   "untitled": "无标题",
   "validate.nameEmpty": "文件名不能为空",
   "validate.nameInvalid": "文件名无效",
   "validate.nameChars": "文件名不能包含 \\ / : * ? \" < > |",
-
   "print.title": "打印",
   "print.loading": "文件仍在后台加载中，请等待加载完成后再打印。",
   "print.tooLarge": "纯文本打印仅支持不超过 {max} MB 的文件。",
   "print.empty": "当前文档为空，没有可打印的内容。",
   "print.failed": "启动打印失败，请检查系统打印机服务。",
-
   "markdown.badgeTip": "Markdown 格式化工具栏",
   "markdown.h1": "一级标题 (H1)",
   "markdown.h2": "二级标题 (H2)",
@@ -310,7 +278,6 @@
   "markdown.link": "插入超链接 (Link)",
   "markdown.table": "插入表格 (Table)",
   "markdown.horizontalRule": "水平分割线 (Horizontal Rule)",
-
   "explorer.title": "资源管理器",
   "explorer.noFolder": "未打开文件夹",
   "explorer.openFolder": "打开文件夹",
@@ -327,5 +294,23 @@
   "explorer.deleteCancel": "取消",
   "explorer.copyPath": "复制路径",
   "explorer.copyRelativePath": "复制相对路径",
-  "explorer.revealInExplorer": "在文件资源管理器中显示"
+  "explorer.revealInExplorer": "在文件资源管理器中显示",
+  "menu.help.checkUpdates": "检查更新...",
+  "menu.file.autoCheckUpdates": "自动检查更新",
+  "update.title": "Power Editor 应用更新",
+  "update.checkUpdates": "检查更新...",
+  "update.checking": "正在检查更新...",
+  "update.upToDate": "Power Editor 已是最新版本！(v{version})",
+  "update.currentIs": "（当前版本：v{version}）",
+  "update.downloading": "正在下载更新...",
+  "update.downloadHint": "下载过程中请勿关闭 Power Editor。",
+  "update.installing": "正在保存工作会话并安装更新... 应用即将自动重启。",
+  "update.failed": "更新失败",
+  "update.unknownError": "更新过程中发生未知错误。",
+  "update.skipVersion": "跳过此版本",
+  "update.later": "稍后提醒",
+  "update.updateNow": "立即更新",
+  "update.retry": "重试",
+  "update.manualDownload": "手动下载",
+  "update.badgeHint": "发现新版本 v{version}，点击查看更新"
 }

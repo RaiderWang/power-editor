@@ -1,8 +1,11 @@
 """
 Extract release notes from CHANGELOG.md and update GitHub Release via GitHub CLI.
+Also updates the `notes` field in `latest.json` (Tauri updater manifest) so in-app
+updater displays version-specific release notes.
 Used in GitHub Actions release workflow.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -86,6 +89,53 @@ MIT License
     return header + changes + install_guide
 
 
+def update_latest_json_notes(tag: str, notes: str) -> None:
+    """Download latest.json from release, update its notes field, and re-upload."""
+    if not notes:
+        return
+
+    latest_json = "latest.json"
+    try:
+        # Download existing latest.json from the release
+        dl_res = subprocess.run(
+            ["gh", "release", "download", tag, "-p", latest_json, "--clobber"],
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+        )
+        if dl_res.returncode != 0 or not os.path.exists(latest_json):
+            print(f"Notice: latest.json not found in release {tag}. Skipping updater manifest update.")
+            return
+
+        with open(latest_json, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        data["notes"] = notes
+
+        with open(latest_json, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # Upload updated latest.json
+        ul_res = subprocess.run(
+            ["gh", "release", "upload", tag, latest_json, "--clobber"],
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+        )
+        if ul_res.returncode == 0:
+            print("Successfully updated release notes inside latest.json!")
+        else:
+            print(f"Warning: Failed to re-upload latest.json: {ul_res.stderr}")
+    except Exception as e:
+        print(f"Warning: Exception while updating latest.json notes: {e}")
+    finally:
+        if os.path.exists(latest_json):
+            try:
+                os.remove(latest_json)
+            except OSError:
+                pass
+
+
 def main():
     tag = os.environ.get('TAG')
     if not tag and len(sys.argv) > 1:
@@ -115,9 +165,15 @@ def main():
             sys.exit(res.returncode)
 
         print(f"Successfully updated release notes for {tag}!")
+
+        # Update latest.json notes if present
+        update_latest_json_notes(tag, notes)
     finally:
         if os.path.exists(notes_file):
-            os.remove(notes_file)
+            try:
+                os.remove(notes_file)
+            except OSError:
+                pass
 
 
 if __name__ == '__main__':

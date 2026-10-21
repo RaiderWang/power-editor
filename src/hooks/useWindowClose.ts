@@ -2,9 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { listen } from '@tauri-apps/api/event';
 import { tabsAtom, activeTabIdAtom } from '../store/atoms';
-import { syncEditorToRust } from '../store/editorViewRegistry';
+import { persistAppSession } from '../utils/sessionPersist';
 import * as cmd from '../store/tauriCommands';
-import type { TabSession } from '../types/session';
 
 /**
  * Intercepts the `app:close-requested` event emitted by Rust when the user
@@ -33,51 +32,7 @@ export function useWindowClose() {
       const currentActiveTabId = activeTabIdRef.current;
 
       try {
-        const tabSessions: TabSession[] = [];
-
-        for (const tab of currentTabs) {
-          if (tab.fileInfo.is_modified) {
-            // Flush current CM window edits to the Rust rope first
-            await syncEditorToRust(tab.bufferId);
-
-            let scratchPath: string;
-            try {
-              scratchPath = await cmd.exportBufferToScratch(tab.bufferId);
-            } catch (scratchErr) {
-              throw scratchErr;
-            }
-
-            tabSessions.push({
-              path: tab.fileInfo.path ?? '',
-              scratch_path: scratchPath,
-              cursor_line: tab.cursorLine,
-              cursor_col: tab.cursorCol,
-              scroll_top: tab.scrollTop,
-              language: tab.language,
-              encoding: tab.fileInfo.encoding,
-              line_ending: tab.fileInfo.line_ending,
-            });
-          } else {
-            // Clean saved file – just remember the path and cursor
-            tabSessions.push({
-              path: tab.fileInfo.path ?? '',
-              scratch_path: null,
-              cursor_line: tab.cursorLine,
-              cursor_col: tab.cursorCol,
-              scroll_top: tab.scrollTop,
-              language: tab.language,
-              encoding: tab.fileInfo.encoding,
-              line_ending: tab.fileInfo.line_ending,
-            });
-          }
-        }
-
-        const activeIndex = currentTabs.findIndex((t) => t.id === currentActiveTabId);
-
-        await cmd.saveSession({
-          active_tab_index: Math.max(0, activeIndex),
-          tabs: tabSessions,
-        });
+        await persistAppSession(currentTabs, currentActiveTabId);
       } catch (e) {
         console.error('[useWindowClose] Failed to save session:', e);
         // Proceed with close even if session save fails
