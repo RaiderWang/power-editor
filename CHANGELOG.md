@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-21
+
 ### Added / 新增
 - **Workspace Folder Tab Lifecycle & Safe Close Flow / 工作区文件夹标签联动与关闭确认安全拦截**:
   - **Associated Tab Lifecycle Management**: Closing a workspace folder (`closeFolder`) now automatically discovers all open tabs residing within that folder tree using normalized boundary path checking (`isPathInsideFolder`), cleanly stripping Windows extended-length prefixes (`\\?\`).
@@ -310,7 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/RaiderWang/power-editor/compare/v0.2.4...v0.2.5
