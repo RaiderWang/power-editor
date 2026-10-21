@@ -3,6 +3,7 @@ pub mod csv;
 pub mod explorer;
 pub mod file_io;
 pub mod file_watcher;
+pub mod image_resolve;
 pub mod keybindings;
 pub mod print;
 pub mod search;
@@ -728,6 +729,7 @@ pub fn run() {
             print::print_window,
             // File explorer operations
             explorer::list_directory,
+            image_resolve::resolve_image_paths,
             explorer::create_file,
             explorer::create_directory,
             explorer::rename_path,

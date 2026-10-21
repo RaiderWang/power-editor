@@ -1,5 +1,15 @@
-import { marked } from 'marked';
+import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { wikiImageExtension } from './wikiImageExtension';
+
+// Dedicated Marked instance configured with our custom extensions.
+// NOTE: gfm/breaks live in the instance defaults on purpose. `instance.lexer(src, opts)` is
+// a static Lexer.lex call that REPLACES the instance defaults with `opts`, which would silently
+// drop registered extensions (e.g. WikiLink images). Always call lexer()/parser() without options.
+const markedInstance = new Marked({ gfm: true, breaks: false });
+markedInstance.use({
+  extensions: [wikiImageExtension],
+});
 
 export interface RenderResult {
   html: string;
@@ -14,8 +24,8 @@ export function renderMarkdown(markdown: string): RenderResult {
     return { html: '' };
   }
 
-  // Tokenize using marked lexer
-  const tokens = marked.lexer(markdown, { gfm: true, breaks: false });
+  // Tokenize using our configured Marked instance
+  const tokens = markedInstance.lexer(markdown);
   let html = '';
   let currentLine = 1;
 
@@ -29,8 +39,8 @@ export function renderMarkdown(markdown: string): RenderResult {
       continue;
     }
 
-    // Parse the single block-level token
-    let blockHtml = marked.parser([token]);
+    // Parse the single block-level token using the configured instance parser
+    let blockHtml = markedInstance.parser([token]);
     if (!blockHtml || !blockHtml.trim()) {
       continue;
     }
@@ -63,6 +73,8 @@ export function renderMarkdown(markdown: string): RenderResult {
       'alt',
       'title',
       'href',
+      'width',
+      'height',
     ],
   });
 

@@ -229,6 +229,13 @@ export const printWindow = (): Promise<void> =>
 export const listDirectory = (path: string): Promise<FileEntry[]> =>
   invoke('list_directory', { path });
 
+/**
+ * Resolves Markdown image links (doc-relative, Obsidian vault-relative, shortest path or bare
+ * filename) to absolute file paths. Entries that cannot be found are `null`.
+ */
+export const resolveImagePaths = (docPath: string, links: string[]): Promise<(string | null)[]> =>
+  invoke('resolve_image_paths', { docPath, links });
+
 export const createFile = (path: string): Promise<void> =>
   invoke('create_file', { path });
 

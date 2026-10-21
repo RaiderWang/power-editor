@@ -16,10 +16,10 @@ import { getEditorView } from '../../store/previewBridge';
 import { useMarkdownSource } from '../../hooks/useMarkdownSource';
 import { renderMarkdown } from '../../preview/renderMarkdown';
 import {
-  postProcessImages,
   setupLinkInterception,
   postProcessCodeBlocks,
 } from '../../preview/postProcess';
+import { postProcessImages } from '../../preview/imagePaths';
 import { setupScrollSync } from '../../preview/scrollSync';
 import { setCachedPreviewSelection } from '../../print/selectionHelper';
 import styles from './MarkdownPreviewPane.module.css';
@@ -56,7 +56,7 @@ export const MarkdownPreviewPane: React.FC = () => {
     const el = contentRef.current;
     if (!el || status !== 'ready') return;
 
-    postProcessImages(el, filePath);
+    void postProcessImages(el, filePath);
     void postProcessCodeBlocks(el, {
       copyTitle: t('preview.copyCode'),
       copiedTitle: t('preview.copied'),
