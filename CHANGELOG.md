@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added / 新增
+- **Workspace Folder Tab Lifecycle & Safe Close Flow / 工作区文件夹标签联动与关闭确认安全拦截**:
+  - **Associated Tab Lifecycle Management**: Closing a workspace folder (`closeFolder`) now automatically discovers all open tabs residing within that folder tree using normalized boundary path checking (`isPathInsideFolder`), cleanly stripping Windows extended-length prefixes (`\\?\`).
+    （**工作区关联标签联动关闭**：执行“关闭文件夹”时，通过带边界隔离与 Windows 扩展长路径（`\\?\`）兼容的目录判定算法（`isPathInsideFolder`），智能识别并自动关闭属于该工程目录的所有打开标签页。）
+  - **Asynchronous Safe Close & Cancellation Protection**: Upgraded `closeTab` to an asynchronous promise-based protocol. When tabs have unsaved edits, sequential folder closing prompts the user tab-by-tab (`CloseConfirmDialog`); if the user cancels saving any modified file, the folder closing sequence is aborted immediately to prevent accidental data loss.
+    （**异步关闭协议与取消保护**：将 `closeTab` 改造为基于 Promise 的异步确认机制。包含未保存修改的标签页会依次唤起保存确认弹窗；若用户选择“取消”，将即时终止关闭文件夹流程，有效避免工作内容意外丢失。）
+  - **Toolbar Action & Global Shortcut**: Added a dedicated "Close Folder" button with disabled state to the main toolbar (`FolderX` icon) and mapped a default keyboard shortcut (`Ctrl+Shift+W`), fully customizable in settings and reflected in the File menu and tooltips.
+    （**工具栏快捷按钮与全局快捷键**：在主工具栏新增“关闭文件夹”快捷按钮（`FolderX` 图标，未打开文件夹时自动置灰），并绑定默认快捷键 `Ctrl+Shift+W`，支持偏好自定义与菜单栏双语提示同步。）
+  - **State Store & Split-Pane Clean Fallback**: Fixed tab store state synchronization during sequential closures by updating active tab fallback for both primary and secondary split panes, while centralizing the Jotai default store binding at application root.
+    （**状态同步与分屏安全回退**：重构标签页关闭底层的原子状态同步机制，同时适配主编辑区与分屏副编辑区的激活焦点安全回退，并在应用根节点规范化 Jotai 默认 Store 绑定。）
 - **In-App Auto/Manual Updates / 应用内自动与手动更新**:
   - **Tauri v2 Updater Pipeline & Cryptographic Verification**: Integrated `tauri-plugin-updater` and `tauri-plugin-process` backed by Minisign/Ed25519 digital signature verification (`.sig`), fetching release manifests (`latest.json`) directly from GitHub Releases with passive background installation on Windows and in-place `.app` replacement on macOS.
     （**官方更新流水线与安全签名校验**：基于 `tauri-plugin-updater` 与 `tauri-plugin-process` 构建，集成 Minisign/Ed25519 密码学签名校验（`.sig`），直接对接 GitHub Releases 静态清单（`latest.json`），Windows 端支持静默被动安装，macOS 端进程内解压替换免除 Quarantine 隔离属性拦截。）

@@ -3,7 +3,9 @@
  * Suitable for Windows where drive letter case and separator style vary.
  */
 export function pathsEqual(a: string, b: string): boolean {
-  return a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase();
+  const cleanA = a.replace(/^(\\\\[?]\\|\/\/\?\/)/, '').replace(/\\/g, '/').toLowerCase();
+  const cleanB = b.replace(/^(\\\\[?]\\|\/\/\?\/)/, '').replace(/\\/g, '/').toLowerCase();
+  return cleanA === cleanB;
 }
 
 /**
@@ -47,4 +49,18 @@ export function getRelativePath(base: string, target: string): string {
     return rel.startsWith('/') ? rel.slice(1) : rel;
   }
   return target;
+}
+
+/**
+ * Check whether `targetPath` is inside `folderPath` (or equals `folderPath`).
+ * Uses path-segment boundary matching so `C:/foo` never matches `C:/foobar/a.txt`.
+ */
+export function isPathInsideFolder(targetPath: string, folderPath: string): boolean {
+  if (!targetPath || !folderPath) return false;
+  const cleanTarget = targetPath.replace(/^(\\\\[?]\\|\/\/\?\/)/, '');
+  const cleanFolder = folderPath.replace(/^(\\\\[?]\\|\/\/\?\/)/, '');
+  const normTarget = cleanTarget.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  const normFolder = cleanFolder.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  if (!normTarget || !normFolder) return false;
+  return normTarget === normFolder || normTarget.startsWith(`${normFolder}/`);
 }
