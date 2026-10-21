@@ -27,7 +27,7 @@ export function useExplorer() {
   const [selectedPath, setSelectedPath] = useAtom(selectedPathAtom);
   const [expandedFolders, setExpandedFolders] = useAtom(expandedFoldersAtom);
   const setRefreshTrigger = useSetAtom(explorerRefreshTriggerAtom);
-  const [tabs, setTabs] = useAtom(tabsAtom);
+  const setTabs = useSetAtom(tabsAtom);
   const { openFile, closeTab } = useFile();
   const t = useTranslation();
 
@@ -211,7 +211,8 @@ export function useExplorer() {
     try {
       await cmd.deletePath(path);
       // Close tabs for this file or any file inside this folder
-      const tabsToClose = tabs.filter((tab) => {
+      const currentTabs = store.get(tabsAtom);
+      const tabsToClose = currentTabs.filter((tab) => {
         if (!tab.fileInfo.path) return false;
         if (isDir) {
           return isPathInsideFolder(tab.fileInfo.path, path);
@@ -230,7 +231,7 @@ export function useExplorer() {
       console.error('[useExplorer] deletePath failed:', err);
       await message(String(err), { title: t('dialog.openFailed'), kind: 'error' });
     }
-  }, [tabs, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, t]);
+  }, [store, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, t]);
 
   const revealPath = useCallback(async (path: string) => {
     try {

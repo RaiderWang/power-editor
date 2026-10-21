@@ -2,7 +2,7 @@ import { useStore, useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom } from '../store/atoms';
-import { secondaryActiveTabIdAtom } from '../store/splitAtoms';
+import { secondaryActiveTabIdAtom, closeSplitAtom } from '../store/splitAtoms';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
@@ -131,6 +131,12 @@ export function useFile() {
     const nextTabs = currentTabs.filter((t) => t.id !== tabId);
     store.set(tabsAtom, nextTabs);
 
+    if (nextTabs.length === 0) {
+      store.set(closeSplitAtom);
+      store.set(activeTabIdAtom, null);
+      return;
+    }
+
     const currentActiveId = store.get(activeTabIdAtom);
     if (currentActiveId === tabId) {
       const idx = currentTabs.findIndex((t) => t.id === tabId);
@@ -155,6 +161,8 @@ export function useFile() {
 
     if (tab.fileInfo.is_modified) {
       return new Promise<boolean>((resolve) => {
+        const prevResolver = store.get(pendingCloseResolverAtom);
+        prevResolver?.(false);
         setPendingCloseResolver(() => (closed: boolean) => resolve(closed));
         setPendingCloseTabId(tabId);
       });
@@ -165,7 +173,8 @@ export function useFile() {
   }, [store, forceCloseTab, setPendingCloseResolver, setPendingCloseTabId]);
 
   const saveFile = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
     if (!tab) return;
     if (tab.readOnly || tab.fileInfo.is_read_only) {
       // Direct overwrite forbidden for read-only / binary files to prevent corruption.
@@ -182,10 +191,11 @@ export function useFile() {
           : t
       )
     );
-  }, [tabs, setTabs]);
+  }, [store, setTabs]);
 
   const saveFileAs = useCallback(async (tabId: string, path: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
     if (!tab) return;
     await syncEditorToRust(tab.bufferId);
     const fileInfo = await cmd.saveBufferAs(tab.bufferId, path);
@@ -205,7 +215,7 @@ export function useFile() {
       saveRecentFiles(next);
       return next;
     });
-  }, [tabs, setTabs, setRecentFiles]);
+  }, [store, setTabs, setRecentFiles]);
 
   const renameFile = useCallback(async (tabId: string, newFileName: string) => {
     const tab = tabs.find((t) => t.id === tabId);

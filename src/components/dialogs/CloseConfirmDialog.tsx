@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { pendingCloseTabIdAtom, pendingCloseResolverAtom, tabsAtom } from '../../store/atoms';
 import { useFile } from '../../hooks/useFile';
@@ -13,17 +13,18 @@ export const CloseConfirmDialog: React.FC = () => {
   const { saveFile, saveFileAs, forceCloseTab } = useFile();
   const t = useTranslation();
 
-  if (!pendingTabId) return null;
-
   const tab = tabs.find((t) => t.id === pendingTabId);
-  if (!tab) {
-    setPendingTabId(null);
-    if (pendingResolver) {
-      pendingResolver(true);
+
+  // If the target tab was closed externally while the dialog was pending, clean up via effect
+  useEffect(() => {
+    if (pendingTabId && !tab) {
+      setPendingTabId(null);
+      pendingResolver?.(true);
       setPendingResolver(null);
     }
-    return null;
-  }
+  }, [pendingTabId, tab, pendingResolver, setPendingTabId, setPendingResolver]);
+
+  if (!pendingTabId || !tab) return null;
 
   const fileName = getTabFileName(tab, t);
 
@@ -33,19 +34,25 @@ export const CloseConfirmDialog: React.FC = () => {
     setPendingTabId(null);
     setPendingResolver(null);
 
-    if (tab.fileInfo.path) {
-      await saveFile(tabIdToClose);
-    } else {
-      const { save } = await import('@tauri-apps/plugin-dialog');
-      const path = await save({ title: t('close.saveAs'), defaultPath: getTabSaveDefaultPath(tab) });
-      if (!path) {
-        resolver?.(false);
-        return;
+    try {
+      const isReadOnly = Boolean(tab.readOnly || tab.fileInfo.is_read_only);
+      if (tab.fileInfo.path && !isReadOnly) {
+        await saveFile(tabIdToClose);
+      } else {
+        const { save } = await import('@tauri-apps/plugin-dialog');
+        const path = await save({ title: t('close.saveAs'), defaultPath: getTabSaveDefaultPath(tab) });
+        if (!path) {
+          resolver?.(false);
+          return;
+        }
+        await saveFileAs(tabIdToClose, path);
       }
-      await saveFileAs(tabIdToClose, path);
+      await forceCloseTab(tabIdToClose);
+      resolver?.(true);
+    } catch (err) {
+      console.error('[CloseConfirmDialog] save before close failed:', err);
+      resolver?.(false);
     }
-    await forceCloseTab(tabIdToClose);
-    resolver?.(true);
   };
 
   const handleDiscard = async () => {
@@ -53,8 +60,13 @@ export const CloseConfirmDialog: React.FC = () => {
     const resolver = pendingResolver;
     setPendingTabId(null);
     setPendingResolver(null);
-    await forceCloseTab(tabIdToClose);
-    resolver?.(true);
+    try {
+      await forceCloseTab(tabIdToClose);
+      resolver?.(true);
+    } catch (err) {
+      console.error('[CloseConfirmDialog] discard failed:', err);
+      resolver?.(false);
+    }
   };
 
   const handleCancel = () => {
