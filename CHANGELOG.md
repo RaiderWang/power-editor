@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added / 新增
+- **WikiLink Image Embed Syntax Compatibility / WikiLink（双链）图片嵌入语法兼容**:
+  - **Obsidian / WikiLink Image Rendering**: Added native preview and print support for WikiLink image embeds (`![[path/to/image.png]]`), parsing them into standard responsive `<img>` elements while leaving non-image embeds (notes, PDFs) untransformed.
+    （**Obsidian / WikiLink 图片嵌入渲染**：Markdown 预览和打印模块原生支持双中括号图片语法（`![[path/to/image.png]]`），自动解析为标准自适应 `<img>` 元素，非图片资源链接（笔记、PDF 等）保持原样。）
+  - **Dimension and Alt Text Attributes**: Full support for dimensions and captions such as `![[image.png|300]]` (width), `![[image.png|300x200]]` (width x height), `![[image.png|caption]]` (alt text), and combined `![[image.png|caption|width]]`.
+    （**图片尺寸与描述支持**：全面支持如 `![[image.png|300]]`（单宽）、`![[image.png|300x200]]`（宽高）、`![[image.png|图片说明]]`（Alt 描述）以及组合参数 `![[image.png|说明|宽度]]`。）
+  - **Smart Image Path Resolution & Obsidian Vault Root Support**: Cleanly normalizes Windows/POSIX relative paths and URL-encoded filenames. Supports both document-relative paths and Obsidian **vault-root-relative** paths (e.g. `![[Readwise/Tweets/attachments/...]]` by detecting `.obsidian` in ancestor folders), with a fast vault-wide index fallback for bare filenames and shortest-path links.
+    （**智能路径解析与 Obsidian 库根目录相对路径兼容**：规范化 Windows/POSIX 相对路径与 URL 编码文件名。不仅支持当前文档同级相对路径，还原生支持 Obsidian **库根目录相对路径**（例如 `![[Readwise/Tweets/attachments/...]]`，通过自动向上探测父级 `.obsidian` 库标记识别根目录），并在全库范围内对单文件名或最短路径链接提供智能检索匹配。）
+
+
 ## [0.2.7] - 2026-10-14
 
 ### Added / 新增

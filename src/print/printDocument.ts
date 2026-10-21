@@ -1,6 +1,7 @@
 import { loadFullText } from '../utils/loadFullText';
 import { renderMarkdown } from '../preview/renderMarkdown';
-import { postProcessImages, postProcessCodeBlocks } from '../preview/postProcess';
+import { postProcessCodeBlocks } from '../preview/postProcess';
+import { postProcessImages } from '../preview/imagePaths';
 import { printWindow } from '../store/tauriCommands';
 import type { ActiveSelection } from './selectionHelper';
 
@@ -105,7 +106,7 @@ export async function printTab(opts: PrintOptions): Promise<PrintResult> {
     bodyEl.className = 'markdown-body';
     bodyEl.innerHTML = selection.html;
 
-    postProcessImages(bodyEl, filePath);
+    await postProcessImages(bodyEl, filePath);
     await postProcessCodeBlocks(bodyEl);
     await waitForImages(bodyEl);
 
@@ -157,7 +158,7 @@ export async function printTab(opts: PrintOptions): Promise<PrintResult> {
       bodyEl.className = 'markdown-body';
       bodyEl.innerHTML = rendered.html;
 
-      postProcessImages(bodyEl, filePath);
+      await postProcessImages(bodyEl, filePath);
       await postProcessCodeBlocks(bodyEl);
       await waitForImages(bodyEl);
 

@@ -194,11 +194,14 @@
   /* ── Images ── */
   #print-root .markdown-body img {
     max-width: 100% !important;
-    height: auto !important;
     display: block;
     margin: 8pt auto;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  #print-root .markdown-body img:not([height]) {
+    height: auto !important;
   }
 
   #print-root .markdown-body input[type="checkbox"] {

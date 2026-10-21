@@ -417,10 +417,13 @@
 
 .markdownBody img {
   max-width: 100%;
-  height: auto;
   display: block;
   margin: 12px 0;
   border-radius: 4px;
+}
+
+.markdownBody img:not([height]) {
+  height: auto;
 }
 
 .markdownBody input[type="checkbox"] {
