@@ -43,7 +43,7 @@ export const UpdateDialog: React.FC = () => {
 
   const handleReleaseNotesClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = (e.target as HTMLElement).closest('a');
-    if (target && target.href) {
+    if (target && target.href && /^https?:\/\//i.test(target.href)) {
       e.preventDefault();
       openUrl(target.href).catch(console.error);
     }

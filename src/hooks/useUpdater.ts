@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { getVersion } from '@tauri-apps/api/app';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import {
@@ -29,15 +30,26 @@ export function useUpdater() {
   const tabsRef = useRef(tabs);
   const activeTabIdRef = useRef(activeTabId);
   const availableUpdateRef = useRef(availableUpdate);
+  const statusRef = useRef(status);
+  const prefsRef = useRef(prefs);
 
   useEffect(() => { tabsRef.current = tabs; }, [tabs]);
   useEffect(() => { activeTabIdRef.current = activeTabId; }, [activeTabId]);
   useEffect(() => { availableUpdateRef.current = availableUpdate; }, [availableUpdate]);
-
-  const skippedVersion = prefs.skippedUpdateVersion;
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { prefsRef.current = prefs; }, [prefs]);
 
   const checkForUpdates = useCallback(
     async (silent: boolean = false) => {
+      // Guard against concurrent checks or interrupting active download/install
+      const currentStatus = statusRef.current;
+      if (currentStatus === 'downloading' || currentStatus === 'installing' || currentStatus === 'checking') {
+        if (!silent) {
+          setDialogOpen(true);
+        }
+        return;
+      }
+
       try {
         if (!silent) {
           setDialogOpen(true);
@@ -57,6 +69,7 @@ export function useUpdater() {
           });
 
           // If this version was explicitly skipped by the user, ignore in silent check
+          const skippedVersion = prefsRef.current.skippedUpdateVersion;
           if (silent && skippedVersion === update.version) {
             setStatus('idle');
             return;
@@ -66,6 +79,11 @@ export function useUpdater() {
         } else {
           setAvailableUpdate(null);
           if (!silent) {
+            const currentVersion = await getVersion().catch(() => '');
+            setDetails({
+              version: currentVersion,
+              currentVersion,
+            });
             setStatus('upToDate');
           } else {
             setStatus('idle');
@@ -82,7 +100,7 @@ export function useUpdater() {
         }
       }
     },
-    [skippedVersion, setAvailableUpdate, setDetails, setDialogOpen, setError, setStatus]
+    [setAvailableUpdate, setDetails, setDialogOpen, setError, setStatus]
   );
 
   const startDownloadAndInstall = useCallback(async () => {
@@ -154,17 +172,9 @@ export function useUpdater() {
     if (targetVersion) {
       setPrefs((p) => ({ ...p, skippedUpdateVersion: targetVersion }));
     }
+    setStatus('idle');
     setDialogOpen(false);
-  }, [targetVersion, setDialogOpen, setPrefs]);
-
-  // Startup silent check (delayed 3s so editor startup and initial file loading are unblocked)
-  useEffect(() => {
-    if (!prefs.autoCheckUpdates) return;
-    const timer = setTimeout(() => {
-      checkForUpdates(true).catch(console.error);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [checkForUpdates, prefs.autoCheckUpdates]);
+  }, [targetVersion, setDialogOpen, setPrefs, setStatus]);
 
   return {
     status,
@@ -177,4 +187,33 @@ export function useUpdater() {
     startDownloadAndInstall,
     skipCurrentVersion,
   };
+}
+
+let startupCheckTriggered = false;
+
+/**
+ * Runs a silent update check 3 seconds after application mount.
+ * Intended to be invoked once at the app root level (App.tsx).
+ */
+export function useAutoUpdateCheck() {
+  const { checkForUpdates } = useUpdater();
+  const prefs = useAtomValue(editorPrefsAtom);
+  const prefsRef = useRef(prefs);
+
+  useEffect(() => {
+    prefsRef.current = prefs;
+  }, [prefs]);
+
+  useEffect(() => {
+    if (startupCheckTriggered) return;
+    startupCheckTriggered = true;
+
+    const timer = setTimeout(() => {
+      if (prefsRef.current.autoCheckUpdates) {
+        checkForUpdates(true).catch(console.error);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [checkForUpdates]);
 }

@@ -20,7 +20,7 @@ import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDia
 import { BinaryFileConfirmDialog } from './components/dialogs/BinaryFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
 import { UpdateDialog } from './components/dialogs/UpdateDialog';
-import { useUpdater } from './hooks/useUpdater';
+import { useAutoUpdateCheck } from './hooks/useUpdater';
 import { EncodingPicker } from './components/statusbar/EncodingPicker';
 import { FileExplorer } from './components/explorer/FileExplorer';
 import { useFile } from './hooks/useFile';
@@ -59,7 +59,7 @@ export default function App() {
   useFileOpenProgress();
   useKeybindingDispatcher();
   useBlockNativeContextMenu();
-  useUpdater();
+  useAutoUpdateCheck();
 
   useEffect(() => {
     initKeybindingsFromFile().then((data) => {
