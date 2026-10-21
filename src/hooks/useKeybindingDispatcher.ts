@@ -43,7 +43,7 @@ export function useKeybindingDispatcher() {
   const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
   const { handlePrint } = usePrintActiveTab();
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
-  const { openFolder, toggleSidebar } = useExplorer();
+  const { openFolder, closeFolder, currentFolderPath, toggleSidebar } = useExplorer();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
 
@@ -61,6 +61,12 @@ export function useKeybindingDispatcher() {
         };
       case 'file.openFolder':
         return () => { openFolder(); };
+      case 'file.closeFolder':
+        return () => {
+          if (currentFolderPath) {
+            closeFolder().catch(console.error);
+          }
+        };
       case 'file.reopenWithEncoding':
         return () => {
           if (!tab?.fileInfo.path) return;
@@ -126,7 +132,7 @@ export function useKeybindingDispatcher() {
       default:
         return null;
     }
-  }, [activeTab, newFile, openFile, openFolder, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
+  }, [activeTab, newFile, openFile, openFolder, closeFolder, currentFolderPath, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

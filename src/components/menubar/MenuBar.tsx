@@ -482,7 +482,7 @@ export const MenuBar: React.FC = () => {
     { kind: 'item', label: t('menu.file.new'), shortcut: shortcut('file.new'), onClick: handleNewFile },
     { kind: 'item', label: t('menu.file.open'), shortcut: shortcut('file.open'), onClick: handleOpen },
     { kind: 'item', label: t('menu.file.openFolder'), shortcut: shortcut('file.openFolder'), onClick: openFolder },
-    { kind: 'item', label: t('menu.file.closeFolder'), disabled: !currentFolderPath, onClick: closeFolder },
+    { kind: 'item', label: t('menu.file.closeFolder'), shortcut: shortcut('file.closeFolder'), disabled: !currentFolderPath, onClick: () => { closeFolder().catch(console.error); } },
     {
       kind: 'item',
       label: t('menu.file.reopenWithEncoding'),

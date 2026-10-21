@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from 'jotai';
+import { useStore, useAtom, useSetAtom } from 'jotai';
 import { useCallback } from 'react';
 import { open, ask, message } from '@tauri-apps/plugin-dialog';
 import {
@@ -13,20 +13,21 @@ import { tabsAtom } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { useFile } from './useFile';
 import { useTranslation } from '../i18n';
-import { joinPath, getParentDir, getRelativePath, pathsEqual } from '../utils/pathUtils';
+import { joinPath, getParentDir, getRelativePath, pathsEqual, isPathInsideFolder } from '../utils/pathUtils';
 
 const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
 const STORAGE_SIDEBAR_VISIBLE_KEY = 'power-editor:sidebar-visible';
 const STORAGE_SIDEBAR_WIDTH_KEY = 'power-editor:sidebar-width';
 
 export function useExplorer() {
+  const store = useStore();
   const [currentFolderPath, setCurrentFolderPath] = useAtom(currentFolderPathAtom);
   const [sidebarVisible, setSidebarVisible] = useAtom(sidebarVisibleAtom);
   const [sidebarWidth, setSidebarWidth] = useAtom(sidebarWidthAtom);
   const [selectedPath, setSelectedPath] = useAtom(selectedPathAtom);
   const [expandedFolders, setExpandedFolders] = useAtom(expandedFoldersAtom);
   const setRefreshTrigger = useSetAtom(explorerRefreshTriggerAtom);
-  const [tabs, setTabs] = useAtom(tabsAtom);
+  const setTabs = useSetAtom(tabsAtom);
   const { openFile, closeTab } = useFile();
   const t = useTranslation();
 
@@ -84,11 +85,29 @@ export function useExplorer() {
     }
   }, [openFolderPath, t]);
 
-  const closeFolder = useCallback(() => {
+  const closeFolder = useCallback(async () => {
+    if (!currentFolderPath) return;
+
+    // 1. Identify all open tabs belonging to currentFolderPath
+    const currentTabs = store.get(tabsAtom);
+    const folderTabs = currentTabs.filter(
+      (tab) => tab.fileInfo.path && isPathInsideFolder(tab.fileInfo.path, currentFolderPath),
+    );
+
+    // 2. Sequentially close each folder tab; abort if user cancels unsaved confirm dialog
+    for (const tab of folderTabs) {
+      const closed = await closeTab(tab.id);
+      if (!closed) {
+        return;
+      }
+    }
+
+    // 3. Clear current folder state and close the sidebar/folder panel
     setStoredFolderPath(null);
     setSelectedPath(null);
     setExpandedFolders([]);
-  }, [setStoredFolderPath, setSelectedPath, setExpandedFolders]);
+    setStoredSidebarVisible(false);
+  }, [currentFolderPath, store, closeTab, setStoredFolderPath, setStoredSidebarVisible, setSelectedPath, setExpandedFolders]);
 
   const toggleSidebar = useCallback(() => {
     setStoredSidebarVisible(!sidebarVisible);
@@ -192,15 +211,17 @@ export function useExplorer() {
     try {
       await cmd.deletePath(path);
       // Close tabs for this file or any file inside this folder
-      const tabsToClose = tabs.filter((tab) => {
+      const currentTabs = store.get(tabsAtom);
+      const tabsToClose = currentTabs.filter((tab) => {
         if (!tab.fileInfo.path) return false;
         if (isDir) {
-          return pathsEqual(tab.fileInfo.path, path) || tab.fileInfo.path.toLowerCase().startsWith(path.toLowerCase() + (path.includes('/') ? '/' : '\\'));
+          return isPathInsideFolder(tab.fileInfo.path, path);
         }
         return pathsEqual(tab.fileInfo.path, path);
       });
       for (const tab of tabsToClose) {
-        await closeTab(tab.id);
+        const closed = await closeTab(tab.id);
+        if (!closed) break;
       }
       if (selectedPath && pathsEqual(selectedPath, path)) {
         setSelectedPath(null);
@@ -210,7 +231,7 @@ export function useExplorer() {
       console.error('[useExplorer] deletePath failed:', err);
       await message(String(err), { title: t('dialog.openFailed'), kind: 'error' });
     }
-  }, [tabs, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, t]);
+  }, [store, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, t]);
 
   const revealPath = useCallback(async (path: string) => {
     try {

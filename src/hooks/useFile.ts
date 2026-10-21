@@ -1,7 +1,8 @@
-import { useAtom, useSetAtom, useAtomValue } from 'jotai';
+import { useStore, useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom } from '../store/atoms';
+import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom } from '../store/atoms';
+import { secondaryActiveTabIdAtom, closeSplitAtom } from '../store/splitAtoms';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
@@ -13,9 +14,11 @@ import type { TabState } from '../types';
 const LARGE_FILE_WARN_BYTES = 500 * 1024 * 1024;
 
 export function useFile() {
+  const store = useStore();
   const [tabs, setTabs] = useAtom(tabsAtom);
   const setActiveTabId = useSetAtom(activeTabIdAtom);
   const setPendingCloseTabId = useSetAtom(pendingCloseTabIdAtom);
+  const setPendingCloseResolver = useSetAtom(pendingCloseResolverAtom);
   const setPendingLargeFile = useSetAtom(pendingLargeFileAtom);
   const setPendingBinaryFile = useSetAtom(pendingBinaryFileAtom);
   const setRecentFiles = useSetAtom(recentFilesAtom);
@@ -120,31 +123,58 @@ export function useFile() {
 
   // Performs the actual tab close without any confirmation dialog.
   const forceCloseTab = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
     if (tab) {
-      await cmd.closeBuffer(tab.bufferId);
+      await cmd.closeBuffer(tab.bufferId).catch(console.error);
     }
-    setTabs((prev) => prev.filter((t) => t.id !== tabId));
-    setActiveTabId((prev) => {
-      if (prev !== tabId) return prev;
-      const idx = tabs.findIndex((t) => t.id === tabId);
-      const next = tabs.filter((t) => t.id !== tabId);
-      return next[Math.min(idx, next.length - 1)]?.id ?? null;
-    });
-  }, [tabs, setTabs, setActiveTabId]);
+    const nextTabs = currentTabs.filter((t) => t.id !== tabId);
+    store.set(tabsAtom, nextTabs);
 
-  // Public close: if the tab has unsaved changes, shows the confirmation dialog.
-  const closeTab = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    if (tab?.fileInfo.is_modified) {
-      setPendingCloseTabId(tabId);
+    if (nextTabs.length === 0) {
+      store.set(closeSplitAtom);
+      store.set(activeTabIdAtom, null);
       return;
     }
+
+    const currentActiveId = store.get(activeTabIdAtom);
+    if (currentActiveId === tabId) {
+      const idx = currentTabs.findIndex((t) => t.id === tabId);
+      const nextActiveId = nextTabs[Math.min(idx, nextTabs.length - 1)]?.id ?? null;
+      store.set(activeTabIdAtom, nextActiveId);
+    }
+
+    const currentSecondaryId = store.get(secondaryActiveTabIdAtom);
+    if (currentSecondaryId === tabId) {
+      const idx = currentTabs.findIndex((t) => t.id === tabId);
+      const nextSecondaryId = nextTabs[Math.min(idx, nextTabs.length - 1)]?.id ?? null;
+      store.set(secondaryActiveTabIdAtom, nextSecondaryId);
+    }
+  }, [store]);
+
+  // Public close: if the tab has unsaved changes, shows the confirmation dialog.
+  // Returns true if the tab was closed, false if cancelled.
+  const closeTab = useCallback(async (tabId: string): Promise<boolean> => {
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
+    if (!tab) return true;
+
+    if (tab.fileInfo.is_modified) {
+      return new Promise<boolean>((resolve) => {
+        const prevResolver = store.get(pendingCloseResolverAtom);
+        prevResolver?.(false);
+        setPendingCloseResolver(() => (closed: boolean) => resolve(closed));
+        setPendingCloseTabId(tabId);
+      });
+    }
+
     await forceCloseTab(tabId);
-  }, [tabs, forceCloseTab, setPendingCloseTabId]);
+    return true;
+  }, [store, forceCloseTab, setPendingCloseResolver, setPendingCloseTabId]);
 
   const saveFile = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
     if (!tab) return;
     if (tab.readOnly || tab.fileInfo.is_read_only) {
       // Direct overwrite forbidden for read-only / binary files to prevent corruption.
@@ -161,10 +191,11 @@ export function useFile() {
           : t
       )
     );
-  }, [tabs, setTabs]);
+  }, [store, setTabs]);
 
   const saveFileAs = useCallback(async (tabId: string, path: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
+    const currentTabs = store.get(tabsAtom);
+    const tab = currentTabs.find((t) => t.id === tabId);
     if (!tab) return;
     await syncEditorToRust(tab.bufferId);
     const fileInfo = await cmd.saveBufferAs(tab.bufferId, path);
@@ -184,7 +215,7 @@ export function useFile() {
       saveRecentFiles(next);
       return next;
     });
-  }, [tabs, setTabs, setRecentFiles]);
+  }, [store, setTabs, setRecentFiles]);
 
   const renameFile = useCallback(async (tabId: string, newFileName: string) => {
     const tab = tabs.find((t) => t.id === tabId);

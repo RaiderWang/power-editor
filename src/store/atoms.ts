@@ -62,6 +62,7 @@ export const columnModeAtom = atom<boolean>(false);
 // ──────────────────────────────────────────────────────────────
 
 export const pendingCloseTabIdAtom = atom<string | null>(null);
+export const pendingCloseResolverAtom = atom<((closed: boolean) => void) | null>(null);
 
 // ──────────────────────────────────────────────────────────────
 // External file modification (tabId whose file changed on disk)

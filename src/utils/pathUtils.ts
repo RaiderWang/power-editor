@@ -1,9 +1,25 @@
 /**
- * Case-insensitive path comparison, normalizing backslashes to forward slashes.
+ * Normalize path for safe cross-platform comparison:
+ * - Strips Windows extended-length and UNC extended prefixes (\\?\UNC\ -> //, \\?\ -> '')
+ * - Unifies backslashes to forward slashes
+ * - Trims trailing slashes while preserving root '/'
+ * - Converts to lower case
+ */
+export function normalizePath(p: string): string {
+  if (!p) return '';
+  const noUnc = p.replace(/^(\\\\[?]\\UNC\\|\/\/\?\/UNC\/)/i, '//');
+  const noPrefix = noUnc.replace(/^(\\\\[?]\\|\/\/\?\/)/, '');
+  const unified = noPrefix.replace(/\\/g, '/');
+  const trimmed = unified.length > 1 ? unified.replace(/\/+$/, '') : unified;
+  return trimmed.toLowerCase();
+}
+
+/**
+ * Case-insensitive path comparison, normalizing separators and Windows prefixes.
  * Suitable for Windows where drive letter case and separator style vary.
  */
 export function pathsEqual(a: string, b: string): boolean {
-  return a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase();
+  return normalizePath(a) === normalizePath(b);
 }
 
 /**
@@ -40,11 +56,24 @@ export function getParentDir(path: string): string {
  * Get relative path from base to target.
  */
 export function getRelativePath(base: string, target: string): string {
-  const normBase = base.replace(/\\/g, '/').replace(/\/+$/, '');
-  const normTarget = target.replace(/\\/g, '/');
-  if (normTarget.toLowerCase().startsWith(normBase.toLowerCase())) {
-    const rel = normTarget.slice(normBase.length);
+  const cleanBase = base.replace(/^(\\\\[?]\\UNC\\|\/\/\?\/UNC\/)/i, '//').replace(/^(\\\\[?]\\|\/\/\?\/)/, '').replace(/\\/g, '/').replace(/\/+$/, '');
+  const cleanTarget = target.replace(/^(\\\\[?]\\UNC\\|\/\/\?\/UNC\/)/i, '//').replace(/^(\\\\[?]\\|\/\/\?\/)/, '').replace(/\\/g, '/');
+  if (cleanTarget.toLowerCase().startsWith(cleanBase.toLowerCase())) {
+    const rel = cleanTarget.slice(cleanBase.length);
     return rel.startsWith('/') ? rel.slice(1) : rel;
   }
   return target;
+}
+
+/**
+ * Check whether `targetPath` is inside `folderPath` (or equals `folderPath`).
+ * Uses path-segment boundary matching so `C:/foo` never matches `C:/foobar/a.txt`.
+ */
+export function isPathInsideFolder(targetPath: string, folderPath: string): boolean {
+  if (!targetPath || !folderPath) return false;
+  const normTarget = normalizePath(targetPath);
+  const normFolder = normalizePath(folderPath);
+  if (!normTarget || !normFolder) return false;
+  if (normFolder === '/') return true;
+  return normTarget === normFolder || normTarget.startsWith(`${normFolder}/`);
 }

@@ -109,7 +109,7 @@ export const FileExplorer: React.FC = () => {
             </button>
             <button
               className={styles.actionBtn}
-              onClick={closeFolder}
+              onClick={() => { closeFolder().catch(console.error); }}
               title={t('menu.file.closeFolder')}
             >
               <X size={14} />

@@ -40,6 +40,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'file.new',       labelKey: 'keybinding.file.new',       category: 'file', defaultShortcut: 'Ctrl+N',       editable: true },
   { id: 'file.open',      labelKey: 'keybinding.file.open',      category: 'file', defaultShortcut: 'Ctrl+O',       editable: true },
   { id: 'file.openFolder', labelKey: 'keybinding.file.openFolder', category: 'file', defaultShortcut: 'Ctrl+Shift+O', editable: true },
+  { id: 'file.closeFolder', labelKey: 'keybinding.file.closeFolder', category: 'file', defaultShortcut: 'Ctrl+Shift+W', editable: true },
   { id: 'file.reopenWithEncoding', labelKey: 'keybinding.file.reopenWithEncoding', category: 'file', defaultShortcut: '', editable: true },
   { id: 'file.save',      labelKey: 'keybinding.file.save',      category: 'file', defaultShortcut: 'Ctrl+S',       editable: true },
   { id: 'file.saveAs',    labelKey: 'keybinding.file.saveAs',    category: 'file', defaultShortcut: 'Ctrl+Shift+S', editable: true },

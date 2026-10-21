@@ -1,12 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Provider } from 'jotai';
+import { Provider, getDefaultStore } from 'jotai';
 import App from './App';
 import './print/print.css';
 
+const store = getDefaultStore();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider>
+    <Provider store={store}>
       <App />
     </Provider>
   </React.StrictMode>

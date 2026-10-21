@@ -3,6 +3,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
   FilePlus,
   FolderOpen,
+  FolderX,
   Save,
   Undo2,
   Redo2,
@@ -58,7 +59,7 @@ export const Toolbar: React.FC = () => {
   }, [customs]);
   const t = useTranslation();
   const { openFile, newFile, saveFile, saveFileAs } = useFile();
-  const { openFolder, toggleSidebar, sidebarVisible } = useExplorer();
+  const { openFolder, closeFolder, currentFolderPath, toggleSidebar, sidebarVisible } = useExplorer();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const canPreview = useAtomValue(canPreviewAtom);
   const isPreviewOpen = useAtomValue(isPreviewOpenAtom);
@@ -168,6 +169,14 @@ export const Toolbar: React.FC = () => {
       </button>
       <button className={styles.btn} onClick={openFolder} title={`${t('toolbar.openFolder')}${sk('file.openFolder')}`}>
         <Folder size={16} />
+      </button>
+      <button
+        className={styles.btn}
+        onClick={() => { closeFolder().catch(console.error); }}
+        disabled={!currentFolderPath}
+        title={`${t('toolbar.closeFolder')}${sk('file.closeFolder')}`}
+      >
+        <FolderX size={16} />
       </button>
       <button
         className={`${styles.btn} ${sidebarVisible ? styles.active : ''}`}

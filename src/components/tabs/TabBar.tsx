@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { save } from '@tauri-apps/plugin-dialog';
 import { SquareSplitHorizontal, X } from 'lucide-react';
-import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom } from '../../store/atoms';
+import { tabsAtom, activeTabIdAtom } from '../../store/atoms';
 import {
   splitLayoutAtom,
   openSplitAtom,
@@ -76,8 +76,8 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   const closeTabsSequentially = useCallback(async (tabIds: string[]) => {
     for (const id of tabIds) {
-      await closeTab(id);
-      if (getDefaultStore().get(pendingCloseTabIdAtom)) break;
+      const closed = await closeTab(id);
+      if (!closed) break;
     }
   }, [closeTab]);
 
