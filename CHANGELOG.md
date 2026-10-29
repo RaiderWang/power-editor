@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed / 修复
+- **React 19 & Render Purity Cleanups / React 19 渲染副作用与状态规范修复**:
+  - Eliminated ref mutations and DOM measurements during component render phases across `Editor`, `SearchPanel`, `VirtualScrollbar`, `MenuBar`, and `StatusBar` to strictly adhere to React 19 rules.
+    （**组件渲染纯度与副作用规范化**：消除 `Editor`、`SearchPanel`、`VirtualScrollbar`、`MenuBar` 及 `StatusBar` 中在组件渲染阶段直接读写 Ref 或测量 DOM 偏移的副作用，严格遵循 React 19 规范。）
+  - Prevented redundant virtual window reloads in `Editor` during Phase 2 background file loading by tracking total lines in a synchronized ref.
+    （**避免大文件后台加载时冗余重载**：在 `Editor` 中通过 ref 跟踪行数，避免大文件 Phase 2 后台加载完成更新总行数时触发不必要的虚拟窗口重载。）
+  - Streamlined special character expansion in `expandSpecialChars` using a single-pass regex replacement to eliminate sentinel character collisions.
+    （**特殊字符转义算法优化**：`expandSpecialChars` 改用单趟正则替换，避免占位字符冲突与潜在的二次转义问题。）
 - **Syntax Language Recognition on Save As / 另存为与新文件保存格式语法识别**:
   - Fixed an issue where saving a newly created (untitled) buffer or performing "Save As" did not trigger syntax highlighting for the target file extension (#4).
     （**新建文件另存为语法高亮即时生效**：修复新建未命名文件或执行“另存为”时，编辑器未能依据新文件扩展名即时识别语言格式并触发语法高亮的问题。）

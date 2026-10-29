@@ -260,7 +260,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         }
       });
   }, [updateScrollbar]);
-  maybeLoadMoreRef.current = maybeLoadMore;
+  useEffect(() => {
+    maybeLoadMoreRef.current = maybeLoadMore;
+  }, [maybeLoadMore]);
 
   // ── Slide the virtual-document window to cover a target line ──────
   // Called by highlightSearchMatches when the active search match falls outside
@@ -859,6 +861,14 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Latest tab line count, read by the buffer-change effect below. Kept in a ref so
+  // Phase 2 background-load updates of total_lines do NOT trigger a window reload.
+  // (Declared before that effect so it is synced first within the same commit.)
+  const tabTotalLinesRef = useRef(tab.fileInfo.total_lines);
+  useEffect(() => {
+    tabTotalLinesRef.current = tab.fileInfo.total_lines;
+  }, [tab.fileInfo.total_lines]);
+
   // ── Reload when buffer changes (tab switch or reopen-with-encoding) ──
   useEffect(() => {
     const view = viewRef.current;
@@ -890,7 +900,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     registerJumpToLine(tab.bufferId, jumpToWindow);
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
     registerReloadFromStart(tab.bufferId, reloadFromStartFn);
-    loadContent(tab.bufferId, view, tab.fileInfo.total_lines);
+    loadContent(tab.bufferId, view, tabTotalLinesRef.current);
     view.focus();
   }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn, reloadFromStartFn]);
 
@@ -981,7 +991,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       }
     });
   }, [jumpToWindow]);
-  doSeekLineRef.current = doSeekLine;
+  useEffect(() => {
+    doSeekLineRef.current = doSeekLine;
+  }, [doSeekLine]);
 
   const handleSeek = useCallback((ratio: number) => {
     const view = viewRef.current;

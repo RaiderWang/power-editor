@@ -206,12 +206,8 @@ export const MenuBar: React.FC = () => {
   // Track button positions for dropdown offset
   const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const getOffset = (name: string): number => {
-    const btn = btnRefs.current[name];
-    const bar = barRef.current;
-    if (!btn || !bar) return 0;
-    return btn.offsetLeft;
-  };
+  // Offset of the opened menu's trigger; measured in the click handler (not during render).
+  const [menuOffset, setMenuOffset] = useState(0);
 
   // Close on outside click
   useEffect(() => {
@@ -687,7 +683,10 @@ export const MenuBar: React.FC = () => {
     { name: 'help', label: t('menu.help'), items: helpMenu },
   ];
 
-  const toggle = (name: string) => setOpenMenu((prev) => (prev === name ? null : name));
+  const toggle = (name: string) => {
+    setMenuOffset(btnRefs.current[name]?.offsetLeft ?? 0);
+    setOpenMenu((prev) => (prev === name ? null : name));
+  };
 
   return (
     <>
@@ -706,7 +705,7 @@ export const MenuBar: React.FC = () => {
               {isOpen && (
                 <DropdownPanel
                   items={items}
-                  offsetLeft={getOffset(name)}
+                  offsetLeft={menuOffset}
                   onClose={() => setOpenMenu(null)}
                 />
               )}

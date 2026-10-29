@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { ArrowUpCircle } from 'lucide-react';
 import { activeTabAtom, openProgressAtom, supportedEncodingsAtom } from '../../store/atoms';
@@ -24,7 +24,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
   const setUpdateDialogOpen = useSetAtom(updateDialogOpenAtom);
   const { reopenWithEncoding } = useFile();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const encodingRef = useRef<HTMLButtonElement>(null);
+  // Callback ref + state so the picker anchor can be read during render safely.
+  const [encodingEl, setEncodingEl] = useState<HTMLButtonElement | null>(null);
   const t = useTranslation();
 
   const canReopen = Boolean(activeTab?.fileInfo.path);
@@ -80,7 +81,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
       <span className={styles.separator}>|</span>
       <button
         type="button"
-        ref={encodingRef}
+        ref={setEncodingEl}
         className={`${styles.encodingBtn} ${pickerOpen ? styles.encodingBtnActive : ''}`}
         title={canReopen ? t('status.encodingHint') : t('status.encodingDisabledHint')}
         disabled={!canReopen}
@@ -136,11 +137,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
         {getTabTitle(activeTab, t)}
       </span>
 
-      {pickerOpen && encodingRef.current && (
+      {pickerOpen && encodingEl && (
         <EncodingPicker
           currentEncoding={fileInfo.encoding}
           encodings={encodings}
-          anchorEl={encodingRef.current}
+          anchorEl={encodingEl}
           onSelect={handleSelectEncoding}
           onClose={() => setPickerOpen(false)}
         />
