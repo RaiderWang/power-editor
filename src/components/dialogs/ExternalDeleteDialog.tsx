@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import { externalDeletedTabIdsAtom, tabsAtom } from '../../store/atoms';
 import { useFile } from '../../hooks/useFile';
 import { getTabFileName, getTabSaveDefaultPath } from '../../utils/tabFileName';
@@ -8,13 +8,14 @@ import styles from './CloseConfirmDialog.module.css';
 
 /**
  * Shown when the file behind a tab was deleted (or moved away) by another
- * program. The user must either close the tab or save the content as a new
- * file; there is no "dismiss" path, so the overlay does not close on click.
+ * program. The user can save the content as a new file, close the tab, or keep
+ * the tab open (marked as modified) to inspect / copy the text first. There is
+ * no implicit dismiss, so the overlay does not close on click.
  * Tabs are handled one at a time from the `externalDeletedTabIdsAtom` queue.
  */
 export const ExternalDeleteDialog: React.FC = () => {
   const [queue, setQueue] = useAtom(externalDeletedTabIdsAtom);
-  const tabs = useAtomValue(tabsAtom);
+  const [tabs, setTabs] = useAtom(tabsAtom);
   const { saveFileAs, forceCloseTab } = useFile();
   const t = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,16 @@ export const ExternalDeleteDialog: React.FC = () => {
     }
   };
 
+  // Let the user look at / copy the content first. The content no longer exists
+  // on disk, so mark the tab modified: closing it later goes through the normal
+  // "save changes?" confirmation instead of silently losing the text.
+  const handleKeep = () => {
+    setTabs((prev) =>
+      prev.map((x) => (x.id === tabId ? { ...x, fileInfo: { ...x.fileInfo, is_modified: true } } : x)),
+    );
+    dequeue();
+  };
+
   const handleClose = async () => {
     if (busy) return;
     setBusy(true);
@@ -78,6 +89,9 @@ export const ExternalDeleteDialog: React.FC = () => {
         <div className={styles.actions}>
           <button className={styles.btnPrimary} onClick={handleSaveAs} disabled={busy}>
             {t('externalDelete.saveAs')}
+          </button>
+          <button className={styles.btnSecondary} onClick={handleKeep} disabled={busy}>
+            {t('externalDelete.keep')}
           </button>
           <button className={styles.btnDanger} onClick={handleClose} disabled={busy}>
             {t('externalDelete.close')}

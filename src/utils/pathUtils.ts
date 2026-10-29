@@ -76,6 +76,17 @@ export function getRelativePath(base: string, target: string): string {
 }
 
 /**
+ * Re-root `path` after `oldRoot` was renamed to `newRoot`.
+ * Returns `newRoot` when `path` is `oldRoot` itself, the re-rooted path when it
+ * lies inside `oldRoot`, and `null` when it is unaffected by the rename.
+ */
+export function rebasePath(path: string, oldRoot: string, newRoot: string): string | null {
+  if (pathsEqual(path, oldRoot)) return newRoot;
+  if (!isPathInsideFolder(path, oldRoot)) return null;
+  return joinPath(newRoot, getRelativePath(oldRoot, path));
+}
+
+/**
  * Check whether `targetPath` is inside `folderPath` (or equals `folderPath`).
  * Uses path-segment boundary matching so `C:/foo` never matches `C:/foobar/a.txt`.
  */

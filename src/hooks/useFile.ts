@@ -1,7 +1,8 @@
 import { useStore, useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom } from '../store/atoms';
+import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom, externalDeletedTabIdsAtom } from '../store/atoms';
+import { clearExternalPrompts } from '../utils/externalPrompts';
 import { secondaryActiveTabIdAtom, closeSplitAtom } from '../store/splitAtoms';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
@@ -130,6 +131,7 @@ export function useFile() {
     }
     const nextTabs = currentTabs.filter((t) => t.id !== tabId);
     store.set(tabsAtom, nextTabs);
+    clearExternalPrompts(store, tabId);
 
     if (nextTabs.length === 0) {
       store.set(closeSplitAtom);
@@ -159,6 +161,11 @@ export function useFile() {
     const tab = currentTabs.find((t) => t.id === tabId);
     if (!tab) return true;
 
+    // The file was deleted on disk and ExternalDeleteDialog is waiting for the
+    // user's decision for this tab: let that dialog decide instead of stacking
+    // a second confirmation on top of it.
+    if (store.get(externalDeletedTabIdsAtom).includes(tabId)) return false;
+
     if (tab.fileInfo.is_modified) {
       return new Promise<boolean>((resolve) => {
         const prevResolver = store.get(pendingCloseResolverAtom);
@@ -184,6 +191,9 @@ export function useFile() {
     if (!tab.fileInfo.path) return; // needs saveAs
     await syncEditorToRust(tab.bufferId);
     await cmd.saveBuffer(tab.bufferId);
+    // The write is a self-save, so the watcher will not report it: clear any
+    // "deleted / changed on disk" prompt for this tab ourselves.
+    clearExternalPrompts(store, tabId);
     setTabs((prev) =>
       prev.map((t) =>
         t.id === tabId
@@ -199,6 +209,7 @@ export function useFile() {
     if (!tab) return;
     await syncEditorToRust(tab.bufferId);
     const fileInfo = await cmd.saveBufferAs(tab.bufferId, path);
+    clearExternalPrompts(store, tabId);
     if (tab.readOnly || tab.fileInfo.is_read_only) {
       await cmd.setReadOnly(tab.bufferId, false).catch(() => {});
     }

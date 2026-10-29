@@ -13,7 +13,7 @@ import { tabsAtom } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { useFile } from './useFile';
 import { useTranslation } from '../i18n';
-import { joinPath, getParentDir, getRelativePath, pathsEqual, isPathInsideFolder, getFileExtension } from '../utils/pathUtils';
+import { joinPath, getParentDir, getRelativePath, rebasePath, pathsEqual, isPathInsideFolder, getFileExtension } from '../utils/pathUtils';
 
 const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
 const STORAGE_SIDEBAR_VISIBLE_KEY = 'power-editor:sidebar-visible';
@@ -174,30 +174,26 @@ export function useExplorer() {
         prev.map((tab) => {
           const tabPath = tab.fileInfo.path;
           if (!tabPath) return tab;
-          if (pathsEqual(tabPath, oldPath)) {
-            return {
-              ...tab,
-              fileInfo: { ...tab.fileInfo, path: newPath },
-              language: ext,
-            };
-          }
-          // A folder was renamed: re-root tabs of files inside it (Rust side
-          // already relocated the buffers' paths and watches).
-          if (isPathInsideFolder(tabPath, oldPath)) {
-            return {
-              ...tab,
-              fileInfo: { ...tab.fileInfo, path: joinPath(newPath, getRelativePath(oldPath, tabPath)) },
-            };
-          }
-          return tab;
+          const rebased = rebasePath(tabPath, oldPath, newPath);
+          if (rebased === null) return tab;
+          // Renamed file itself: also re-detect language. A folder was renamed:
+          // re-root tabs of files inside it (Rust side already relocated the
+          // buffers' paths and watches).
+          return {
+            ...tab,
+            fileInfo: { ...tab.fileInfo, path: rebased },
+            ...(pathsEqual(tabPath, oldPath) ? { language: ext } : {}),
+          };
         })
       );
-      // Update expanded folders if a folder was renamed
+      // Re-root expanded folders and the selection, including descendants of a
+      // renamed folder, so sub-folders stay expanded and the selection stays valid.
       setExpandedFolders((prev) =>
-        prev.map((p) => (pathsEqual(p, oldPath) ? newPath : p))
+        prev.map((p) => rebasePath(p, oldPath, newPath) ?? p)
       );
-      if (selectedPath && pathsEqual(selectedPath, oldPath)) {
-        setSelectedPath(newPath);
+      if (selectedPath) {
+        const rebasedSelection = rebasePath(selectedPath, oldPath, newPath);
+        if (rebasedSelection !== null) setSelectedPath(rebasedSelection);
       }
       setRefreshTrigger((n) => n + 1);
     } catch (err) {

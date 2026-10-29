@@ -526,5 +526,111 @@ mod tests {
         assert_eq!(buf.get_full_text(), "line1\nline2\nline3");
         assert_eq!(buf.rope.len_lines(), 3);
     }
+
+    // ── relocate_paths / strip_prefix_ignore_case ─────────────────────────
+
+    fn registry_with_paths(paths: &[Option<&str>]) -> BufferRegistry {
+        let reg = BufferRegistry::new();
+        for (i, p) in paths.iter().enumerate() {
+            reg.insert(Buffer::from_rope(
+                i as u64 + 1,
+                Rope::from_str(""),
+                p.map(PathBuf::from),
+                "UTF-8".into(),
+                LineEnding::Lf,
+            ));
+        }
+        reg
+    }
+
+    fn path_of(reg: &BufferRegistry, id: u64) -> Option<PathBuf> {
+        reg.buffers.lock().unwrap().get(&id).and_then(|b| b.path.clone())
+    }
+
+    #[test]
+    fn test_relocate_paths_single_file() {
+        let reg = registry_with_paths(&[Some("/data/a.txt"), Some("/data/b.txt")]);
+        let moved = reg.relocate_paths(Path::new("/data/a.txt"), Path::new("/data/c.txt"));
+        assert_eq!(moved, vec![(1, PathBuf::from("/data/c.txt"))]);
+        assert_eq!(path_of(&reg, 1), Some(PathBuf::from("/data/c.txt")));
+        assert_eq!(path_of(&reg, 2), Some(PathBuf::from("/data/b.txt")));
+    }
+
+    #[test]
+    fn test_relocate_paths_folder_updates_descendants() {
+        let reg = registry_with_paths(&[
+            Some("/data/foo/a.txt"),
+            Some("/data/foo/sub/b.txt"),
+            Some("/data/other/c.txt"),
+        ]);
+        let mut moved = reg.relocate_paths(Path::new("/data/foo"), Path::new("/data/bar"));
+        moved.sort_by_key(|(id, _)| *id);
+        assert_eq!(
+            moved,
+            vec![
+                (1, PathBuf::from("/data/bar/a.txt")),
+                (2, PathBuf::from("/data/bar/sub/b.txt")),
+            ]
+        );
+        assert_eq!(path_of(&reg, 3), Some(PathBuf::from("/data/other/c.txt")));
+    }
+
+    #[test]
+    fn test_relocate_paths_sibling_prefix_not_matched() {
+        // Renaming "foo" must not touch "foobar" (component-wise, not string prefix).
+        let reg = registry_with_paths(&[Some("/data/foobar/a.txt"), Some("/data/foo")]);
+        let moved = reg.relocate_paths(Path::new("/data/foo"), Path::new("/data/x"));
+        assert_eq!(moved, vec![(2, PathBuf::from("/data/x"))]);
+        assert_eq!(path_of(&reg, 1), Some(PathBuf::from("/data/foobar/a.txt")));
+    }
+
+    #[test]
+    fn test_relocate_paths_ignores_buffers_without_path() {
+        let reg = registry_with_paths(&[None, Some("/data/a.txt")]);
+        let moved = reg.relocate_paths(Path::new("/data"), Path::new("/moved"));
+        assert_eq!(moved, vec![(2, PathBuf::from("/moved/a.txt"))]);
+        assert_eq!(path_of(&reg, 1), None);
+    }
+
+    #[test]
+    fn test_strip_prefix_returns_remainder() {
+        assert_eq!(
+            strip_prefix_ignore_case(Path::new("/data/foo/sub/a.txt"), Path::new("/data/foo")),
+            Some(PathBuf::from("sub/a.txt"))
+        );
+        assert_eq!(
+            strip_prefix_ignore_case(Path::new("/data/foo"), Path::new("/data/foo")),
+            Some(PathBuf::new())
+        );
+    }
+
+    #[test]
+    fn test_strip_prefix_longer_prefix_is_none() {
+        assert_eq!(
+            strip_prefix_ignore_case(Path::new("/data"), Path::new("/data/foo")),
+            None
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_strip_prefix_case_insensitive_on_windows() {
+        assert_eq!(
+            strip_prefix_ignore_case(Path::new(r"C:\Data\Foo\a.txt"), Path::new(r"c:\data\foo")),
+            Some(PathBuf::from("a.txt"))
+        );
+        let reg = registry_with_paths(&[Some(r"C:\Data\Foo\a.txt")]);
+        let moved = reg.relocate_paths(Path::new(r"c:\data\foo"), Path::new(r"C:\Data\Bar"));
+        assert_eq!(moved, vec![(1, PathBuf::from(r"C:\Data\Bar\a.txt"))]);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn test_strip_prefix_case_sensitive_on_unix() {
+        assert_eq!(
+            strip_prefix_ignore_case(Path::new("/Data/Foo/a.txt"), Path::new("/data/foo")),
+            None
+        );
+    }
 }
 

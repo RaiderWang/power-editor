@@ -31,7 +31,9 @@ const CHECK_INTERVAL: Duration = Duration::from_millis(50);
 /// editor problem that occurs when an external editor truncates the file
 /// before writing the new content.
 pub struct FileWatcherRegistry {
-    watcher: Mutex<Option<RecommendedWatcher>>,
+    /// Shared with the debounce thread, which re-registers watches on
+    /// platforms where an atomic replace invalidates the watched inode.
+    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
     /// Maps the canonical on-disk path to the buffer ID that opened it.
     path_to_buffer: Arc<Mutex<HashMap<PathBuf, u64>>>,
     /// Maps buffer_id → (timestamp, path) of the most recent disk event.
@@ -52,6 +54,9 @@ impl FileWatcherRegistry {
             Arc::new(Mutex::new(HashMap::new()));
         let last_save: Arc<Mutex<HashMap<u64, Instant>>> =
             Arc::new(Mutex::new(HashMap::new()));
+        // Filled in below once the OS watcher exists; the debounce thread only
+        // needs the handle after its first settled event.
+        let watcher: Arc<Mutex<Option<RecommendedWatcher>>> = Arc::new(Mutex::new(None));
 
         // ── Background debounce thread ────────────────────────────────────
         // Wakes every CHECK_INTERVAL and emits the event for any buffer
@@ -60,6 +65,8 @@ impl FileWatcherRegistry {
             let pending_bg = pending.clone();
             let last_save_bg = last_save.clone();
             let app_bg = app.clone();
+            #[cfg(not(windows))]
+            let watcher_bg = watcher.clone();
             std::thread::Builder::new()
                 .name("file-watcher-debounce".into())
                 .spawn(move || {
@@ -100,6 +107,24 @@ impl FileWatcherRegistry {
                             };
                             if let Err(e) = app_bg.emit(event_name, buf_id) {
                                 log::warn!("[FileWatcher] failed to emit event: {e}");
+                            }
+
+                            // inotify / FSEvents bind to the inode: after an atomic
+                            // replace (delete + create) the old watch is dead, so
+                            // later external edits would go unnoticed. Re-register.
+                            // Not needed on Windows (the parent directory is watched,
+                            // and re-registering could drop events in between).
+                            #[cfg(not(windows))]
+                            if event_name == "file:externally-modified" {
+                                if let Some(ref mut w) = *watcher_bg.lock().unwrap() {
+                                    let _ = w.unwatch(&path);
+                                    if let Err(e) = w.watch(&path, RecursiveMode::NonRecursive) {
+                                        log::warn!(
+                                            "[FileWatcher] failed to re-watch {}: {e}",
+                                            path.display()
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
@@ -147,19 +172,18 @@ impl FileWatcherRegistry {
             notify::Config::default(),
         );
 
-        let watcher = match watcher_result {
+        match watcher_result {
             Ok(w) => {
                 log::info!("[FileWatcher] watcher created successfully");
-                Some(w)
+                *watcher.lock().unwrap() = Some(w);
             }
             Err(e) => {
                 log::error!("[FileWatcher] could not create watcher: {e}");
-                None
             }
-        };
+        }
 
         FileWatcherRegistry {
-            watcher: Mutex::new(watcher),
+            watcher,
             path_to_buffer,
             pending,
             last_save,
