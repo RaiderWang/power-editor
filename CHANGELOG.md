@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-10-29
+
 ### Added / 新增
 - **External Deletion Prompt / 外部删除文件提示**:
   - When an open file is deleted or moved away by another program, a dialog now lets you either close the tab or save the content as a new file (previously nothing happened). Atomic-save editors (delete + recreate) are still treated as plain modifications.
@@ -345,7 +347,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...HEAD
+[0.2.9]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/RaiderWang/power-editor/compare/v0.2.5...v0.2.6
