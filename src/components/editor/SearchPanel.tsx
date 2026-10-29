@@ -70,23 +70,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const [searching, setSearching] = useState(false);
 
   // 记录上一次搜索时使用的 pattern，用于判断是否需要重新搜索
-  const lastSearchedPattern = useRef<string>('');
-
-  // 标签切换时：清除旧搜索结果；若面板已开启且有关键词，立即在新标签重新搜索（Bug 2 修复）
-  useEffect(() => {
-    setMatches([]);
-    setTotal(0);
-    setCurrentIdx(-1);
-    setShowLineList(false);
-    lastSearchedPattern.current = '';
-    // 面板打开且有关键词时，在新标签页立即触发搜索，使上下箭头可以正常工作
-    if (open && params.pattern && activeTab) {
-      doSearch();
-    }
-  // open / params / doSearch 不放入 deps：它们在 activeTab.id 变化的同一次渲染中已更新，
-  // 闭包捕获的值是正确的；加入 deps 反而会导致不必要的重复搜索。
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab?.id]);
+  // （仅用于渲染「无结果」提示，故用 state 而非 ref）
+  const [lastSearchedPattern, setLastSearchedPattern] = useState('');
 
   // 每次触发「打开/重新打开」时，有选区则填入，否则填入最近一次查找历史，并全选输入框内容
   useEffect(() => {
@@ -100,6 +85,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         setParams((prev) => ({ ...prev, pattern: history[0] }));
       }
     }
+    // 必须在上面的 setParams 之后触发，输入框才能选中更新后的内容；无法从 searchTrigger 直接派生。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchSelectTrigger((n) => n + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTrigger]);
@@ -120,23 +107,24 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   }, [open, activeTab, secondaryActiveTab, activePane]);
 
   // 展开替换区时自动填入最近一次替换历史（仅在替换框为空时）
-  useEffect(() => {
-    if (!showReplace) return;
-    if (replaceText === '') {
+  const toggleShowReplace = () => {
+    const next = !showReplace;
+    setShowReplace(next);
+    if (next && replaceText === '') {
       const history = loadReplaceHistory();
       if (history.length > 0) {
         setReplaceText(history[0]);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showReplace]);
+  };
 
   const listLinesRef = useRef(listLines);
-  listLinesRef.current = listLines;
+  useEffect(() => {
+    listLinesRef.current = listLines;
+  }, [listLines]);
 
   const doSearch = useCallback(async (options?: { noScroll?: boolean }) => {
     if (!activeTab || !params.pattern) return;
-    lastSearchedPattern.current = params.pattern;
     setSearching(true);
     try {
       await syncEditorToRust(activeTab.bufferId);
@@ -146,15 +134,39 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
       clearSearchStale(activeTab.bufferId);
       clearCursorMoved(activeTab.bufferId);
+      // 仅在搜索成功后标记「已搜索」，失败时不应显示「无结果」
+      setLastSearchedPattern(params.pattern);
       setMatches(result.matches);
       setTotal(result.total);
       const newIdx = result.matches.length > 0 ? 0 : -1;
       setCurrentIdx(newIdx);
       onMatchesFound?.(result.matches, newIdx, options?.noScroll);
+    } catch (err) {
+      console.error('[SearchPanel] findAll failed:', err);
     } finally {
       setSearching(false);
     }
   }, [activeTab, params, setMatches, setTotal, setCurrentIdx, onMatchesFound]);
+
+  // 标签切换时：清除旧搜索结果；若面板已开启且有关键词，立即在新标签重新搜索（Bug 2 修复）
+  // 必须声明在 doSearch 之后。
+  useEffect(() => {
+    // 切换标签是外部状态变化，需同步重置 jotai 中的搜索结果。
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setMatches([]);
+    setTotal(0);
+    setCurrentIdx(-1);
+    setShowLineList(false);
+    setLastSearchedPattern('');
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // 面板打开且有关键词时，在新标签页立即触发搜索，使上下箭头可以正常工作
+    if (open && params.pattern && activeTab) {
+      doSearch();
+    }
+  // open / params / doSearch 不放入 deps：它们在 activeTab.id 变化的同一次渲染中已更新，
+  // 闭包捕获的值是正确的；加入 deps 反而会导致不必要的重复搜索。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id]);
 
   const refreshMatches = useCallback(async (): Promise<SearchMatch[]> => {
     if (!activeTab || !params.pattern) return [];
@@ -166,9 +178,13 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         : { ...params, pattern: expandSpecialChars(params.pattern) };
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
       clearSearchStale(activeTab.bufferId);
+      setLastSearchedPattern(params.pattern);
       setMatches(result.matches);
       setTotal(result.total);
       return result.matches;
+    } catch (err) {
+      console.error('[SearchPanel] findAll failed:', err);
+      return [];
     } finally {
       setSearching(false);
     }
@@ -192,7 +208,9 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       setMatches([]);
       setTotal(0);
       setCurrentIdx(-1);
-      lastSearchedPattern.current = '';
+      // 输入被清空时同步重置「已搜索」标记，属于对输入变化的响应，无法从渲染中派生。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastSearchedPattern('');
       if (activeTab) clearAllSearchHighlights();
     } else if (activeTab) {
       markSearchStale(activeTab.bufferId);
@@ -206,7 +224,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     setSearchHistory(loadSearchHistory());
     const stale = isSearchStale(activeTab.bufferId);
     if (!matches.length || stale) {
-      lastSearchedPattern.current = params.pattern;
       const fresh = await refreshMatches();
       if (fresh.length === 0) {
         setCurrentIdx(-1);
@@ -240,7 +257,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     setSearchHistory(loadSearchHistory());
     const stale = isSearchStale(activeTab.bufferId);
     if (!matches.length || stale) {
-      lastSearchedPattern.current = params.pattern;
       const fresh = await refreshMatches();
       if (fresh.length === 0) {
         setCurrentIdx(-1);
@@ -373,7 +389,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     markTabModified(activeTab.id);
     await doSearch({ noScroll: true });
     alert(t('search.replacedCount', { count }));
-  }, [activeTab, params, replaceText, doSearch, markTabModified]);
+  }, [activeTab, params, replaceText, doSearch, markTabModified, t]);
 
   const handleSaveToNewFile = useCallback(async (lines: string[]) => {
     const { v4: uuidv4 } = await import('uuid');
@@ -444,7 +460,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
               : params.pattern
                 ? matches.length > 0
                   ? `${currentIdx + 1} / ${total}${total >= 10000 ? '+' : ''}`
-                  : lastSearchedPattern.current
+                  : lastSearchedPattern
                     ? t('search.noResult')
                     : ''
                 : ''}
@@ -498,7 +514,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         </div>
         <button
           className={`${styles.btn} ${showReplace ? styles.btnActive : ''}`}
-          onClick={() => setShowReplace(!showReplace)}
+          onClick={toggleShowReplace}
         >
           {t('search.replace')}
         </button>

@@ -40,11 +40,6 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
   const effectiveSize = Math.max(size, MIN_THUMB_PX / trackHeight);
   const effectiveTop = Math.min(dragTop !== null ? dragTop : top, 1 - effectiveSize);
 
-  // Ref-sync so pointer handlers always read the latest effectiveTop without
-  // capturing a stale closure value.
-  const effectiveTopRef = useRef(effectiveTop);
-  effectiveTopRef.current = effectiveTop;
-
   const ratioFromClientY = useCallback((clientY: number): number => {
     const track = trackRef.current;
     if (!track) return 0;
@@ -68,10 +63,10 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragOffsetRef.current = ratioFromClientY(e.clientY) - effectiveTopRef.current;
-    setDragTop(effectiveTopRef.current);
+    dragOffsetRef.current = ratioFromClientY(e.clientY) - effectiveTop;
+    setDragTop(effectiveTop);
     lastSeekTimeRef.current = 0;
-  }, [ratioFromClientY]);
+  }, [ratioFromClientY, effectiveTop]);
 
   const handleThumbPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
@@ -94,7 +89,7 @@ export const VirtualScrollbar: React.FC<VirtualScrollbarProps> = ({ top, size, o
 
   // Clean up drag state if the pointer gesture is cancelled by the OS
   // (e.g. a system gesture recognizer takes over on macOS).
-  const handleThumbPointerCancel = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
+  const handleThumbPointerCancel = useCallback(() => {
     setDragTop(null);
   }, []);
 
