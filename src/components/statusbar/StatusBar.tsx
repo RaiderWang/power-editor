@@ -23,16 +23,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
   const updateDetails = useAtomValue(updateDetailsAtom);
   const setUpdateDialogOpen = useSetAtom(updateDialogOpenAtom);
   const { reopenWithEncoding } = useFile();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // 记录是哪个标签打开了编码选择器；pickerOpen 由它派生，切到其他标签（或不可重开的标签）时自动收起。
+  const [pickerTabId, setPickerTabId] = useState<string | null>(null);
   // Callback ref + state so the picker anchor can be read during render safely.
   const [encodingEl, setEncodingEl] = useState<HTMLButtonElement | null>(null);
   const t = useTranslation();
 
   const canReopen = Boolean(activeTab?.fileInfo.path);
+  const pickerOpen = canReopen && pickerTabId !== null && pickerTabId === activeTab?.id;
 
   const handleEncodingClick = useCallback(() => {
     if (!activeTab || !activeTab.fileInfo.path) return;
-    setPickerOpen(true);
+    setPickerTabId(activeTab.id);
   }, [activeTab]);
 
   const handleSelectEncoding = useCallback(async (enc: string) => {
@@ -143,7 +145,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ cursorLine, cursorCol }) =
           encodings={encodings}
           anchorEl={encodingEl}
           onSelect={handleSelectEncoding}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => setPickerTabId(null)}
         />
       )}
     </div>

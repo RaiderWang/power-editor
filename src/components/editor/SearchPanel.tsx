@@ -125,7 +125,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
 
   const doSearch = useCallback(async (options?: { noScroll?: boolean }) => {
     if (!activeTab || !params.pattern) return;
-    setLastSearchedPattern(params.pattern);
     setSearching(true);
     try {
       await syncEditorToRust(activeTab.bufferId);
@@ -135,11 +134,15 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
       clearSearchStale(activeTab.bufferId);
       clearCursorMoved(activeTab.bufferId);
+      // 仅在搜索成功后标记「已搜索」，失败时不应显示「无结果」
+      setLastSearchedPattern(params.pattern);
       setMatches(result.matches);
       setTotal(result.total);
       const newIdx = result.matches.length > 0 ? 0 : -1;
       setCurrentIdx(newIdx);
       onMatchesFound?.(result.matches, newIdx, options?.noScroll);
+    } catch (err) {
+      console.error('[SearchPanel] findAll failed:', err);
     } finally {
       setSearching(false);
     }
@@ -175,9 +178,13 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         : { ...params, pattern: expandSpecialChars(params.pattern) };
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
       clearSearchStale(activeTab.bufferId);
+      setLastSearchedPattern(params.pattern);
       setMatches(result.matches);
       setTotal(result.total);
       return result.matches;
+    } catch (err) {
+      console.error('[SearchPanel] findAll failed:', err);
+      return [];
     } finally {
       setSearching(false);
     }
@@ -217,7 +224,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     setSearchHistory(loadSearchHistory());
     const stale = isSearchStale(activeTab.bufferId);
     if (!matches.length || stale) {
-      setLastSearchedPattern(params.pattern);
       const fresh = await refreshMatches();
       if (fresh.length === 0) {
         setCurrentIdx(-1);
@@ -251,7 +257,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     setSearchHistory(loadSearchHistory());
     const stale = isSearchStale(activeTab.bufferId);
     if (!matches.length || stale) {
-      setLastSearchedPattern(params.pattern);
       const fresh = await refreshMatches();
       if (fresh.length === 0) {
         setCurrentIdx(-1);
