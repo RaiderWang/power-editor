@@ -10,7 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / 新增
+- **External Deletion Prompt / 外部删除文件提示**:
+  - When an open file is deleted or moved away by another program, a dialog now lets you either close the tab or save the content as a new file (previously nothing happened). Atomic-save editors (delete + recreate) are still treated as plain modifications.
+    （**外部删除文件提示**：已打开的文件被外部程序删除或移走后，弹出对话框让用户选择“关闭标签”或“另存为新文件”（此前毫无提示）；原子写入型编辑器的“先删后建”仍按普通修改处理。）
+
 ### Fixed / 修复
+- **File Watcher Follows Renames / 文件监听随重命名更新**:
+  - Renaming a file from the tab bar or a file/folder from the explorer now updates the Rust-side buffer path and file watch; previously the explorer rename left `Buffer.path` stale, so Ctrl+S recreated the old file. "Save As" in place no longer drops its self-save record.
+    （**重命名后同步更新路径与监听**：标签栏或资源管理器重命名文件/文件夹后，同步更新 Rust 端 buffer 路径与文件监听；此前资源管理器重命名不会更新 `Buffer.path`，导致 Ctrl+S 重新生成旧文件。原位“另存为”也不再丢失自保存记录。）
+  - Deleting a file from the explorer now closes its tabs first (cancel aborts the deletion), avoiding stacked dialogs for tabs with unsaved changes.
+    （**资源管理器删除先关标签**：先走标签关闭确认再删除磁盘文件，取消则不删除，避免有未保存修改的标签出现叠加弹窗。）
 - **React 19 & Render Purity Cleanups / React 19 渲染副作用与状态规范修复**:
   - Eliminated ref mutations and DOM measurements during component render phases across `Editor`, `SearchPanel`, `VirtualScrollbar`, `MenuBar`, and `StatusBar` to strictly adhere to React 19 rules.
     （**组件渲染纯度与副作用规范化**：消除 `Editor`、`SearchPanel`、`VirtualScrollbar`、`MenuBar` 及 `StatusBar` 中在组件渲染阶段直接读写 Ref 或测量 DOM 偏移的副作用，严格遵循 React 19 规范。）

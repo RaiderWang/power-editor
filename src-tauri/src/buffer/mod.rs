@@ -4,7 +4,7 @@ use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::SystemTime;
@@ -315,6 +315,46 @@ impl BufferRegistry {
     pub fn remove(&self, id: u64) {
         self.buffers.lock().unwrap().remove(&id);
     }
+
+    /// After `old` (a file or a folder) was renamed to `new` on disk, point
+    /// every buffer living at or below `old` to its new location.
+    /// Returns `(buffer_id, new_path)` for each buffer that was updated.
+    pub fn relocate_paths(&self, old: &Path, new: &Path) -> Vec<(u64, PathBuf)> {
+        let mut moved = Vec::new();
+        let mut buffers = self.buffers.lock().unwrap();
+        for (id, buf) in buffers.iter_mut() {
+            let Some(cur) = buf.path.as_ref() else { continue };
+            if let Some(rest) = strip_prefix_ignore_case(cur, old) {
+                let new_path = if rest.as_os_str().is_empty() {
+                    new.to_path_buf()
+                } else {
+                    new.join(rest)
+                };
+                buf.path = Some(new_path.clone());
+                moved.push((*id, new_path));
+            }
+        }
+        moved
+    }
+}
+
+/// Component-wise `strip_prefix`; case-insensitive on Windows where the file
+/// system is, so tab paths and explorer paths that differ only in case match.
+fn strip_prefix_ignore_case(path: &Path, prefix: &Path) -> Option<PathBuf> {
+    let mut path_comps = path.components();
+    for p in prefix.components() {
+        let c = path_comps.next()?;
+        let (a, b) = (c.as_os_str(), p.as_os_str());
+        let same = if cfg!(windows) {
+            a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
+        } else {
+            a == b
+        };
+        if !same {
+            return None;
+        }
+    }
+    Some(path_comps.as_path().to_path_buf())
 }
 
 #[cfg(test)]

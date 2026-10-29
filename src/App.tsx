@@ -16,6 +16,7 @@ import { SearchPanel } from './components/editor/SearchPanel';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { CloseConfirmDialog } from './components/dialogs/CloseConfirmDialog';
 import { ExternalChangeDialog } from './components/dialogs/ExternalChangeDialog';
+import { ExternalDeleteDialog } from './components/dialogs/ExternalDeleteDialog';
 import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDialog';
 import { BinaryFileConfirmDialog } from './components/dialogs/BinaryFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
@@ -234,6 +235,7 @@ export default function App() {
       <StatusBar cursorLine={cursorLine} cursorCol={cursorCol} />
       <CloseConfirmDialog />
       <ExternalChangeDialog />
+      <ExternalDeleteDialog />
       <LargeFileConfirmDialog />
       <BinaryFileConfirmDialog />
       <KeyboardShortcutsDialog />

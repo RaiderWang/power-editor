@@ -88,7 +88,11 @@ pub fn create_directory(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
+pub fn rename_path(
+    state: tauri::State<crate::AppState>,
+    old_path: String,
+    new_path: String,
+) -> Result<(), String> {
     let old_p = PathBuf::from(&old_path);
     let new_p = PathBuf::from(&new_path);
     if !old_p.exists() {
@@ -98,6 +102,12 @@ pub fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
         return Err("A file or folder with that name already exists".to_string());
     }
     fs::rename(&old_p, &new_p).map_err(|e| e.to_string())?;
+    // Keep open buffers (a renamed file, or files inside a renamed folder) in
+    // sync: update `Buffer.path` so saving writes to the new location, and move
+    // the watches so the old path is not reported as "externally deleted".
+    for (buffer_id, path) in state.registry.relocate_paths(&old_p, &new_p) {
+        state.watcher.rewatch_buffer(buffer_id, path);
+    }
     Ok(())
 }
 

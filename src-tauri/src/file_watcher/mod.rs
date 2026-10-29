@@ -34,9 +34,11 @@ pub struct FileWatcherRegistry {
     watcher: Mutex<Option<RecommendedWatcher>>,
     /// Maps the canonical on-disk path to the buffer ID that opened it.
     path_to_buffer: Arc<Mutex<HashMap<PathBuf, u64>>>,
-    /// Maps buffer_id → timestamp of the most recent disk event.
+    /// Maps buffer_id → (timestamp, path) of the most recent disk event.
     /// Updated on every raw event; cleared once the debounce fires.
-    pending: Arc<Mutex<HashMap<u64, Instant>>>,
+    /// The path is kept so the debounce thread can check whether the file
+    /// still exists without a reverse lookup in `path_to_buffer`.
+    pending: Arc<Mutex<HashMap<u64, (Instant, PathBuf)>>>,
     /// Maps buffer_id → timestamp of the most recent editor-initiated save.
     /// Used to suppress self-save watcher events.
     last_save: Arc<Mutex<HashMap<u64, Instant>>>,
@@ -46,7 +48,7 @@ impl FileWatcherRegistry {
     pub fn new(app: AppHandle) -> Self {
         let path_to_buffer: Arc<Mutex<HashMap<PathBuf, u64>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let pending: Arc<Mutex<HashMap<u64, Instant>>> =
+        let pending: Arc<Mutex<HashMap<u64, (Instant, PathBuf)>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let last_save: Arc<Mutex<HashMap<u64, Instant>>> =
             Arc::new(Mutex::new(HashMap::new()));
@@ -64,11 +66,12 @@ impl FileWatcherRegistry {
                     loop {
                         std::thread::sleep(CHECK_INTERVAL);
                         let now = Instant::now();
-                        let mut to_fire: Vec<u64> = Vec::new();
+                        let mut to_fire: Vec<(u64, PathBuf)> = Vec::new();
                         {
                             let mut p = pending_bg.lock().unwrap();
                             let s = last_save_bg.lock().unwrap();
-                            p.retain(|&buf_id, &mut event_ts| {
+                            p.retain(|&buf_id, (event_ts, path)| {
+                                let event_ts = *event_ts;
                                 // Not settled yet – keep waiting.
                                 if now.duration_since(event_ts) < DEBOUNCE_MS {
                                     return true;
@@ -82,12 +85,20 @@ impl FileWatcherRegistry {
                                         return false; // self-save – discard
                                     }
                                 }
-                                to_fire.push(buf_id);
+                                to_fire.push((buf_id, path.clone()));
                                 false // remove from pending after firing
                             });
                         }
-                        for buf_id in to_fire {
-                            if let Err(e) = app_bg.emit("file:externally-modified", buf_id) {
+                        for (buf_id, path) in to_fire {
+                            // Decide only once the file has settled: an atomic-save
+                            // editor may delete + recreate the file, in which case
+                            // it exists again by now and is a plain modification.
+                            let event_name = if path.exists() {
+                                "file:externally-modified"
+                            } else {
+                                "file:externally-deleted"
+                            };
+                            if let Err(e) = app_bg.emit(event_name, buf_id) {
                                 log::warn!("[FileWatcher] failed to emit event: {e}");
                             }
                         }
@@ -110,9 +121,10 @@ impl FileWatcherRegistry {
                     }
                 };
 
-                // Only care about file content changes.
+                // Content changes, plus removal / rename-away (Modify(Name))
+                // so that external deletion can be detected.
                 match event.kind {
-                    EventKind::Modify(_) | EventKind::Create(_) => {}
+                    EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_) => {}
                     _ => return,
                 }
 
@@ -126,7 +138,10 @@ impl FileWatcherRegistry {
                     };
                     // Refresh the pending timestamp so the debounce window
                     // restarts from now (trailing-edge behaviour).
-                    pending_cb.lock().unwrap().insert(buf_id, Instant::now());
+                    pending_cb
+                        .lock()
+                        .unwrap()
+                        .insert(buf_id, (Instant::now(), path.clone()));
                 }
             },
             notify::Config::default(),
@@ -164,8 +179,26 @@ impl FileWatcherRegistry {
         }
     }
 
-    /// Stop watching the file associated with `buffer_id`.
+    /// Stop watching the file associated with `buffer_id` and forget all of
+    /// its bookkeeping (use when the buffer is closed).
     pub fn unwatch_buffer(&self, buffer_id: u64) {
+        self.detach(buffer_id);
+        self.last_save.lock().unwrap().remove(&buffer_id);
+    }
+
+    /// Move the watch for `buffer_id` to `new_path` after the buffer's path
+    /// changed (Save As, rename).  Pending events for the old path are
+    /// dropped and the move is recorded as a self-initiated change so the
+    /// resulting disk events are not reported as external modifications.
+    pub fn rewatch_buffer(&self, buffer_id: u64, new_path: PathBuf) {
+        self.detach(buffer_id);
+        self.watch_buffer(buffer_id, new_path);
+        self.record_save(buffer_id);
+    }
+
+    /// Remove the OS watch, path mapping and pending event of `buffer_id`
+    /// while keeping `last_save` (needed for self-save suppression).
+    fn detach(&self, buffer_id: u64) {
         let path = {
             let map = self.path_to_buffer.lock().unwrap();
             map.iter()
@@ -180,7 +213,6 @@ impl FileWatcherRegistry {
             self.path_to_buffer.lock().unwrap().remove(path);
         }
         self.pending.lock().unwrap().remove(&buffer_id);
-        self.last_save.lock().unwrap().remove(&buffer_id);
     }
 
     /// Record that the editor just saved `buffer_id` so that the resulting OS

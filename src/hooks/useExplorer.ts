@@ -172,11 +172,21 @@ export function useExplorer() {
       const ext = getFileExtension(trimmed) || null;
       setTabs((prev) =>
         prev.map((tab) => {
-          if (tab.fileInfo.path && pathsEqual(tab.fileInfo.path, oldPath)) {
+          const tabPath = tab.fileInfo.path;
+          if (!tabPath) return tab;
+          if (pathsEqual(tabPath, oldPath)) {
             return {
               ...tab,
               fileInfo: { ...tab.fileInfo, path: newPath },
               language: ext,
+            };
+          }
+          // A folder was renamed: re-root tabs of files inside it (Rust side
+          // already relocated the buffers' paths and watches).
+          if (isPathInsideFolder(tabPath, oldPath)) {
+            return {
+              ...tab,
+              fileInfo: { ...tab.fileInfo, path: joinPath(newPath, getRelativePath(oldPath, tabPath)) },
             };
           }
           return tab;
@@ -209,8 +219,10 @@ export function useExplorer() {
     if (!confirmed) return;
 
     try {
-      await cmd.deletePath(path);
-      // Close tabs for this file or any file inside this folder
+      // Close tabs for this file or any file inside this folder *before* deleting
+      // on disk. Otherwise a tab with unsaved edits would sit behind the close
+      // confirmation while the file watcher reports it as "externally deleted"
+      // (two stacked dialogs). If the user cancels any close, nothing is deleted.
       const currentTabs = store.get(tabsAtom);
       const tabsToClose = currentTabs.filter((tab) => {
         if (!tab.fileInfo.path) return false;
@@ -221,8 +233,9 @@ export function useExplorer() {
       });
       for (const tab of tabsToClose) {
         const closed = await closeTab(tab.id);
-        if (!closed) break;
+        if (!closed) return;
       }
+      await cmd.deletePath(path);
       if (selectedPath && pathsEqual(selectedPath, path)) {
         setSelectedPath(null);
       }
