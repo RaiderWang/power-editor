@@ -43,6 +43,16 @@ export function getBaseName(path: string): string {
 }
 
 /**
+ * Get lower-case file extension (without dot) of a path or file name.
+ * Returns '' when there is none (e.g. `Makefile`, `.gitignore`, `C:\my.folder\Makefile`).
+ */
+export function getFileExtension(path: string): string {
+  const name = getBaseName(path);
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+/**
  * Get parent directory of a path.
  */
 export function getParentDir(path: string): string {

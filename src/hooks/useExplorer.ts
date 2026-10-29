@@ -13,7 +13,7 @@ import { tabsAtom } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { useFile } from './useFile';
 import { useTranslation } from '../i18n';
-import { joinPath, getParentDir, getRelativePath, pathsEqual, isPathInsideFolder } from '../utils/pathUtils';
+import { joinPath, getParentDir, getRelativePath, pathsEqual, isPathInsideFolder, getFileExtension } from '../utils/pathUtils';
 
 const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
 const STORAGE_SIDEBAR_VISIBLE_KEY = 'power-editor:sidebar-visible';
@@ -169,7 +169,7 @@ export function useExplorer() {
     try {
       await cmd.renamePath(oldPath, newPath);
       // Update any open tabs with this path
-      const ext = trimmed.split('.').pop()?.toLowerCase() || null;
+      const ext = getFileExtension(trimmed) || null;
       setTabs((prev) =>
         prev.map((tab) => {
           if (tab.fileInfo.path && pathsEqual(tab.fileInfo.path, oldPath)) {

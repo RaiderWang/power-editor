@@ -7,7 +7,7 @@ import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
-import { pathsEqual } from '../utils/pathUtils';
+import { pathsEqual, getFileExtension } from '../utils/pathUtils';
 import type { TabState } from '../types';
 
 /** Files larger than this trigger a confirmation dialog before opening (500 MB). */
@@ -84,7 +84,7 @@ export function useFile() {
       }
     }
 
-    const ext = path.split('.').pop()?.toLowerCase() ?? '';
+    const ext = getFileExtension(path);
     const tab: TabState = {
       id: uuidv4(),
       bufferId: fileInfo.id,
@@ -202,10 +202,10 @@ export function useFile() {
     if (tab.readOnly || tab.fileInfo.is_read_only) {
       await cmd.setReadOnly(tab.bufferId, false).catch(() => {});
     }
-    // Re-detect syntax language from the new file extension (keep existing if none).
-    const fileName = path.split(/[\\/]/).pop() ?? '';
-    const dot = fileName.lastIndexOf('.');
-    const newExt = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
+    // Re-detect syntax language from the new file extension. When the new name has
+    // no extension, keep the current language: Save As should not discard the
+    // user's syntax choice (unlike an explicit rename, which resets it).
+    const newExt = getFileExtension(path);
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? {
         ...t,
@@ -225,7 +225,7 @@ export function useFile() {
   const renameFile = useCallback(async (tabId: string, newFileName: string) => {
     const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;
-    const ext = newFileName.split('.').pop()?.toLowerCase() ?? '';
+    const ext = getFileExtension(newFileName);
 
     if (tab.fileInfo.path) {
       const oldPath = tab.fileInfo.path;
