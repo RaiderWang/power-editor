@@ -223,9 +223,10 @@ fn save_buffer_as(state: State<AppState>, buffer_id: u64, path: String) -> Resul
     buf.save_as(p.clone()).map_err(|e| e.to_string())?;
     let info = buf.file_info();
     drop(buffers);
-    // The file path may have changed (Save As to a new location); update the watch.
-    state.watcher.unwatch_buffer(buffer_id);
-    state.watcher.watch_buffer(buffer_id, p);
+    // The file path may have changed (Save As to a new location); move the watch.
+    // `rewatch_buffer` keeps the self-save record so the write above is not
+    // reported as an external change (also covers "Save As" in place).
+    state.watcher.rewatch_buffer(buffer_id, p);
     Ok(info)
 }
 
@@ -266,7 +267,15 @@ fn rename_buffer(state: State<AppState>, buffer_id: u64, new_name: String) -> Re
     let mut buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
     buf.rename(&new_name).map_err(|e| e.to_string())?;
-    Ok(buf.file_info())
+    let info = buf.file_info();
+    let new_path = buf.path.clone();
+    drop(buffers);
+    // The file moved on disk: follow it, otherwise the old path would be
+    // reported as "externally deleted" and the new path left unwatched.
+    if let Some(p) = new_path {
+        state.watcher.rewatch_buffer(buffer_id, p);
+    }
+    Ok(info)
 }
 
 // ──────────────────────────────────────────────────────────────

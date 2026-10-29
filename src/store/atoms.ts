@@ -70,6 +70,9 @@ export const pendingCloseResolverAtom = atom<((closed: boolean) => void) | null>
 
 export const externalChangeTabIdAtom = atom<string | null>(null);
 
+/** Queue of tabIds whose file was deleted / moved on disk (dialog shows the first). */
+export const externalDeletedTabIdsAtom = atom<string[]>([]);
+
 // ──────────────────────────────────────────────────────────────
 // Large file open confirmation
 // ──────────────────────────────────────────────────────────────
