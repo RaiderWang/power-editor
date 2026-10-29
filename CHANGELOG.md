@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed / 修复
+- **Syntax Language Recognition on Save As / 另存为与新文件保存格式语法识别**:
+  - Fixed an issue where saving a newly created (untitled) buffer or performing "Save As" did not trigger syntax highlighting for the target file extension (#4).
+    （**新建文件另存为语法高亮即时生效**：修复新建未命名文件或执行“另存为”时，编辑器未能依据新文件扩展名即时识别语言格式并触发语法高亮的问题。）
+  - Introduced the `getFileExtension` utility helper in `pathUtils.ts` to reliably parse extensions across platforms (correctly handling dotfiles such as `.gitignore`, extensionless files such as `Makefile`, and paths containing dots in directory segments).
+    （**健壮的扩展名解析工具**：在 `pathUtils.ts` 引入 `getFileExtension` 工具函数，统一规范全应用（文件保存、重命名、文件树图标等）的文件扩展名解析，精准兼容如 `.gitignore` 隐藏文件、`Makefile` 无后缀文件及含有点号的文件夹路径等边缘场景。）
+
 ## [0.2.8] - 2026-10-21
 
 ### Added / 新增
