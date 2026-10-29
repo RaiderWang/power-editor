@@ -202,12 +202,17 @@ export function useFile() {
     if (tab.readOnly || tab.fileInfo.is_read_only) {
       await cmd.setReadOnly(tab.bufferId, false).catch(() => {});
     }
+    // Re-detect syntax language from the new file extension (keep existing if none).
+    const fileName = path.split(/[\\/]/).pop() ?? '';
+    const dot = fileName.lastIndexOf('.');
+    const newExt = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? {
         ...t,
         fileInfo: { ...fileInfo, is_read_only: false },
         readOnly: false,
         untitledName: undefined,
+        language: newExt || t.language,
       } : t))
     );
     setRecentFiles((prev) => {
