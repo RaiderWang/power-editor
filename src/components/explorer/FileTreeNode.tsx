@@ -12,6 +12,7 @@ import {
   Table,
 } from 'lucide-react';
 import type { FileEntry, InlineInputState } from '../../types/explorer';
+import { getFileExtension } from '../../utils/pathUtils';
 import styles from './FileExplorer.module.css';
 
 interface FileTreeNodeProps {
@@ -81,7 +82,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       );
     }
 
-    const ext = entry.name.split('.').pop()?.toLowerCase() || '';
+    const ext = getFileExtension(entry.name);
     switch (ext) {
       case 'ts':
       case 'tsx':
