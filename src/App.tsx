@@ -33,6 +33,7 @@ import { useWindowClose } from './hooks/useWindowClose';
 import { usePrefsPersist } from './hooks/usePrefsPersist';
 import { useKeybindingDispatcher } from './hooks/useKeybindingDispatcher';
 import { useBlockNativeContextMenu } from './hooks/useBlockNativeContextMenu';
+import { usePreviewTabSync } from './hooks/usePreviewTabSync';
 import * as cmd from './store/tauriCommands';
 import { listen } from '@tauri-apps/api/event';
 import { highlightSearchMatches } from './store/editorViewRegistry';
@@ -59,6 +60,7 @@ export default function App() {
   useFileWatcher();
   useFileOpenProgress();
   useKeybindingDispatcher();
+  usePreviewTabSync();
   useBlockNativeContextMenu();
   useAutoUpdateCheck();
 

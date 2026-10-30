@@ -145,6 +145,13 @@ def main():
         print("Error: TAG environment variable or command line argument is required (e.g. v0.2.1).")
         sys.exit(1)
 
+    # Guard: check if release exists before attempting to edit it
+    check_cmd = ["gh", "release", "view", tag]
+    check_res = subprocess.run(check_cmd, capture_output=True, text=True, encoding='utf-8')
+    if check_res.returncode != 0:
+        print(f"Notice: Release {tag} does not exist (builds may have all failed). Skipping release notes update.")
+        sys.exit(0)
+
     version = tag.lstrip('v')
     print(f"Extracting changelog for {tag} (version {version})...")
 

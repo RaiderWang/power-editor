@@ -5,6 +5,7 @@ import { SquareSplitHorizontal, X } from 'lucide-react';
 import { tabsAtom, activeTabIdAtom } from '../../store/atoms';
 import {
   splitLayoutAtom,
+  secondaryModeAtom,
   openSplitAtom,
   closeSplitAtom,
   activePaneAtom,
@@ -46,6 +47,9 @@ export const TabBar: React.FC<TabBarProps> = ({
   const { closeTab, saveFileAs, renameFile, newFile } = useFile();
   const t = useTranslation();
   const splitLayout = useAtomValue(splitLayoutAtom);
+  const secondaryMode = useAtomValue(secondaryModeAtom);
+  // A Markdown preview is not an editor split: only treat the editor split as "split view".
+  const isEditorSplit = splitLayout !== 'none' && secondaryMode === 'editor';
   const openSplit = useSetAtom(openSplitAtom);
   const closeSplit = useSetAtom(closeSplitAtom);
   const setActivePane = useSetAtom(activePaneAtom);
@@ -159,12 +163,12 @@ export const TabBar: React.FC<TabBarProps> = ({
   }, [contextTab, tabs, handleSaveAs, handleCopyFilePath, handleCopyFileName, closeTabsSequentially, t]);
 
   const handleSplitToggle = useCallback(() => {
-    if (splitLayout !== 'none') {
+    if (isEditorSplit) {
       closeSplit();
     } else {
       openSplit('horizontal', 'editor');
     }
-  }, [splitLayout, closeSplit, openSplit]);
+  }, [isEditorSplit, closeSplit, openSplit]);
 
   if (tabs.length === 0) return null;
 
@@ -233,9 +237,9 @@ export const TabBar: React.FC<TabBarProps> = ({
             </button>
           ) : (
             <button
-              className={`${styles.actionBtn} ${splitLayout !== 'none' ? styles.actionBtnActive : ''}`}
+              className={`${styles.actionBtn} ${isEditorSplit ? styles.actionBtnActive : ''}`}
               onClick={handleSplitToggle}
-              title={splitLayout !== 'none' ? t('tabs.closeSplit') : t('tabs.splitView')}
+              title={isEditorSplit ? t('tabs.closeSplit') : t('tabs.splitView')}
             >
               <SquareSplitHorizontal size={15} />
             </button>

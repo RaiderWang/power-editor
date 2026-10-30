@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed / 修复
+- **Markdown Preview Per-Tab Memory / Markdown 预览按标签记忆**:
+  - The preview pane is now remembered per tab: it appears only for Markdown tabs where you opened preview, and stays hidden for other Markdown tabs until you turn it on there.
+    （**按标签记忆预览开关**：仅在你主动打开过预览的 Markdown 标签上显示预览；未开过的 Markdown 标签不会自动弹出预览面板。）
+  - Switching to a new untitled buffer or a non-Markdown file automatically hides the preview split (without forgetting the previous tab’s setting), so you no longer see an empty “not Markdown” preview pane.
+    （**切走自动隐藏**：切换到新建文件或非 Markdown 标签时自动收起预览分屏（不清除原标签的记忆），不再出现空白占位预览。）
+  - Switching back to a Markdown tab that had preview open restores the preview; manually closing preview (pane close, toolbar, or menu) clears memory for the active tab only. Closing a tab removes its preview memory; user-opened editor splits are unchanged.
+    （**切回恢复与手动关闭**：切回曾开预览的 Markdown 标签时自动恢复；手动关闭预览仅取消当前标签的记忆。关闭标签时清除该标签的预览记忆；用户自行打开的编辑器分屏不受影响。）
+
 ## [0.2.9] - 2026-10-29
 
 ### Added / 新增

@@ -150,6 +150,7 @@ jobs:
   update-release-notes:
     name: update · release-notes
     needs: build
+    if: always() && !cancelled() && needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -167,11 +168,14 @@ jobs:
   update-cask:
     name: update · homebrew-cask
     needs: build
+    if: always() && !cancelled() && needs.build.result != 'cancelled' && github.repository == 'RaiderWang/power-editor'
     runs-on: ubuntu-latest
-    if: github.repository == 'RaiderWang/power-editor'
+    permissions:
+      contents: read
     steps:
       - name: Sync Homebrew Cask
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.HOMEBREW_TAP_SYNC }}
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
@@ -181,6 +185,24 @@ jobs:
           fi
 
           VERSION="${TAG#v}"
+          echo "Checking release and DMG assets for Power Editor v${VERSION}..."
+
+          # Guard 1: Verify the release exists (e.g. at least one build succeeded)
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::warning ::Release $TAG does not exist. Skipping Cask update."
+            exit 0
+          fi
+
+          # Guard 2: Verify both macOS DMG assets are present in the release
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets.[].name')
+          ARM_NAME="Power.Editor_${VERSION}_aarch64.dmg"
+          X64_NAME="Power.Editor_${VERSION}_x64.dmg"
+
+          if ! echo "$ASSETS" | grep -qx "$ARM_NAME" || ! echo "$ASSETS" | grep -qx "$X64_NAME"; then
+            echo "::warning ::macOS DMG assets ($ARM_NAME and/or $X64_NAME) missing from release $TAG. Skipping Cask update."
+            exit 0
+          fi
+
           echo "Updating Cask for Power Editor v${VERSION}..."
 
           ARM_URL="https://github.com/RaiderWang/power-editor/releases/download/${TAG}/Power.Editor_${VERSION}_aarch64.dmg"
