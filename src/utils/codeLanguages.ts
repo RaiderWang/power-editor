@@ -1,4 +1,5 @@
 import { LanguageDescription } from '@codemirror/language';
+import { yaml } from '@codemirror/lang-yaml';
 
 /**
  * Shared code language descriptions for syntax highlighting fenced code blocks
@@ -49,7 +50,9 @@ export const codeLanguages: LanguageDescription[] = [
   LanguageDescription.of({
     name: 'yaml',
     alias: ['yml'],
-    load: () => import('@codemirror/lang-yaml').then((m) => m.yaml()),
+    // Statically imported: markdownLanguage.ts already bundles lang-yaml, so a dynamic import
+    // would only trigger INEFFECTIVE_DYNAMIC_IMPORT without splitting a chunk.
+    support: yaml(),
   }),
   LanguageDescription.of({
     name: 'java',

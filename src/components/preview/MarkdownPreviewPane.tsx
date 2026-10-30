@@ -41,9 +41,10 @@ export const MarkdownPreviewPane: React.FC = () => {
   const copyTitle = t('preview.copyCode');
   const copiedTitle = t('preview.copied');
 
-  // Remembers whether the user expanded the frontmatter card; the preview HTML is replaced on
-  // every edit, which would otherwise reset <details> back to collapsed. A ref avoids re-renders.
-  const frontmatterOpenRef = useRef(false);
+  // Remembers (per buffer) whether the user expanded the frontmatter card; the preview HTML is
+  // replaced on every edit, which would otherwise reset <details> back to collapsed. The pane stays
+  // mounted across tab switches, hence the bufferId key. A ref avoids re-renders.
+  const frontmatterOpenRef = useRef<Map<number, boolean>>(new Map());
 
   // Compile markdown to sanitized HTML
   const rendered = useMemo(() => {
@@ -57,9 +58,9 @@ export const MarkdownPreviewPane: React.FC = () => {
   useLayoutEffect(() => {
     const details = contentRef.current?.querySelector<HTMLDetailsElement>('details.frontmatter');
     if (details) {
-      details.open = frontmatterOpenRef.current;
+      details.open = frontmatterOpenRef.current.get(bufferId) ?? false;
     }
-  }, [rendered.html]);
+  }, [rendered.html, bufferId]);
 
   // `toggle` does not bubble, so listen in the capture phase on the container
   useEffect(() => {
@@ -68,12 +69,12 @@ export const MarkdownPreviewPane: React.FC = () => {
     const onToggle = (e: Event) => {
       const target = e.target;
       if (target instanceof HTMLDetailsElement && target.classList.contains('frontmatter')) {
-        frontmatterOpenRef.current = target.open;
+        frontmatterOpenRef.current.set(bufferId, target.open);
       }
     };
     el.addEventListener('toggle', onToggle, true);
     return () => el.removeEventListener('toggle', onToggle, true);
-  }, []);
+  }, [bufferId]);
 
   // Post-process links: internal smooth-scroll, external shell open
   useEffect(() => {

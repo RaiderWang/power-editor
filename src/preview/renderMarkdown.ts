@@ -19,7 +19,8 @@ function renderFrontmatterBlock(raw: string, options: RenderMarkdownOptions): st
   const label = escapeHtml(options.frontmatterLabel || 'Frontmatter');
   const open = options.frontmatterOpen ? ' open' : '';
   const code = raw ? `<pre><code class="language-yaml">${escapeHtml(raw)}</code></pre>` : '';
-  return `<details class="frontmatter" data-line="1"${open}><summary>${label}</summary>${code}</details>\n`;
+  const cls = raw ? 'frontmatter' : 'frontmatter frontmatter-empty';
+  return `<details class="${cls}" data-line="1"${open}><summary>${label}</summary>${code}</details>\n`;
 }
 
 // Dedicated Marked instance configured with our custom extensions.

@@ -13,9 +13,10 @@ const FRONTMATTER_SCAN_LIMIT = 64 * 1024;
 const FM_REGEX =
   /^\uFEFF?---[ \t]*\r?\n(?:(?:---|\.\.\.)[ \t]*(?:\r?\n|$)|([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$))/;
 
-// First non-blank line of a non-empty block must look like YAML (`key:`, `- item`, `# comment`),
-// otherwise a leading horizontal rule + a later `---` would be mistaken for frontmatter.
-const YAML_FIRST_LINE = /^(?:#|-(?:\s|$)|[^\s:#][^:]*:(?:\s|$)|["'][^"']*["']\s*:)/;
+// After skipping blank lines and `#` comments, the first line of a non-empty block must be a
+// top-level `key:` mapping entry (list items like `- a` are rejected). Otherwise a leading
+// horizontal rule + `# Heading` / `- item` + a later `---` would be mistaken for frontmatter.
+const YAML_KEY_LINE = /^(?!-\s)(?:[^\s:#][^:]*|["'][^"']*["']):(?:\s|$)/;
 
 export interface FrontmatterResult {
   /** Raw YAML text between the fences (no fences, no trailing newline). */
@@ -37,10 +38,16 @@ export function extractFrontmatter(md: string): FrontmatterResult | null {
   // A match that ends exactly at the truncation point may have been closed by `$` on cut-off text.
   if (head.length < md.length && match[0].length === head.length) return null;
 
-  const raw = match[1] ?? '';
-  if (raw.trim()) {
-    const firstLine = raw.split(/\r?\n/).find((line) => line.trim() !== '');
-    if (firstLine === undefined || !YAML_FIRST_LINE.test(firstLine.trimStart())) {
+  let raw = match[1] ?? '';
+  if (!raw.trim()) {
+    // `---\n---` and `---\n   \n---` are both treated as an empty frontmatter block
+    raw = '';
+  } else {
+    const firstContentLine = raw
+      .split(/\r?\n/)
+      .find((line) => line.trim() !== '' && !line.trimStart().startsWith('#'));
+    // Comment-only blocks (e.g. `---\n# Heading\n---`) are not frontmatter either
+    if (firstContentLine === undefined || !YAML_KEY_LINE.test(firstContentLine)) {
       return null;
     }
   }

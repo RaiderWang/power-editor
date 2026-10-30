@@ -353,6 +353,11 @@
   border-bottom: 1px solid var(--code-border);
 }
 
+/* Empty frontmatter has no body: avoid summary border doubling the card border */
+.markdownBody :global(.frontmatter-empty[open]) > summary {
+  border-bottom: none;
+}
+
 /* Avoid a card-in-card: the card already provides border and spacing */
 .markdownBody :global(.frontmatter) :global(.codeBlockContainer) {
   margin: 0;
