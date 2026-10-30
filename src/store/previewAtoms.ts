@@ -1,6 +1,7 @@
 import { atom } from 'jotai';
 import { activeTabAtom } from './atoms';
 import { isMarkdownLanguage } from '../extensions/builtinLanguages';
+import { previewTabIdsAtom } from './previewTabs';
 import {
   splitLayoutAtom,
   secondaryModeAtom,
@@ -50,6 +51,11 @@ export const toggleMarkdownPreviewAtom = atom(null, (get, set) => {
     set(splitLayoutAtom, 'horizontal');
   }
   set(secondaryModeAtom, 'markdownPreview');
+
+  const activeId = get(activeTabAtom)?.id;
+  if (activeId) {
+    set(previewTabIdsAtom, (prev) => (prev.includes(activeId) ? prev : [...prev, activeId]));
+  }
 });
 
 /** Editor -> Preview scroll synchronization toggle */

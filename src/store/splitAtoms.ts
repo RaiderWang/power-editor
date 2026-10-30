@@ -1,5 +1,6 @@
 import { atom } from 'jotai';
 import { tabsAtom, activeTabIdAtom } from './atoms';
+import { previewTabIdsAtom } from './previewTabs';
 
 export type SplitLayout = 'none' | 'horizontal' | 'vertical';
 export type PaneId = 'primary' | 'secondary';
@@ -30,14 +31,28 @@ export const openSplitAtom = atom(
   }
 );
 
-/** Action to close split pane and reset secondary state */
-export const closeSplitAtom = atom(
+/** Reset split state without touching per-tab preview memory (used for automatic hiding). */
+export const resetSplitAtom = atom(
   null,
   (_get, set) => {
     set(splitLayoutAtom, 'none');
     set(secondaryActiveTabIdAtom, null);
     set(secondaryModeAtom, 'editor');
     set(activePaneAtom, 'primary');
+  }
+);
+
+/** Action to close split pane (manual). Closing a preview forgets it for the active tab. */
+export const closeSplitAtom = atom(
+  null,
+  (get, set) => {
+    if (get(splitLayoutAtom) !== 'none' && get(secondaryModeAtom) === 'markdownPreview') {
+      const activeId = get(activeTabIdAtom);
+      if (activeId) {
+        set(previewTabIdsAtom, (prev) => prev.filter((id) => id !== activeId));
+      }
+    }
+    set(resetSplitAtom);
   }
 );
 

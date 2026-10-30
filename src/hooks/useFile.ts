@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverAtom, pendingLargeFileAtom, pendingBinaryFileAtom, editorPrefsAtom, externalDeletedTabIdsAtom } from '../store/atoms';
 import { clearExternalPrompts } from '../utils/externalPrompts';
 import { secondaryActiveTabIdAtom, closeSplitAtom } from '../store/splitAtoms';
+import { previewTabIdsAtom } from '../store/previewTabs';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
@@ -129,6 +130,9 @@ export function useFile() {
     if (tab) {
       await cmd.closeBuffer(tab.bufferId).catch(console.error);
     }
+    // Forget this tab's preview; showing/hiding for the next active tab is
+    // handled by usePreviewTabSync.
+    store.set(previewTabIdsAtom, (prev) => prev.filter((id) => id !== tabId));
     const nextTabs = currentTabs.filter((t) => t.id !== tabId);
     store.set(tabsAtom, nextTabs);
     clearExternalPrompts(store, tabId);

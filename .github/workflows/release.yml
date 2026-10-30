@@ -150,6 +150,7 @@ jobs:
   update-release-notes:
     name: update · release-notes
     needs: build
+    if: always() && !cancelled() && needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -167,8 +168,8 @@ jobs:
   update-cask:
     name: update · homebrew-cask
     needs: build
+    if: always() && !cancelled() && needs.build.result != 'cancelled' && github.repository == 'RaiderWang/power-editor'
     runs-on: ubuntu-latest
-    if: github.repository == 'RaiderWang/power-editor'
     steps:
       - name: Sync Homebrew Cask
         env:
