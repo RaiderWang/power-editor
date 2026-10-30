@@ -47,6 +47,11 @@ export const codeLanguages: LanguageDescription[] = [
     load: () => import('@codemirror/lang-xml').then((m) => m.xml()),
   }),
   LanguageDescription.of({
+    name: 'yaml',
+    alias: ['yml'],
+    load: () => import('@codemirror/lang-yaml').then((m) => m.yaml()),
+  }),
+  LanguageDescription.of({
     name: 'java',
     alias: ['jav'],
     load: () => import('@codemirror/lang-java').then((m) => m.java()),

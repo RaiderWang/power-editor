@@ -21,6 +21,18 @@ export interface PrintOptions {
   isFullyLoaded: boolean;
   lineNumbers: boolean;
   selection?: ActiveSelection;
+  /** Localized label for the Markdown frontmatter block (defaults to English). */
+  frontmatterLabel?: string;
+}
+
+/**
+ * Closed <details> content is hidden by the browser's UA shadow DOM (content-visibility: hidden),
+ * which `@media print` CSS cannot reliably override — expand them via the DOM property instead.
+ */
+function expandDetails(root: HTMLElement): void {
+  root.querySelectorAll('details').forEach((d) => {
+    d.open = true;
+  });
 }
 
 /**
@@ -83,6 +95,7 @@ export async function printTab(opts: PrintOptions): Promise<PrintResult> {
     isFullyLoaded,
     lineNumbers,
     selection,
+    frontmatterLabel,
   } = opts;
 
   if (bufferId < 0) {
@@ -105,6 +118,7 @@ export async function printTab(opts: PrintOptions): Promise<PrintResult> {
     const bodyEl = document.createElement('div');
     bodyEl.className = 'markdown-body';
     bodyEl.innerHTML = selection.html;
+    expandDetails(bodyEl);
 
     await postProcessImages(bodyEl, filePath);
     await postProcessCodeBlocks(bodyEl);
@@ -153,10 +167,14 @@ export async function printTab(opts: PrintOptions): Promise<PrintResult> {
     }
 
     if (isMarkdown) {
-      const rendered = renderMarkdown(text);
+      const rendered = renderMarkdown(text, {
+        frontmatterLabel,
+        frontmatterOpen: true,
+      });
       const bodyEl = document.createElement('div');
       bodyEl.className = 'markdown-body';
       bodyEl.innerHTML = rendered.html;
+      expandDetails(bodyEl);
 
       await postProcessImages(bodyEl, filePath);
       await postProcessCodeBlocks(bodyEl);

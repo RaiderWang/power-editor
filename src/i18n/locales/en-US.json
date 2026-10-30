@@ -68,6 +68,7 @@
   "preview.close": "Close Preview",
   "preview.copyCode": "Copy code",
   "preview.copied": "Copied!",
+  "preview.frontmatter": "Frontmatter",
   "preview.notMarkdown": "The active document is not a Markdown file",
   "preview.tooLarge": "File size ({size}) exceeds the maximum preview limit (5 MB)",
   "preview.loading": "Loading full document...",

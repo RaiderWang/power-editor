@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / 新增
+- **Markdown YAML Frontmatter Support / Markdown YAML Frontmatter 支持**:
+  - The editor now highlights a leading `---` … `---` YAML frontmatter block in Markdown files; ```yaml fenced code blocks are highlighted too.
+    （编辑器为 Markdown 文件开头的 `---` … `---` YAML 元数据块提供语法高亮；```yaml 围栏代码块同样支持高亮。）
+  - The preview and print output render frontmatter as a collapsible "Frontmatter" card instead of a stray rule + heading; the expanded state survives edits, printing always expands it, and preview scroll sync stays line-accurate.
+    （预览与打印将元数据渲染为可折叠的“元数据”卡片，不再误显示为分隔线加标题；编辑时保持展开状态，打印时自动展开，预览滚动同步行号保持准确。）
+
 ### Fixed / 修复
 - **Markdown Preview Per-Tab Memory / Markdown 预览按标签记忆**:
   - The preview pane is now remembered per tab: it appears only for Markdown tabs where you opened preview, and stays hidden for other Markdown tabs until you turn it on there.

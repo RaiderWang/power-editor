@@ -327,6 +327,44 @@
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
+/* ── YAML Frontmatter Card (<details class="frontmatter">) ── */
+.markdownBody :global(.frontmatter) {
+  margin-top: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--code-border);
+  border-radius: 6px;
+  background-color: transparent;
+}
+
+.markdownBody :global(.frontmatter) > summary {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-fg-muted, #888);
+  cursor: pointer;
+  user-select: none;
+}
+
+.markdownBody :global(.frontmatter) > summary:hover {
+  color: var(--app-fg, #d4d4d4);
+}
+
+.markdownBody :global(.frontmatter[open]) > summary {
+  border-bottom: 1px solid var(--code-border);
+}
+
+/* Avoid a card-in-card: the card already provides border and spacing */
+.markdownBody :global(.frontmatter) :global(.codeBlockContainer) {
+  margin: 0;
+  border: none;
+  border-radius: 0 0 6px 6px;
+}
+
+.markdownBody :global(.frontmatter) pre {
+  margin: 0;
+  border: none;
+}
+
 /* ── Code Block Floating Actions (Lang Badge + Copy Button) ── */
 :global(.codeBlockActions) {
   position: absolute;

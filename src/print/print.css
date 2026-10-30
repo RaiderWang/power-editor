@@ -136,6 +136,34 @@
     padding: 0 !important;
   }
 
+  /* YAML frontmatter card (opened via JS in printDocument.ts) */
+  #print-root .markdown-body .frontmatter {
+    margin: 0 0 10pt 0;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #print-root .markdown-body .frontmatter > summary {
+    list-style: none;
+    padding: 3pt 8pt;
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #57606a !important;
+    border-bottom: 1px solid #d0d7de;
+  }
+
+  #print-root .markdown-body .frontmatter > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #print-root .markdown-body .frontmatter pre {
+    margin: 0;
+    border: none;
+    border-radius: 0 0 4px 4px;
+  }
+
   #print-root .markdown-body pre {
     padding: 8pt 10pt;
     font-size: 8.5pt;
