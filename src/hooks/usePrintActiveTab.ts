@@ -31,6 +31,7 @@ export function usePrintActiveTab() {
       isFullyLoaded: activeTab.fileInfo.is_fully_loaded,
       lineNumbers: prefs.printLineNumbers,
       selection,
+      frontmatterLabel: t('preview.frontmatter'),
     });
 
     if (!result.ok) {

@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
 import {
   BookOpen,
@@ -36,13 +36,45 @@ export const MarkdownPreviewPane: React.FC = () => {
     syncScrollRef.current = syncScroll;
   }, [syncScroll]);
 
+  // NOTE: `t` is a new function on every render, so memo/effect deps use the derived strings instead.
+  const frontmatterLabel = t('preview.frontmatter');
+  const copyTitle = t('preview.copyCode');
+  const copiedTitle = t('preview.copied');
+
+  // Remembers (per buffer) whether the user expanded the frontmatter card; the preview HTML is
+  // replaced on every edit, which would otherwise reset <details> back to collapsed. The pane stays
+  // mounted across tab switches, hence the bufferId key. A ref avoids re-renders.
+  const frontmatterOpenRef = useRef<Map<number, boolean>>(new Map());
+
   // Compile markdown to sanitized HTML
   const rendered = useMemo(() => {
     if (status !== 'ready' || !content) {
       return { html: '' };
     }
-    return renderMarkdown(content);
-  }, [status, content]);
+    return renderMarkdown(content, { frontmatterLabel });
+  }, [status, content, frontmatterLabel]);
+
+  // Re-apply the remembered expanded state right after the HTML is swapped (before paint)
+  useLayoutEffect(() => {
+    const details = contentRef.current?.querySelector<HTMLDetailsElement>('details.frontmatter');
+    if (details) {
+      details.open = frontmatterOpenRef.current.get(bufferId) ?? false;
+    }
+  }, [rendered.html, bufferId]);
+
+  // `toggle` does not bubble, so listen in the capture phase on the container
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const onToggle = (e: Event) => {
+      const target = e.target;
+      if (target instanceof HTMLDetailsElement && target.classList.contains('frontmatter')) {
+        frontmatterOpenRef.current.set(bufferId, target.open);
+      }
+    };
+    el.addEventListener('toggle', onToggle, true);
+    return () => el.removeEventListener('toggle', onToggle, true);
+  }, [bufferId]);
 
   // Post-process links: internal smooth-scroll, external shell open
   useEffect(() => {
@@ -58,10 +90,10 @@ export const MarkdownPreviewPane: React.FC = () => {
 
     void postProcessImages(el, filePath);
     void postProcessCodeBlocks(el, {
-      copyTitle: t('preview.copyCode'),
-      copiedTitle: t('preview.copied'),
+      copyTitle,
+      copiedTitle,
     });
-  }, [rendered.html, filePath, status, t]);
+  }, [rendered.html, filePath, status, copyTitle, copiedTitle]);
 
   // Editor -> Preview scroll sync
   useEffect(() => {
