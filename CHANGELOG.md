@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-10-30
+
 ### Added / 新增
 - **Markdown YAML Frontmatter Support / Markdown YAML Frontmatter 支持**:
   - The editor now highlights a leading `---` … `---` YAML frontmatter block in Markdown files; ```yaml fenced code blocks are highlighted too.
@@ -363,7 +365,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...HEAD
+[0.2.10]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/RaiderWang/power-editor/compare/v0.2.6...v0.2.7
