@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import type { Getter, Setter } from 'jotai';
 import { tabsAtom, activeTabIdAtom } from './atoms';
 import { previewTabIdsAtom } from './previewTabs';
 
@@ -20,10 +21,21 @@ export const secondaryActiveTabAtom = atom((get) => {
 /** Which pane currently has keyboard/mouse focus. */
 export const activePaneAtom = atom<PaneId>('primary');
 
+/** If a Markdown preview is currently open, forget it for the active tab. */
+function forgetOpenPreviewForActiveTab(get: Getter, set: Setter) {
+  if (get(splitLayoutAtom) === 'none' || get(secondaryModeAtom) !== 'markdownPreview') return;
+  const activeId = get(activeTabIdAtom);
+  if (activeId) {
+    set(previewTabIdsAtom, (prev) => prev.filter((id) => id !== activeId));
+  }
+}
+
 /** Action to open split pane and set secondary mode ('editor' or 'markdownPreview') */
 export const openSplitAtom = atom(
   null,
   (get, set, layout: 'horizontal' | 'vertical' = 'horizontal', mode: SecondaryMode = 'editor') => {
+    // Replacing an open preview with an editor split drops the preview for this tab.
+    if (mode === 'editor') forgetOpenPreviewForActiveTab(get, set);
     const currentPrimary = get(activeTabIdAtom);
     set(secondaryActiveTabIdAtom, currentPrimary);
     set(splitLayoutAtom, layout);
@@ -46,12 +58,7 @@ export const resetSplitAtom = atom(
 export const closeSplitAtom = atom(
   null,
   (get, set) => {
-    if (get(splitLayoutAtom) !== 'none' && get(secondaryModeAtom) === 'markdownPreview') {
-      const activeId = get(activeTabIdAtom);
-      if (activeId) {
-        set(previewTabIdsAtom, (prev) => prev.filter((id) => id !== activeId));
-      }
-    }
+    forgetOpenPreviewForActiveTab(get, set);
     set(resetSplitAtom);
   }
 );

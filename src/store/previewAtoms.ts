@@ -5,6 +5,7 @@ import { previewTabIdsAtom } from './previewTabs';
 import {
   splitLayoutAtom,
   secondaryModeAtom,
+  activePaneAtom,
   closeSplitAtom,
 } from './splitAtoms';
 
@@ -51,6 +52,8 @@ export const toggleMarkdownPreviewAtom = atom(null, (get, set) => {
     set(splitLayoutAtom, 'horizontal');
   }
   set(secondaryModeAtom, 'markdownPreview');
+  // The secondary editor pane (if any) is replaced by the preview: return focus to the primary pane.
+  set(activePaneAtom, 'primary');
 
   const activeId = get(activeTabAtom)?.id;
   if (activeId) {
