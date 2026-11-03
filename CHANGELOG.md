@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-11-03
+
 ### Added / 新增
 - **Tab Bar Overflow Handling & Quick Switching / 标签栏溢出处理与快速切换**:
   - The active tab is automatically scrolled into view; the mouse wheel scrolls the tab strip horizontally, with edge fades hinting at hidden tabs, and the "+" button stays right next to the last tab (pinned to the right when the strip overflows).
@@ -378,7 +380,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.11...HEAD
+[0.2.11]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/RaiderWang/power-editor/compare/v0.2.7...v0.2.8
