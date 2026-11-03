@@ -14,11 +14,12 @@ export interface KeybindingDef {
   editable: boolean;
 }
 
-export type KeybindingCategory = 'file' | 'edit' | 'search' | 'view' | 'editor';
+export type KeybindingCategory = 'file' | 'tab' | 'edit' | 'search' | 'view' | 'editor';
 
 /** Maps category id to its i18n key */
 export const CATEGORY_LABEL_KEYS: Record<KeybindingCategory, string> = {
   file: 'keybinding.cat.file',
+  tab: 'keybinding.cat.tab',
   edit: 'keybinding.cat.edit',
   search: 'keybinding.cat.search',
   view: 'keybinding.cat.view',
@@ -36,6 +37,16 @@ export interface ParsedShortcut {
 // Default keybinding definitions
 // ──────────────────────────────────────────────────────────────
 
+/** `tab.goto1` .. `tab.goto9` → Alt+1 .. Alt+9 */
+export const TAB_GOTO_PREFIX = 'tab.goto';
+const TAB_GOTO_KEYBINDINGS: KeybindingDef[] = Array.from({ length: 9 }, (_, i) => ({
+  id: `${TAB_GOTO_PREFIX}${i + 1}`,
+  labelKey: `keybinding.tab.goto${i + 1}`,
+  category: 'tab' as const,
+  defaultShortcut: `Alt+${i + 1}`,
+  editable: true,
+}));
+
 export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'file.new',       labelKey: 'keybinding.file.new',       category: 'file', defaultShortcut: 'Ctrl+N',       editable: true },
   { id: 'file.open',      labelKey: 'keybinding.file.open',      category: 'file', defaultShortcut: 'Ctrl+O',       editable: true },
@@ -46,6 +57,10 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'file.saveAs',    labelKey: 'keybinding.file.saveAs',    category: 'file', defaultShortcut: 'Ctrl+Shift+S', editable: true },
   { id: 'file.print',     labelKey: 'keybinding.file.print',     category: 'file', defaultShortcut: 'Ctrl+P',       editable: true },
   { id: 'file.closeTab',  labelKey: 'keybinding.file.closeTab',  category: 'file', defaultShortcut: 'Ctrl+W',       editable: true },
+
+  { id: 'tab.next', labelKey: 'keybinding.tab.next', category: 'tab', defaultShortcut: 'Ctrl+PageDown', editable: true },
+  { id: 'tab.prev', labelKey: 'keybinding.tab.prev', category: 'tab', defaultShortcut: 'Ctrl+PageUp',   editable: true },
+  ...TAB_GOTO_KEYBINDINGS,
 
   { id: 'edit.deleteLine',  labelKey: 'keybinding.edit.deleteLine',  category: 'edit', defaultShortcut: 'Ctrl+Shift+K', editable: true },
   { id: 'edit.toUpperCase', labelKey: 'keybinding.edit.toUpperCase', category: 'edit', defaultShortcut: 'Ctrl+Shift+U', editable: true },
@@ -74,7 +89,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'editor.dedent',    labelKey: 'keybinding.editor.dedent',    category: 'editor', defaultShortcut: 'Shift+Tab',     editable: false },
 ];
 
-export const CATEGORIES: KeybindingCategory[] = ['file', 'edit', 'search', 'view', 'editor'];
+export const CATEGORIES: KeybindingCategory[] = ['file', 'tab', 'edit', 'search', 'view', 'editor'];
 
 // ──────────────────────────────────────────────────────────────
 // Shortcut string ⟷ KeyboardEvent utilities
@@ -98,6 +113,7 @@ const KEY_DISPLAY_MAP: Record<string, string> = {
   arrowup: '↑', arrowdown: '↓', arrowleft: '←', arrowright: '→',
   backspace: 'Backspace', delete: 'Delete', escape: 'Esc',
   enter: 'Enter', tab: 'Tab', ' ': 'Space',
+  pageup: 'PageUp', pagedown: 'PageDown', home: 'Home', end: 'End',
   '=': '=', '-': '-', '[': '[', ']': ']',
   '\\': '\\', ';': ';', "'": "'", ',': ',', '.': '.', '/': '/',
   '`': '`',

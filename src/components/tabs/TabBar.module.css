@@ -9,24 +9,52 @@
   flex-shrink: 0;
 }
 
+/* Scroll container: shrinks to its content when not overflowing so the "+" button
+   sits right after the last tab; fills remaining width (and scrolls) when overflowing. */
 .tabList {
   display: flex;
   flex-direction: row;
   overflow-x: auto;
   overflow-y: hidden;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  scrollbar-width: none;
 }
 
 .tabList::-webkit-scrollbar {
-  height: 3px;
+  display: none;
+}
+
+/* Content wrapper observed for width changes (tabs added/closed/renamed). */
+.tabListInner {
+  display: flex;
+  flex-direction: row;
+  flex: none;
+}
+
+/* Edge fades hint that more tabs exist off-screen. Applied to the scroll container only. */
+.fadeLeft {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px);
+  mask-image: linear-gradient(to right, transparent 0, #000 24px);
+}
+
+.fadeRight {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 24px);
+  mask-image: linear-gradient(to left, transparent 0, #000 24px);
+}
+
+.fadeBoth {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
 }
 
 .actions {
   display: flex;
   align-items: center;
+  gap: 2px;
   padding: 0 4px;
   flex-shrink: 0;
+  margin-left: auto;
   border-left: 1px solid var(--tab-bar-border);
 }
 
