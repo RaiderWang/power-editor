@@ -15,6 +15,8 @@ interface Props {
   onSelectTab: (tab: TabState) => void;
   /** Resolves true when the tab was actually closed (false if the user cancelled). */
   onCloseTab: (tabId: string) => Promise<boolean>;
+  /** Move keyboard focus back to the active tab's editor (used after the panel closes). */
+  onRestoreFocus: () => void;
 }
 
 interface PanelPos {
@@ -28,6 +30,7 @@ export const TabListDropdown: React.FC<Props> = ({
   overflowing,
   onSelectTab,
   onCloseTab,
+  onRestoreFocus,
 }) => {
   const t = useTranslation();
   const [open, setOpen] = useState(false);
@@ -77,7 +80,21 @@ export const TabListDropdown: React.FC<Props> = ({
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  // Click outside / Escape closes.
+  // When the panel closes and focus was lost (search input unmounted -> body) or is
+  // parked on the trigger button, hand focus back to the editor so typing can continue.
+  // Closing by clicking another focusable element (e.g. a different input) is left alone.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
+      const active = document.activeElement;
+      if (!active || active === document.body || active === triggerRef.current) {
+        onRestoreFocus();
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open, onRestoreFocus]);
+
+  // Click outside closes.
   useEffect(() => {
     if (!open) return;
     const onMouseDown = (e: MouseEvent) => {
@@ -113,7 +130,8 @@ export const TabListDropdown: React.FC<Props> = ({
     inputRef.current?.focus();
   }, [onCloseTab]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  // Bound on the whole panel so keys keep working even if the input lost focus.
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex(filtered.length ? (selected + 1) % filtered.length : 0);
@@ -121,6 +139,8 @@ export const TabListDropdown: React.FC<Props> = ({
       e.preventDefault();
       setSelectedIndex(filtered.length ? (selected - 1 + filtered.length) % filtered.length : 0);
     } else if (e.key === 'Enter') {
+      // Only from the search box: Enter on a focused close button must not select a tab.
+      if (e.target !== inputRef.current) return;
       e.preventDefault();
       const tab = filtered[selected];
       if (tab) selectTab(tab);
@@ -129,6 +149,11 @@ export const TabListDropdown: React.FC<Props> = ({
       setOpen(false);
     }
   }, [filtered, selected, selectTab]);
+
+  // Clicking panel chrome / list / scrollbar must not pull focus out of the search box.
+  const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target !== inputRef.current) e.preventDefault();
+  }, []);
 
   if (!overflowing || tabs.length === 0) return null;
 
@@ -152,6 +177,8 @@ export const TabListDropdown: React.FC<Props> = ({
           className={styles.panel}
           style={{ top: pos.top, right: pos.right }}
           onContextMenu={(e) => e.preventDefault()}
+          onKeyDown={handleKeyDown}
+          onMouseDown={handlePanelMouseDown}
         >
           <input
             ref={inputRef}
@@ -160,7 +187,6 @@ export const TabListDropdown: React.FC<Props> = ({
             placeholder={t('tabs.listSearchPlaceholder')}
             spellCheck={false}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-            onKeyDown={handleKeyDown}
           />
           <div className={styles.list} role="listbox">
             {filtered.length === 0 && <div className={styles.empty}>{t('tabs.listEmpty')}</div>}

@@ -80,10 +80,9 @@ export function useTabBarScroll(
     };
   }, [listRef, innerRef, updateScrollState, hasTabs]);
 
-  // Fallback + first-frame correctness whenever tab set / active tab changes.
-  useLayoutEffect(() => {
-    updateScrollState();
-  }, [tabCount, activeTabId, updateScrollState]);
+  // NOTE: effect order matters. Scroll the active tab into view FIRST, then recompute
+  // the scroll state, so edge fades reflect the new scrollLeft in the same frame
+  // (the `scroll` event fires asynchronously and would lag by one frame).
 
   // Keep the active tab visible.
   useLayoutEffect(() => {
@@ -101,6 +100,11 @@ export function useTabBarScroll(
       list.scrollLeft += tabRect.right - listRect.right + margin;
     }
   }, [listRef, activeTabId, tabCount]);
+
+  // Fallback + first-frame correctness whenever tab set / active tab changes.
+  useLayoutEffect(() => {
+    updateScrollState();
+  }, [tabCount, activeTabId, updateScrollState]);
 
   return state;
 }

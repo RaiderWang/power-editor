@@ -90,6 +90,11 @@ export const TabBar: React.FC<TabBarProps> = ({
     focusEditor(tab.bufferId, paneId);
   }, [paneId, setActivePane, setActiveTabId]);
 
+  const restoreEditorFocus = useCallback(() => {
+    const tab = tabs.find((x) => x.id === activeTabId);
+    if (tab) focusEditor(tab.bufferId, paneId);
+  }, [tabs, activeTabId, paneId]);
+
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [renameTabId, setRenameTabId] = useState<string | null>(null);
 
@@ -187,6 +192,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             overflowing={overflowing}
             onSelectTab={handleTabClick}
             onCloseTab={closeTab}
+            onRestoreFocus={restoreEditorFocus}
           />
           {paneId === 'secondary' && onCloseSplit ? (
             <button
