@@ -6,7 +6,9 @@ import {
   buildShortcutMap,
   matchesEvent,
   getEffectiveShortcut,
+  TAB_GOTO_PREFIX,
 } from '../store/keybindings';
+import { switchTabRelativeAtom, switchTabByIndexAtom } from '../store/tabNavigation';
 import {
   activeTabAtom,
   editorPrefsAtom,
@@ -41,6 +43,8 @@ export function useKeybindingDispatcher() {
   const setSearchTrigger = useSetAtom(searchTriggerAtom);
   const setReopenEncodingOpen = useSetAtom(reopenEncodingDialogOpenAtom);
   const toggleMarkdownPreview = useSetAtom(toggleMarkdownPreviewAtom);
+  const switchTabRelative = useSetAtom(switchTabRelativeAtom);
+  const switchTabByIndex = useSetAtom(switchTabByIndexAtom);
   const { handlePrint } = usePrintActiveTab();
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
   const { openFolder, closeFolder, currentFolderPath, toggleSidebar } = useExplorer();
@@ -94,6 +98,10 @@ export function useKeybindingDispatcher() {
         return () => { handlePrint().catch(console.error); };
       case 'file.closeTab':
         return () => { if (tab) closeTab(tab.id).catch(console.error); };
+      case 'tab.next':
+        return () => { switchTabRelative(1); };
+      case 'tab.prev':
+        return () => { switchTabRelative(-1); };
       case 'edit.deleteLine':
         return () => { if (tab) deleteCurrentLine(tab.bufferId); };
       case 'edit.toUpperCase':
@@ -129,10 +137,15 @@ export function useKeybindingDispatcher() {
         return () => { setPrefs((p) => ({ ...p, fontSize: Math.max(8, p.fontSize - 1) })); };
       case 'view.toggleTheme':
         return () => { setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })); };
-      default:
+      default: {
+        if (actionId.startsWith(TAB_GOTO_PREFIX)) {
+          const n = Number(actionId.slice(TAB_GOTO_PREFIX.length));
+          if (Number.isInteger(n) && n >= 1 && n <= 9) return () => { switchTabByIndex(n); };
+        }
         return null;
+      }
     }
-  }, [activeTab, newFile, openFile, openFolder, closeFolder, currentFolderPath, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
+  }, [switchTabRelative, switchTabByIndex, activeTab, newFile, openFile, openFolder, closeFolder, currentFolderPath, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

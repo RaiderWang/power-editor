@@ -1,6 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { save } from '@tauri-apps/plugin-dialog';
 import { SquareSplitHorizontal, X } from 'lucide-react';
 import { tabsAtom, activeTabIdAtom } from '../../store/atoms';
 import {
@@ -13,9 +12,12 @@ import {
 } from '../../store/splitAtoms';
 import { focusEditor } from '../../store/editorViewRegistry';
 import { useFile } from '../../hooks/useFile';
-import { getTabFileName, getTabSaveDefaultPath, getTabTitle } from '../../utils/tabFileName';
+import { useTabBarScroll } from '../../hooks/useTabBarScroll';
+import { getTabFileName, getTabTitle } from '../../utils/tabFileName';
 import { RenameDialog } from '../dialogs/RenameDialog';
-import { TabContextMenu, type TabContextMenuItem } from './TabContextMenu';
+import { TabContextMenu } from './TabContextMenu';
+import { TabListDropdown } from './TabListDropdown';
+import { useTabContextMenuItems } from './useTabContextMenuItems';
 import { useTranslation } from '../../i18n';
 import styles from './TabBar.module.css';
 
@@ -66,58 +68,46 @@ export const TabBar: React.FC<TabBarProps> = ({
     }
   }, [isControlled, onSetActiveTabId, setInternalActiveTabId]);
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const { overflowing, canScrollLeft, canScrollRight } = useTabBarScroll(
+    listRef,
+    innerRef,
+    activeTabId,
+    tabs.length,
+  );
+  const fadeClass = canScrollLeft && canScrollRight
+    ? styles.fadeBoth
+    : canScrollLeft
+      ? styles.fadeLeft
+      : canScrollRight
+        ? styles.fadeRight
+        : '';
+
   const handleTabClick = useCallback((tab: typeof tabs[number]) => {
     setActivePane(paneId);
     setActiveTabId(tab.id);
     focusEditor(tab.bufferId, paneId);
   }, [paneId, setActivePane, setActiveTabId]);
 
+  const restoreEditorFocus = useCallback(() => {
+    const tab = tabs.find((x) => x.id === activeTabId);
+    if (tab) focusEditor(tab.bufferId, paneId);
+  }, [tabs, activeTabId, paneId]);
+
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [renameTabId, setRenameTabId] = useState<string | null>(null);
 
-  const contextTab = contextMenu ? tabs.find((t) => t.id === contextMenu.tabId) : null;
+  const contextTab = contextMenu ? tabs.find((t) => t.id === contextMenu.tabId) ?? null : null;
   const renameTab = renameTabId ? tabs.find((t) => t.id === renameTabId) : null;
 
-  const closeTabsSequentially = useCallback(async (tabIds: string[]) => {
-    for (const id of tabIds) {
-      const closed = await closeTab(id);
-      if (!closed) break;
-    }
-  }, [closeTab]);
-
-  const handleSaveAs = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    if (!tab) return;
-    try {
-      const savePath = await save({ defaultPath: getTabSaveDefaultPath(tab) });
-      if (savePath) await saveFileAs(tabId, savePath);
-    } catch (err) {
-      console.error('[TabBar] save-as failed:', err);
-    }
-  }, [tabs, saveFileAs]);
-
-  const handleCopyFilePath = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    const path = tab?.fileInfo.path;
-    if (!path) return;
-    try {
-      await navigator.clipboard.writeText(path);
-    } catch (err) {
-      console.error('[TabBar] copy file path failed:', err);
-    }
-  }, [tabs]);
-
-  const handleCopyFileName = useCallback(async (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    const path = tab?.fileInfo.path;
-    if (!path) return;
-    const fileName = path.replace(/\\/g, '/').split('/').pop() ?? path;
-    try {
-      await navigator.clipboard.writeText(fileName);
-    } catch (err) {
-      console.error('[TabBar] copy file name failed:', err);
-    }
-  }, [tabs]);
+  const menuItems = useTabContextMenuItems({
+    contextTab,
+    tabs,
+    closeTab,
+    saveFileAs,
+    onRename: setRenameTabId,
+  });
 
   const handleContextMenu = useCallback((e: React.MouseEvent, tab: typeof tabs[number]) => {
     e.preventDefault();
@@ -126,41 +116,6 @@ export const TabBar: React.FC<TabBarProps> = ({
     setActiveTabId(tab.id);
     setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
   }, [paneId, setActivePane, setActiveTabId]);
-
-  const menuItems: TabContextMenuItem[] = useMemo(() => {
-    if (!contextTab) return [];
-    const tabId = contextTab.id;
-    const hasPath = !!contextTab.fileInfo.path;
-    const otherCount = tabs.filter((t) => t.id !== tabId).length;
-
-    return [
-      { label: t('tabs.saveAs'), onClick: () => { handleSaveAs(tabId).catch(console.error); } },
-      { label: t('tabs.rename'), onClick: () => setRenameTabId(tabId) },
-      {
-        label: t('tabs.copyPath'),
-        disabled: !hasPath,
-        onClick: () => { handleCopyFilePath(tabId).catch(console.error); },
-      },
-      {
-        label: t('tabs.copyFileName'),
-        disabled: !hasPath,
-        onClick: () => { handleCopyFileName(tabId).catch(console.error); },
-      },
-      { label: 'sep', separator: true },
-      {
-        label: t('tabs.closeAll'),
-        disabled: tabs.length === 0,
-        onClick: () => { closeTabsSequentially(tabs.map((tab) => tab.id)).catch(console.error); },
-      },
-      {
-        label: t('tabs.closeOthers'),
-        disabled: otherCount === 0,
-        onClick: () => {
-          closeTabsSequentially(tabs.filter((tab) => tab.id !== tabId).map((tab) => tab.id)).catch(console.error);
-        },
-      },
-    ];
-  }, [contextTab, tabs, handleSaveAs, handleCopyFilePath, handleCopyFileName, closeTabsSequentially, t]);
 
   const handleSplitToggle = useCallback(() => {
     if (isEditorSplit) {
@@ -178,55 +133,67 @@ export const TabBar: React.FC<TabBarProps> = ({
         className={styles.tabBar}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <div className={styles.tabList}>
-          {tabs.map((tab) => {
-            const fileName = getTabFileName(tab, t);
-            const modified = tab.fileInfo.is_modified;
-            const active = tab.id === activeTabId;
+        <div ref={listRef} className={`${styles.tabList} ${fadeClass}`}>
+          <div ref={innerRef} className={styles.tabListInner}>
+            {tabs.map((tab) => {
+              const fileName = getTabFileName(tab, t);
+              const modified = tab.fileInfo.is_modified;
+              const active = tab.id === activeTabId;
 
-            return (
-              <div
-                key={tab.id}
-                className={`${styles.tab} ${active ? styles.active : ''}`}
-                onClick={() => handleTabClick(tab)}
-                onMouseDown={(e) => {
-                  if (e.button === 0 && !(e.target as HTMLElement).closest(`.${styles.close}`)) {
-                    handleTabClick(tab);
-                  }
-                }}
-                onContextMenu={(e) => handleContextMenu(e, tab)}
-                title={getTabTitle(tab, t)}
-              >
-                <span className={styles.title}>
-                  {modified && <span className={styles.dot}>●</span>}
-                  {fileName}
-                  {Boolean(tab.readOnly || tab.fileInfo.is_read_only) && (
-                    <span style={{ fontSize: '11px', opacity: 0.7, marginLeft: '4px' }}>[{t('common.readOnly')}]</span>
-                  )}
-                </span>
-                <button
-                  className={styles.close}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(tab.id);
+              return (
+                <div
+                  key={tab.id}
+                  data-tab-id={tab.id}
+                  className={`${styles.tab} ${active ? styles.active : ''}`}
+                  onClick={() => handleTabClick(tab)}
+                  onMouseDown={(e) => {
+                    if (e.button === 0 && !(e.target as HTMLElement).closest(`.${styles.close}`)) {
+                      handleTabClick(tab);
+                    }
                   }}
-                  title={t('tabs.close')}
+                  onContextMenu={(e) => handleContextMenu(e, tab)}
+                  title={getTabTitle(tab, t)}
                 >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-          <button
-            className={styles.newTabBtn}
-            onClick={() => newFile().catch(console.error)}
-            title={t('tabs.newTab')}
-          >
-            +
-          </button>
+                  <span className={styles.title}>
+                    {modified && <span className={styles.dot}>●</span>}
+                    {fileName}
+                    {Boolean(tab.readOnly || tab.fileInfo.is_read_only) && (
+                      <span style={{ fontSize: '11px', opacity: 0.7, marginLeft: '4px' }}>[{t('common.readOnly')}]</span>
+                    )}
+                  </span>
+                  <button
+                    className={styles.close}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(tab.id);
+                    }}
+                    title={t('tabs.close')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
+        <button
+          className={styles.newTabBtn}
+          onClick={() => newFile().catch(console.error)}
+          title={t('tabs.newTab')}
+        >
+          +
+        </button>
+
         <div className={styles.actions}>
+          <TabListDropdown
+            tabs={tabs}
+            activeTabId={activeTabId}
+            overflowing={overflowing}
+            onSelectTab={handleTabClick}
+            onCloseTab={closeTab}
+            onRestoreFocus={restoreEditorFocus}
+          />
           {paneId === 'secondary' && onCloseSplit ? (
             <button
               className={styles.actionBtn}

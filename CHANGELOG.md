@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / 新增
+- **Tab Bar Overflow Handling & Quick Switching / 标签栏溢出处理与快速切换**:
+  - The active tab is automatically scrolled into view; the mouse wheel scrolls the tab strip horizontally, with edge fades hinting at hidden tabs, and the "+" button stays right next to the last tab (pinned to the right when the strip overflows).
+    （激活标签自动滚入视野；鼠标滚轮可横向滚动标签栏，两端渐隐提示还有隐藏标签；“+”按钮紧跟最后一个标签，溢出时常驻右侧。）
+  - A searchable "Show All Tabs" dropdown appears when tabs overflow: filter by name or path, navigate with ↑/↓/Enter, and close tabs directly from the list.
+    （标签溢出时出现可搜索的“显示所有标签”下拉列表：按名称或路径过滤，↑/↓/Enter 导航，并可直接在列表中关闭标签。）
+  - New customizable shortcuts: `Ctrl+PageDown` / `Ctrl+PageUp` for next / previous tab, `Alt+1`…`Alt+9` to jump to the Nth tab (File → Settings → Keyboard Shortcuts → Tabs).
+    （新增可自定义快捷键：`Ctrl+PageDown` / `Ctrl+PageUp` 切换下一个/上一个标签，`Alt+1`…`Alt+9` 跳转到第 N 个标签（文件 → 设置 → 键盘快捷键 → 标签页）。）
+
+### Changed / 变更
+- Tab context menu "Copy File Path / Name" now uses the shared clipboard helper.
+  （标签右键菜单的“复制文件路径/文件名”改用统一的剪贴板封装。）
+
 ## [0.2.10] - 2026-10-30
 
 ### Added / 新增
