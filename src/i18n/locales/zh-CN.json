@@ -76,7 +76,7 @@
   "preview.empty": "暂无内容",
   "dialog.openFailed": "打开失败",
   "dialog.openError": "文件无法打开：\n{path}\n\n{err}",
-  "dialog.openFolderError": "文件夹无法打开：\n{path}\n\n{err}",
+  "dialog.openFolderErrorRecent": "文件夹无法打开：\n{path}\n\n{err}\n\n是否将其从最近打开的文件夹中移除？",
   "dialog.openErrorFav": "文件无法打开：\n{path}\n\n是否将其从收藏中移除？",
   "dialog.removeFav": "移除收藏",
   "dialog.keep": "保留",

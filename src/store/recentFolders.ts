@@ -1,9 +1,8 @@
 import { atom } from 'jotai';
 import { pathsEqual } from '../utils/pathUtils';
+import { STORAGE_FOLDER_KEY } from './explorerAtoms';
 
 const LS_KEY = 'power-editor:recent-folders';
-/** Same literal as STORAGE_FOLDER_KEY in explorerAtoms.ts / useExplorer.ts (current workspace folder). */
-const LS_CURRENT_FOLDER_KEY = 'power-editor:folder-path';
 const MAX = 10;
 
 export function saveRecentFolders(list: string[]): void {
@@ -20,7 +19,7 @@ export function loadRecentFolders(): string[] {
     if (raw === null) {
       // First run after upgrade: seed with the currently opened workspace folder (if any)
       // and persist immediately so the seed survives closing the folder.
-      const current = localStorage.getItem(LS_CURRENT_FOLDER_KEY);
+      const current = localStorage.getItem(STORAGE_FOLDER_KEY);
       const seed = current ? [current] : [];
       if (seed.length > 0) saveRecentFolders(seed);
       return seed;

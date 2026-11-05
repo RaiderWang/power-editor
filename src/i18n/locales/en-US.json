@@ -76,7 +76,7 @@
   "preview.empty": "No content",
   "dialog.openFailed": "Open Failed",
   "dialog.openError": "Cannot open file:\n{path}\n\n{err}",
-  "dialog.openFolderError": "Cannot open folder:\n{path}\n\n{err}",
+  "dialog.openFolderErrorRecent": "Cannot open folder:\n{path}\n\n{err}\n\nRemove it from recent folders?",
   "dialog.openErrorFav": "Cannot open file:\n{path}\n\nRemove from favorites?",
   "dialog.removeFav": "Remove",
   "dialog.keep": "Keep",

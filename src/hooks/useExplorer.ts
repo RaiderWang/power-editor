@@ -8,6 +8,7 @@ import {
   selectedPathAtom,
   expandedFoldersAtom,
   explorerRefreshTriggerAtom,
+  STORAGE_FOLDER_KEY,
 } from '../store/explorerAtoms';
 import { tabsAtom } from '../store/atoms';
 import {
@@ -21,7 +22,6 @@ import { useFile } from './useFile';
 import { useTranslation } from '../i18n';
 import { joinPath, getParentDir, getRelativePath, rebasePath, pathsEqual, isPathInsideFolder, getFileExtension } from '../utils/pathUtils';
 
-const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
 const STORAGE_SIDEBAR_VISIBLE_KEY = 'power-editor:sidebar-visible';
 const STORAGE_SIDEBAR_WIDTH_KEY = 'power-editor:sidebar-width';
 
@@ -70,17 +70,21 @@ export function useExplorer() {
   }, [setSidebarWidth]);
 
   const openFolderPath = useCallback((path: string) => {
-    setStoredFolderPath(path);
+    // Re-opening the current workspace folder keeps the tree's expanded/selected state.
+    const isSameFolder = !!currentFolderPath && pathsEqual(currentFolderPath, path);
+    if (!isSameFolder) {
+      setStoredFolderPath(path);
+      setExpandedFolders([]);
+      setSelectedPath(null);
+      setRefreshTrigger((n) => n + 1);
+    }
     setStoredSidebarVisible(true);
-    setExpandedFolders([]);
-    setSelectedPath(null);
-    setRefreshTrigger((n) => n + 1);
     setRecentFolders((prev) => {
       const next = addToRecentFolders(prev, path);
       saveRecentFolders(next);
       return next;
     });
-  }, [setStoredFolderPath, setStoredSidebarVisible, setExpandedFolders, setSelectedPath, setRefreshTrigger, setRecentFolders]);
+  }, [currentFolderPath, setStoredFolderPath, setStoredSidebarVisible, setExpandedFolders, setSelectedPath, setRefreshTrigger, setRecentFolders]);
 
   const openRecentFolder = useCallback(async (path: string) => {
     try {
@@ -88,12 +92,24 @@ export function useExplorer() {
       openFolderPath(path);
     } catch (err) {
       console.error('[useExplorer] openRecentFolder failed:', err);
-      await message(t('dialog.openFolderError', { path, err: String(err) }), {
-        title: t('dialog.openFailed'),
-        kind: 'error',
-      });
+      const remove = await ask(
+        t('dialog.openFolderErrorRecent', { path, err: String(err) }),
+        {
+          title: t('dialog.openFailed'),
+          kind: 'error',
+          okLabel: t('dialog.removeFav'),
+          cancelLabel: t('dialog.keep'),
+        },
+      );
+      if (remove) {
+        setRecentFolders((prev) => {
+          const next = prev.filter((p) => !pathsEqual(p, path));
+          saveRecentFolders(next);
+          return next;
+        });
+      }
     }
-  }, [openFolderPath, t]);
+  }, [openFolderPath, setRecentFolders, t]);
 
   const openFolder = useCallback(async () => {
     try {
@@ -265,12 +281,19 @@ export function useExplorer() {
       if (selectedPath && pathsEqual(selectedPath, path)) {
         setSelectedPath(null);
       }
+      if (isDir) {
+        setRecentFolders((prev) => {
+          const next = prev.filter((p) => !isPathInsideFolder(p, path));
+          saveRecentFolders(next);
+          return next;
+        });
+      }
       setRefreshTrigger((n) => n + 1);
     } catch (err) {
       console.error('[useExplorer] deletePath failed:', err);
       await message(String(err), { title: t('dialog.openFailed'), kind: 'error' });
     }
-  }, [store, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, t]);
+  }, [store, selectedPath, setSelectedPath, closeTab, setRefreshTrigger, setRecentFolders, t]);
 
   const revealPath = useCallback(async (path: string) => {
     try {
