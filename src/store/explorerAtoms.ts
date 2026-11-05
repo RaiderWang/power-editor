@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 
-const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
+export const STORAGE_FOLDER_KEY = 'power-editor:folder-path';
 const STORAGE_SIDEBAR_VISIBLE_KEY = 'power-editor:sidebar-visible';
 const STORAGE_SIDEBAR_WIDTH_KEY = 'power-editor:sidebar-width';
 

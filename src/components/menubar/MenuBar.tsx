@@ -29,6 +29,7 @@ import { usePrintActiveTab } from '../../hooks/usePrintActiveTab';
 import * as cmd from '../../store/tauriCommands';
 import { ask, message, open, save } from '@tauri-apps/plugin-dialog';
 import { recentFilesAtom } from '../../store/recentFiles';
+import { recentFoldersAtom } from '../../store/recentFolders';
 import { favoriteFilesAtom, toggleFavorite, saveFavoriteFiles } from '../../store/favoriteFiles';
 import { FontPickerModal } from './FontPickerModal';
 import { RenameDialog } from '../dialogs/RenameDialog';
@@ -172,8 +173,9 @@ export const MenuBar: React.FC = () => {
 
   const t = useTranslation();
   const { openFile, newFile, closeTab, saveFile, saveFileAs, renameFile } = useFile();
-  const { currentFolderPath, openFolder, closeFolder, toggleSidebar, sidebarVisible } = useExplorer();
+  const { currentFolderPath, openFolder, openRecentFolder, closeFolder, toggleSidebar, sidebarVisible } = useExplorer();
   const recentFiles = useAtomValue(recentFilesAtom);
+  const recentFolders = useAtomValue(recentFoldersAtom);
   const [favoriteFiles, setFavoriteFiles] = useAtom(favoriteFilesAtom);
 
   const splitLayout = useAtomValue(splitLayoutAtom);
@@ -492,6 +494,13 @@ export const MenuBar: React.FC = () => {
       label: t('menu.file.recentOpen'),
       items: recentFiles.length > 0
         ? recentFiles.map((p) => ({ label: p, onClick: () => handleOpenRecent(p) }))
+        : [{ label: t('menu.file.noRecords'), disabled: true, onClick: () => {} }],
+    },
+    {
+      kind: 'submenu',
+      label: t('menu.file.recentFolders'),
+      items: recentFolders.length > 0
+        ? recentFolders.map((p) => ({ label: p, onClick: () => { openRecentFolder(p); } }))
         : [{ label: t('menu.file.noRecords'), disabled: true, onClick: () => {} }],
     },
     {
