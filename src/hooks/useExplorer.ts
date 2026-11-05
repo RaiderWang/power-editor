@@ -10,6 +10,12 @@ import {
   explorerRefreshTriggerAtom,
 } from '../store/explorerAtoms';
 import { tabsAtom } from '../store/atoms';
+import {
+  recentFoldersAtom,
+  addToRecentFolders,
+  dedupeRecentFolders,
+  saveRecentFolders,
+} from '../store/recentFolders';
 import * as cmd from '../store/tauriCommands';
 import { useFile } from './useFile';
 import { useTranslation } from '../i18n';
@@ -27,6 +33,7 @@ export function useExplorer() {
   const [selectedPath, setSelectedPath] = useAtom(selectedPathAtom);
   const [expandedFolders, setExpandedFolders] = useAtom(expandedFoldersAtom);
   const setRefreshTrigger = useSetAtom(explorerRefreshTriggerAtom);
+  const setRecentFolders = useSetAtom(recentFoldersAtom);
   const setTabs = useSetAtom(tabsAtom);
   const { openFile, closeTab } = useFile();
   const t = useTranslation();
@@ -68,7 +75,25 @@ export function useExplorer() {
     setExpandedFolders([]);
     setSelectedPath(null);
     setRefreshTrigger((n) => n + 1);
-  }, [setStoredFolderPath, setStoredSidebarVisible, setExpandedFolders, setSelectedPath, setRefreshTrigger]);
+    setRecentFolders((prev) => {
+      const next = addToRecentFolders(prev, path);
+      saveRecentFolders(next);
+      return next;
+    });
+  }, [setStoredFolderPath, setStoredSidebarVisible, setExpandedFolders, setSelectedPath, setRefreshTrigger, setRecentFolders]);
+
+  const openRecentFolder = useCallback(async (path: string) => {
+    try {
+      await cmd.listDirectory(path);
+      openFolderPath(path);
+    } catch (err) {
+      console.error('[useExplorer] openRecentFolder failed:', err);
+      await message(t('dialog.openFolderError', { path, err: String(err) }), {
+        title: t('dialog.openFailed'),
+        kind: 'error',
+      });
+    }
+  }, [openFolderPath, t]);
 
   const openFolder = useCallback(async () => {
     try {
@@ -195,12 +220,17 @@ export function useExplorer() {
         const rebasedSelection = rebasePath(selectedPath, oldPath, newPath);
         if (rebasedSelection !== null) setSelectedPath(rebasedSelection);
       }
+      setRecentFolders((prev) => {
+        const next = dedupeRecentFolders(prev.map((p) => rebasePath(p, oldPath, newPath) ?? p));
+        saveRecentFolders(next);
+        return next;
+      });
       setRefreshTrigger((n) => n + 1);
     } catch (err) {
       console.error('[useExplorer] renamePath failed:', err);
       await message(String(err), { title: t('dialog.openFailed'), kind: 'error' });
     }
-  }, [selectedPath, setSelectedPath, setTabs, setExpandedFolders, setRefreshTrigger, t]);
+  }, [selectedPath, setSelectedPath, setTabs, setExpandedFolders, setRefreshTrigger, setRecentFolders, t]);
 
   const deleteItem = useCallback(async (path: string, isDir: boolean, itemName: string) => {
     const confirmed = await ask(
@@ -278,6 +308,7 @@ export function useExplorer() {
     setSelectedPath,
     openFolder,
     openFolderPath,
+    openRecentFolder,
     closeFolder,
     toggleSidebar,
     refreshTree,

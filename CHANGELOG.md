@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / 新增
+- **Recent Folders menu / 最近打开的文件夹菜单**: File → Recent Folders lists up to 10 recently opened workspace folders (deduplicated, kept in sync when a folder is renamed in the explorer, and seeded from the currently opened folder on first run); an unreadable folder shows an error dialog.
+  （文件 → 最近打开的文件夹：列出最近打开的至多 10 个工作区文件夹（去重；在资源管理器中重命名文件夹时同步更新；首次使用时以当前已打开的文件夹作为初始记录）；无法读取的文件夹会弹出错误提示。）
+
 ## [0.2.11] - 2026-11-03
 
 ### Added / 新增
