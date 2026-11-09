@@ -15,7 +15,10 @@ const SCAN_RADIUS = 2000;
 // Image syntax (`![[...]]`, `![](...)`) is deliberately excluded: Ctrl+click must not try to
 // open images as text documents.
 const WIKILINK_RE = /(!?)\[\[([^\]\r\n]+)\]\]/g;
-const MD_LINK_RE = /(!?)\[[^\]\r\n]*\]\(\s*(<[^>\r\n]*>|[^)\s]+)(?:\s+"[^"\r\n]*")?\s*\)/g;
+// The destination allows one level of balanced parentheses (CommonMark), e.g.
+// `https://en.wikipedia.org/wiki/Rust_(programming_language)` or `notes/方案_(初稿).md`.
+const MD_LINK_RE =
+  /(!?)\[[^\]\r\n]*\]\(\s*(<[^>\r\n]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+"[^"\r\n]*")?\s*\)/g;
 const BARE_URL_RE = /https?:\/\/[^\s<>"'`)\]]+/g;
 const TRAILING_PUNCT_RE = /[.,;:!?]+$/;
 
@@ -39,19 +42,24 @@ export function findLinkAt(lineText: string, offset: number): FoundLink | null {
   const rel = offset - winStart;
   const contains = (from: number, to: number) => rel >= from && rel < to;
 
+  // Once a construct (link, image, wikilink) contains the pointer it OWNS that position: the
+  // result is final, even when it is `null` (image, unsupported scheme, ...). Falling through
+  // would let the bare-URL scan pick up the URL inside `![alt](https://...)`.
   for (const m of matchesOf(MD_LINK_RE, text)) {
-    if (m[1] || !contains(m.index, m.index + m[0].length)) continue;
+    if (!contains(m.index, m.index + m[0].length)) continue;
+    if (m[1]) return null;
     let href = m[2];
     if (href.startsWith('<') && href.endsWith('>')) href = href.slice(1, -1);
     const link = classifyHref(href);
-    if (link) return { from: winStart + m.index, to: winStart + m.index + m[0].length, link };
+    return link ? { from: winStart + m.index, to: winStart + m.index + m[0].length, link } : null;
   }
 
   for (const m of matchesOf(WIKILINK_RE, text)) {
-    if (m[1] || !contains(m.index, m.index + m[0].length)) continue;
+    if (!contains(m.index, m.index + m[0].length)) continue;
+    if (m[1]) return null;
     const parsed = parseWikiLink(m[2]);
     const link = parsed && wikiLinkTarget(parsed.target, parsed.heading);
-    if (link) return { from: winStart + m.index, to: winStart + m.index + m[0].length, link };
+    return link ? { from: winStart + m.index, to: winStart + m.index + m[0].length, link } : null;
   }
 
   for (const m of matchesOf(BARE_URL_RE, text)) {

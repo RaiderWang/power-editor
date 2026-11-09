@@ -4,6 +4,7 @@ import { atxHeadingText } from './markdownLinkParse';
 import type { FoundLink } from './markdownLinkParse';
 import { linkAtPoint } from './markdownLinkHit';
 import { markdownLinkHoverExtension } from './markdownLinkHover';
+import { headingMatches } from '../utils/linkTarget';
 import type { LinkTarget } from '../utils/linkTarget';
 
 export interface MarkdownLinkClickHandlers {
@@ -21,25 +22,15 @@ function linkAtEvent(view: EditorView, e: MouseEvent): FoundLink | null {
   return linkAtPoint(view, e.clientX, e.clientY);
 }
 
-function slugify(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, '-');
-}
-
 /**
  * Moves the cursor to a heading inside the CURRENTLY LOADED window (virtual doc: the heading
  * may live outside it, in which case this returns false).
  */
 function scrollToHeading(view: EditorView, heading: string): boolean {
-  const lower = heading.trim().toLowerCase();
-  const slug = slugify(heading);
   let pos = 0;
   for (const text of view.state.doc.iterLines()) {
     const title = atxHeadingText(text);
-    if (title !== null && (title.toLowerCase() === lower || slugify(title) === slug)) {
+    if (title !== null && headingMatches(title, heading)) {
       view.dispatch({
         selection: { anchor: pos },
         effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 24 }),

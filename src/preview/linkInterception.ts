@@ -1,15 +1,6 @@
 import { open as openUrl } from '@tauri-apps/plugin-shell';
-import { classifyHref, wikiLinkTarget } from '../utils/linkTarget';
+import { classifyHref, headingMatches, wikiLinkTarget } from '../utils/linkTarget';
 import type { LinkTarget } from '../utils/linkTarget';
-
-/** GitHub-style slug used to match `#my-heading` against heading text. */
-function slugify(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, '-');
-}
 
 /**
  * Scrolls the preview to a heading. Matches an element `id` first, then heading text
@@ -28,11 +19,8 @@ export function scrollPreviewToHeading(container: HTMLElement, heading: string):
   }
 
   if (!el) {
-    const lower = wanted.toLowerCase();
-    const slug = slugify(wanted);
     for (const h of container.querySelectorAll('h1,h2,h3,h4,h5,h6')) {
-      const text = (h.textContent ?? '').trim();
-      if (text.toLowerCase() === lower || slugify(text) === slug) {
+      if (headingMatches(h.textContent ?? '', wanted)) {
         el = h;
         break;
       }
@@ -84,6 +72,13 @@ export function setupLinkInterception(
 
     // Always stop WebView2 from navigating the main window.
     e.preventDefault();
+
+    // Selecting (or double-clicking) text inside the link fires `click` on the anchor too;
+    // do not navigate away from a selection the user is making.
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.containsNode(anchor, true) && sel.toString().trim()) {
+      return;
+    }
 
     const link = targetOfAnchor(anchor);
     if (!link) return;

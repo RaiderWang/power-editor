@@ -19,6 +19,26 @@ export function safeDecode(text: string): string {
   }
 }
 
+/** GitHub-style slug (lowercase, punctuation stripped, spaces to `-`). May be empty. */
+export function slugify(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-');
+}
+
+/**
+ * Whether a heading's text matches the `wanted` anchor: case-insensitive text equality, or equal
+ * non-empty slugs. An empty slug (symbol/emoji-only headings) never matches by slug, otherwise
+ * every such heading would match every such anchor.
+ */
+export function headingMatches(headingText: string, wanted: string): boolean {
+  if (headingText.trim().toLowerCase() === wanted.trim().toLowerCase()) return true;
+  const slug = slugify(wanted);
+  return slug.length > 0 && slugify(headingText) === slug;
+}
+
 /** Builds a link target from the pieces of a parsed wikilink. */
 export function wikiLinkTarget(target: string, heading: string): LinkTarget | null {
   const t = target.trim();

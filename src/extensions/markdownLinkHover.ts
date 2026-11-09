@@ -92,7 +92,9 @@ const hoverPlugin = ViewPlugin.fromClass(
     };
 
     private readonly onKey = (e: KeyboardEvent) => {
-      if (!isModKey(e)) return;
+      // Every open Markdown tab has a view listening on `window`; views the pointer never
+      // entered (or has left) must stay idle. `modDown` is re-read from the next mousemove.
+      if (!this.pointer || !isModKey(e)) return;
       this.modDown = e.type === 'keydown';
       this.refresh();
     };
@@ -103,6 +105,13 @@ const hoverPlugin = ViewPlugin.fromClass(
     };
 
     private refresh() {
+      // Inactive tabs stay mounted with `display: none` and never receive `mouseleave`, so their
+      // last pointer position goes stale. A hidden view has no layout: drop the pointer (which
+      // also clears any lingering hover state below) instead of probing it.
+      if (this.pointer && this.view.dom.getClientRects().length === 0) {
+        this.pointer = null;
+      }
+
       const hit =
         this.modDown && this.pointer
           ? linkAtPoint(this.view, this.pointer.x, this.pointer.y)
