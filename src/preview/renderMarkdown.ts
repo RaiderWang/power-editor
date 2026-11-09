@@ -1,6 +1,7 @@
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { wikiImageExtension } from './wikiImageExtension';
+import { wikiLinkExtension } from './wikiLinkExtension';
 import { extractFrontmatter } from './frontmatter';
 
 function escapeHtml(text: string): string {
@@ -29,7 +30,8 @@ function renderFrontmatterBlock(raw: string, options: RenderMarkdownOptions): st
 // drop registered extensions (e.g. WikiLink images). Always call lexer()/parser() without options.
 const markedInstance = new Marked({ gfm: true, breaks: false });
 markedInstance.use({
-  extensions: [wikiImageExtension],
+  // Order matters: wikiImage must see `![[image.png]]` before wikiLink.
+  extensions: [wikiImageExtension, wikiLinkExtension],
 });
 
 export interface RenderResult {

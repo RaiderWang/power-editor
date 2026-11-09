@@ -5,6 +5,10 @@
 //! (the folder containing `.obsidian`), or just a shortest unique path / bare filename.
 //! This module supports all of these.
 
+pub mod note_links;
+mod path_norm;
+
+use path_norm::lexical_normalize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -111,10 +115,18 @@ impl VaultIndex {
 /// Resolves a single link using direct candidates starting at `doc_dir` and ascending up to
 /// `vault_root` (inclusive). If `vault_root` is None, only `doc_dir` is checked to avoid
 /// traversing out into the parent filesystem or filesystem root.
+///
+/// Hits are lexically normalised (`..` folded). When a vault root exists, a hit that ends up
+/// outside the vault (e.g. `../../secret.md`) is rejected; without a vault, `../` is allowed
+/// because plain folders legitimately link to siblings (`[x](../other/a.md)`).
 fn resolve_direct(link: &str, doc_dir: &Path, vault_root: Option<&Path>) -> Option<PathBuf> {
+    let root_norm = vault_root.map(lexical_normalize);
     for dir in doc_dir.ancestors() {
-        let candidate = dir.join(link);
-        if candidate.is_file() {
+        let candidate = lexical_normalize(&dir.join(link));
+        let inside = root_norm
+            .as_deref()
+            .map_or(true, |root| candidate.starts_with(root));
+        if inside && candidate.is_file() {
             return Some(candidate);
         }
         if vault_root.map_or(true, |root| dir == root) {
@@ -124,40 +136,61 @@ fn resolve_direct(link: &str, doc_dir: &Path, vault_root: Option<&Path>) -> Opti
     None
 }
 
-/// Resolves every link in `links` against `doc_path`. Unresolvable links yield `None`.
-pub fn resolve_links(doc_path: &str, links: &[String]) -> Vec<Option<String>> {
+fn to_slash_string(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+/// Resolves every entry of `candidate_lists` against `doc_path`. Each entry is an ordered list
+/// of alternative links for ONE reference; the first alternative that resolves wins.
+///
+/// Priority is staged, not per-candidate: every candidate is tried directly (document folder up
+/// to vault root) before any candidate is looked up in the vault-wide index, and the index is
+/// built at most once. Unresolvable entries yield `None`.
+pub fn resolve_candidate_lists(
+    doc_path: &str,
+    candidate_lists: &[Vec<String>],
+) -> Vec<Option<String>> {
     let doc_dir = match Path::new(doc_path).parent() {
         Some(dir) => dir.to_path_buf(),
-        None => return vec![None; links.len()],
+        None => return vec![None; candidate_lists.len()],
     };
 
     let vault_root = find_vault_root(&doc_dir);
     let mut index: Option<VaultIndex> = None;
-    let mut index_built = false;
 
-    links
+    candidate_lists
         .iter()
-        .map(|raw| {
-            let link = normalize_link(raw);
-            if link.is_empty() {
+        .map(|raw_list| {
+            let links: Vec<String> = raw_list
+                .iter()
+                .map(|raw| normalize_link(raw))
+                .filter(|link| !link.is_empty())
+                .collect();
+            if links.is_empty() {
                 return None;
             }
-            if let Some(found) = resolve_direct(&link, &doc_dir, vault_root.as_deref()) {
-                return Some(found.to_string_lossy().replace('\\', "/"));
+
+            for link in &links {
+                if let Some(found) = resolve_direct(link, &doc_dir, vault_root.as_deref()) {
+                    return Some(to_slash_string(&found));
+                }
             }
 
             // Fallback: shortest-path / bare filename lookup inside the vault.
             let root = vault_root.as_deref()?;
-            if !index_built {
-                index = Some(VaultIndex::build(root));
-                index_built = true;
-            }
-            index
-                .as_ref()?
-                .find(&link, &doc_dir)
-                .map(|p| p.to_string_lossy().replace('\\', "/"))
+            let index = index.get_or_insert_with(|| VaultIndex::build(root));
+            links
+                .iter()
+                .find_map(|link| index.find(link, &doc_dir))
+                .map(|p| to_slash_string(&lexical_normalize(&p)))
         })
         .collect()
+}
+
+/// Resolves every link in `links` against `doc_path`. Unresolvable links yield `None`.
+pub fn resolve_links(doc_path: &str, links: &[String]) -> Vec<Option<String>> {
+    let lists: Vec<Vec<String>> = links.iter().map(|l| vec![l.clone()]).collect();
+    resolve_candidate_lists(doc_path, &lists)
 }
 
 #[tauri::command]

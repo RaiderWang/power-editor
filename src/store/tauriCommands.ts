@@ -236,6 +236,13 @@ export const listDirectory = (path: string): Promise<FileEntry[]> =>
 export const resolveImagePaths = (docPath: string, links: string[]): Promise<(string | null)[]> =>
   invoke('resolve_image_paths', { docPath, links });
 
+/**
+ * Resolves note link targets (`[[entities/Foo]]`, relative `.md` links; WITHOUT `#heading`) to
+ * absolute file paths. A missing `.md` is appended automatically. Unresolved entries are `null`.
+ */
+export const resolveNoteLinks = (docPath: string, targets: string[]): Promise<(string | null)[]> =>
+  invoke('resolve_note_links', { docPath, targets });
+
 export const createFile = (path: string): Promise<void> =>
   invoke('create_file', { path });
 

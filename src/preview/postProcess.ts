@@ -1,4 +1,3 @@
-import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { highlightCode, classHighlighter } from '@lezer/highlight';
 import { findLanguageDescription } from '../utils/codeLanguages';
 
@@ -8,49 +7,6 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-/**
- * Attaches a delegated click handler to intercept links:
- * - Internal hash links (#section) smooth-scroll to the target element.
- * - External http/https/mailto links open via the OS default browser.
- * Returns an unbind cleanup function.
- */
-export function setupLinkInterception(container: HTMLElement): () => void {
-  const onClick = (e: MouseEvent) => {
-    const target = e.target as HTMLElement | null;
-    if (!target) return;
-
-    const anchor = target.closest<HTMLAnchorElement>('a');
-    if (!anchor) return;
-
-    const href = anchor.getAttribute('href');
-    if (!href) return;
-
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      const id = href.slice(1);
-      if (!id) return;
-      try {
-        const el = container.querySelector(`[id="${CSS.escape(id)}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
-        }
-      } catch {
-        // In case of invalid selector characters
-      }
-    } else if (/^(https?:|mailto:)/i.test(href)) {
-      e.preventDefault();
-      openUrl(href).catch((err) => {
-        console.error('[preview] Failed to open external URL:', href, err);
-      });
-    }
-  };
-
-  container.addEventListener('click', onClick);
-  return () => {
-    container.removeEventListener('click', onClick);
-  };
 }
 
 const COPY_ICON_SVG =

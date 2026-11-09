@@ -270,6 +270,11 @@
   text-decoration: underline;
 }
 
+/* Obsidian-style [[wikilinks]] open the target note inside Power Editor. */
+.markdownBody a:global(.wikilink) {
+  cursor: pointer;
+}
+
 .markdownBody code {
   padding: 0.18em 0.42em;
   margin: 0 0.15em;

@@ -24,6 +24,7 @@ import { editorContextMenuExtension } from '../../extensions/editorContextMenu';
 import { searchMatchField, searchHighlightTheme } from '../../extensions/searchHighlight';
 import { buildWordfileLanguage } from '../../extensions/wordfileSyntax';
 import { findBuiltinByExt } from '../../extensions/builtinLanguages';
+import { useMarkdownLinkClick } from '../../hooks/useMarkdownLinkClick';
 import { EditorContextMenu } from './contextMenu/EditorContextMenu';
 import type { ContextMenuState } from './contextMenu/types';
 import {
@@ -558,6 +559,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   }, [tab.fileInfo.total_bytes, tab.fileInfo.is_fully_loaded]);
 
   // ── Build the language extension for this tab ──────────────────
+  const markdownLinkClick = useMarkdownLinkClick(tab.fileInfo.path || null);
   const buildLangExtension = useCallback((): Extension => {
     const ext = tab.language;
     if (!ext) return [];
@@ -565,7 +567,8 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     // Check built-in languages first (e.g. Markdown)
     const builtin = findBuiltinByExt(ext);
     if (builtin) {
-      return builtin.build();
+      // Markdown also gets Ctrl+click links (wikilinks, relative files, URLs).
+      return builtin.id === 'markdown' ? [builtin.build(), markdownLinkClick] : builtin.build();
     }
 
     // Check wordfile definitions
@@ -576,7 +579,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
 
     return [];
-  }, [tab.language, langDefs]);
+  }, [tab.language, langDefs, markdownLinkClick]);
 
   // ── Load entire file into CodeMirror (used by selectAll & Markdown preview) ─
   const loadFullDocument = useCallback(async (view: EditorView, bufferId: number): Promise<boolean> => {
