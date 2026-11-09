@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-11-09
+
 ### Added / 新增
 - **Clickable wikilinks & Ctrl+click links / 可点击的文件双链与 Ctrl+点击链接**:
   - In the Markdown preview, `[[entities/Foo]]`, `[[note#Heading|alias]]` and relative file links (`[x](../a.md)`) open the target file inside Power Editor (the preview stays open), `[[#Heading]]` scrolls within the preview, and `http(s)` / `mailto` links keep opening in the external browser. Note names with dots (`[[2026.11.09]]`) and Obsidian-style vault-relative / shortest-path names are resolved; a missing target shows a non-blocking toast.
@@ -389,7 +391,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.11...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.12...HEAD
+[0.2.12]: https://github.com/RaiderWang/power-editor/compare/v0.2.11...v0.2.12
 [0.2.11]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/RaiderWang/power-editor/compare/v0.2.8...v0.2.9
