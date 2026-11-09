@@ -21,6 +21,7 @@ import { LargeFileConfirmDialog } from './components/dialogs/LargeFileConfirmDia
 import { BinaryFileConfirmDialog } from './components/dialogs/BinaryFileConfirmDialog';
 import { KeyboardShortcutsDialog } from './components/dialogs/KeyboardShortcutsDialog';
 import { UpdateDialog } from './components/dialogs/UpdateDialog';
+import { ToastHost } from './components/common/ToastHost';
 import { useAutoUpdateCheck } from './hooks/useUpdater';
 import { EncodingPicker } from './components/statusbar/EncodingPicker';
 import { FileExplorer } from './components/explorer/FileExplorer';
@@ -242,6 +243,7 @@ export default function App() {
       <BinaryFileConfirmDialog />
       <KeyboardShortcutsDialog />
       <UpdateDialog />
+      <ToastHost />
       {reopenEncodingOpen && activeTab && activeTab.fileInfo.path && (
         <EncodingPicker
           currentEncoding={activeTab.fileInfo.encoding}

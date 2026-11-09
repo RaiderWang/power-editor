@@ -5,12 +5,18 @@ import { tabsAtom, activeTabIdAtom, pendingCloseTabIdAtom, pendingCloseResolverA
 import { clearExternalPrompts } from '../utils/externalPrompts';
 import { secondaryActiveTabIdAtom, closeSplitAtom } from '../store/splitAtoms';
 import { previewTabIdsAtom } from '../store/previewTabs';
+import { isMarkdownLanguage } from '../extensions/builtinLanguages';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
 import { pathsEqual, getFileExtension } from '../utils/pathUtils';
 import type { TabState } from '../types';
+
+export interface OpenFileOptions {
+  /** Keep the Markdown preview pane open when switching to a Markdown target tab. */
+  keepPreview?: boolean;
+}
 
 /** Files larger than this trigger a confirmation dialog before opening (500 MB). */
 const LARGE_FILE_WARN_BYTES = 500 * 1024 * 1024;
@@ -26,12 +32,26 @@ export function useFile() {
   const setRecentFiles = useSetAtom(recentFilesAtom);
   const prefs = useAtomValue(editorPrefsAtom);
 
-  const openFile = useCallback(async (path: string) => {
+  /**
+   * Opens `path` in a tab (or switches to the existing one).
+   *
+   * `keepPreview`: remember the Markdown preview for the target tab BEFORE it becomes active, so
+   * `usePreviewTabSync` does not auto-close the open preview pane (e.g. when following a
+   * `[[wikilink]]` clicked inside the preview). Ignored for non-Markdown targets.
+   */
+  const openFile = useCallback(async (path: string, options?: OpenFileOptions) => {
+    const keepPreview = options?.keepPreview === true;
+    const rememberPreview = (tabId: string, language: string | null) => {
+      if (!keepPreview || !isMarkdownLanguage(language)) return;
+      store.set(previewTabIdsAtom, (prev) => (prev.includes(tabId) ? prev : [...prev, tabId]));
+    };
+
     // If the file is already open in a tab, switch to it instead of duplicating.
     const existing = tabs.find(
       (t) => t.fileInfo.path && pathsEqual(t.fileInfo.path, path),
     );
     if (existing) {
+      rememberPreview(existing.id, existing.language);
       setActiveTabId(existing.id);
       return existing;
     }
@@ -97,6 +117,7 @@ export function useFile() {
       language: ext || null,
       readOnly: fileInfo.is_read_only,
     };
+    rememberPreview(tab.id, tab.language);
     setTabs((prev) => [...prev, tab]);
     setActiveTabId(tab.id);
     setRecentFiles((prev) => {
@@ -105,7 +126,7 @@ export function useFile() {
       return next;
     });
     return tab;
-  }, [tabs, setActiveTabId, setPendingBinaryFile, setPendingLargeFile, setTabs, setRecentFiles, prefs.warnOnLargeFile]);
+  }, [tabs, store, setActiveTabId, setPendingBinaryFile, setPendingLargeFile, setTabs, setRecentFiles, prefs.warnOnLargeFile]);
 
   const newFile = useCallback(async () => {
     const fileInfo = await cmd.newBuffer();

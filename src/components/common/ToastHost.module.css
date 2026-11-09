@@ -1,0 +1,23 @@
+.host {
+  position: fixed;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  z-index: 3000;
+  pointer-events: none;
+  max-width: min(80vw, 640px);
+}
+
+.toast {
+  pointer-events: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--app-fg);
+  background: var(--panel-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  cursor: pointer;
+  word-break: break-word;
+}

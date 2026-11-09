@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added / 新增
+- **Clickable wikilinks & Ctrl+click links / 可点击的文件双链与 Ctrl+点击链接**:
+  - In the Markdown preview, `[[entities/Foo]]`, `[[note#Heading|alias]]` and relative file links (`[x](../a.md)`) open the target file inside Power Editor (the preview stays open), `[[#Heading]]` scrolls within the preview, and `http(s)` / `mailto` links keep opening in the external browser. Note names with dots (`[[2026.11.09]]`) and Obsidian-style vault-relative / shortest-path names are resolved; a missing target shows a non-blocking toast.
+    （Markdown 预览中，`[[entities/Foo]]`、`[[note#标题|别名]]` 与相对文件链接（`[x](../a.md)`）会在 Power Editor 内打开目标文件（预览保持开启）；`[[#标题]]` 在预览内滚动；`http(s)` / `mailto` 仍在外部浏览器打开。支持含点号的笔记名（`[[2026.11.09]]`）以及 Obsidian 风格的 vault 相对路径/最短路径；目标不存在时弹出非阻塞提示。）
+  - In the editor (Markdown files), Ctrl/Cmd+click a `[[wikilink]]`, `[text](url)` or bare URL to follow it; while Ctrl/Cmd is held the link under the pointer shows a hand cursor and an underline. Images and Ctrl+drag selections are not affected.
+    （编辑区（Markdown 文件）中 Ctrl/Cmd+点击 `[[双链]]`、`[文字](链接)` 或裸 URL 即可跳转；按住 Ctrl/Cmd 时，指针下的链接会显示手型光标和下划线；图片语法与 Ctrl+拖选不受影响。）
 - **Recent Folders menu / 最近打开的文件夹菜单**: File → Recent Folders lists up to 10 recently opened workspace folders (deduplicated, kept in sync when a folder is renamed or deleted in the explorer, and seeded from the currently opened folder on first run); an unreadable folder prompts to remove it from the list, and re-opening the current folder keeps the tree's expanded state.
   （文件 → 最近打开的文件夹：列出最近打开的至多 10 个工作区文件夹（去重；在资源管理器中重命名或删除文件夹时同步更新；首次使用时以当前已打开的文件夹作为初始记录）；无法读取的文件夹会询问是否从列表中移除；重新打开当前文件夹不会折叠文件树。）
 

@@ -15,10 +15,11 @@ import { closeSplitAtom } from '../../store/splitAtoms';
 import { getEditorView } from '../../store/previewBridge';
 import { useMarkdownSource } from '../../hooks/useMarkdownSource';
 import { renderMarkdown } from '../../preview/renderMarkdown';
-import {
-  setupLinkInterception,
-  postProcessCodeBlocks,
-} from '../../preview/postProcess';
+import { postProcessCodeBlocks } from '../../preview/postProcess';
+import { setupLinkInterception } from '../../preview/linkInterception';
+import type { LinkInterceptionHandlers } from '../../preview/linkInterception';
+import { useOpenLink } from '../../hooks/useOpenLink';
+import { showToastAtom } from '../../store/toastAtoms';
 import { postProcessImages } from '../../preview/imagePaths';
 import { setupScrollSync } from '../../preview/scrollSync';
 import { setCachedPreviewSelection } from '../../print/selectionHelper';
@@ -76,11 +77,26 @@ export const MarkdownPreviewPane: React.FC = () => {
     return () => el.removeEventListener('toggle', onToggle, true);
   }, [bufferId]);
 
-  // Post-process links: internal smooth-scroll, external shell open
+  // Links: heading anchors scroll, http(s) opens externally, [[notes]] / relative files open in
+  // the editor. Handlers live in a ref so the click listener is bound only once.
+  const openLink = useOpenLink();
+  const showToast = useSetAtom(showToastAtom);
+  const linkHandlersRef = useRef<LinkInterceptionHandlers | null>(null);
+  useEffect(() => {
+    linkHandlersRef.current = {
+      onNote: (link) => {
+        void openLink(link, { docPath: filePath, fromPreview: true });
+      },
+      onAnchorMissing: (heading) => {
+        showToast(t('link.anchorNotFound', { heading }));
+      },
+    };
+  });
+
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    return setupLinkInterception(el);
+    return setupLinkInterception(el, () => linkHandlersRef.current!);
   }, []);
 
   // Post-process images & syntax highlighting whenever HTML or filePath updates

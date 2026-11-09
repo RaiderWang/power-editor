@@ -741,6 +741,7 @@ pub fn run() {
             // File explorer operations
             explorer::list_directory,
             image_resolve::resolve_image_paths,
+            image_resolve::note_links::resolve_note_links,
             explorer::create_file,
             explorer::create_directory,
             explorer::rename_path,
