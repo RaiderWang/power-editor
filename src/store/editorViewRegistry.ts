@@ -2,6 +2,7 @@ import { deleteLine, undo, redo } from '@codemirror/commands';
 import { Annotation } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { applyEdit } from './tauriCommands';
+import { utf8ByteLength } from './windowRangeUtils';
 import { setMatchRanges, setCurrentMatch } from '../extensions/searchHighlight';
 import type { SearchMatch } from '../types';
 import type { PaneId } from './splitAtoms';
@@ -376,6 +377,16 @@ export function setWindowRange(bufferId: number, start: number, end: number) {
   windowRangeMap.set(bufferId, { start, end });
 }
 
+/**
+ * Extend the window's right edge by `bytes` after text taken from the rope was
+ * appended to CM (maybeLoadMore). Relative on purpose: when user edits are not
+ * synced yet, `end` is in rope coordinates and must not be derived from CM text.
+ */
+export function extendWindowRangeEnd(bufferId: number, bytes: number) {
+  const cur = windowRangeMap.get(bufferId);
+  if (cur) windowRangeMap.set(bufferId, { start: cur.start, end: cur.end + bytes });
+}
+
 // ──────────────────────────────────────────────────────────────
 // Byte-offset conversion helpers
 // ──────────────────────────────────────────────────────────────
@@ -559,36 +570,73 @@ export function applyReplaceEditToCM(
 // Sync CM → Rust
 // ──────────────────────────────────────────────────────────────
 
+/** True while user text edits exist that have not been pushed to Rust yet. */
+export function hasUnsyncedEdits(bufferId: number): boolean {
+  return textEditedBuffers.has(bufferId);
+}
+
+/** Per-buffer tail of the sync chain, so concurrent syncs run strictly in order. */
+const syncQueues = new Map<number, Promise<void>>();
+
 /**
- * Reads the current CodeMirror document for the given bufferId and
- * replaces the corresponding byte range in the Rust rope via apply_edit.
+ * Reads the current CodeMirror document for the given bufferId and replaces the
+ * corresponding byte range of the Rust rope via apply_edit.
  *
- * - When the window starts at byte 0 (normal scrolling from top), the entire
- *   rope is replaced (same as before).
- * - When the window was shifted by a search jump (windowStart > 0), only the
- *   window's original byte range is replaced, so content before/after the
- *   window is preserved.
+ * ALWAYS only the window range `[winRange.start, winRange.end)` is replaced —
+ * even when the window starts at byte 0 — because CM usually holds just the
+ * first N lines, never assume it is the whole file (that truncates the rope).
+ * `winRange.end` is the exact right edge of the CM text in the rope (it does not
+ * include the newline that terminates the window's last line, see
+ * `chunkByteRange`).
  *
- * Skipped entirely when no user text edits have occurred since the last sync.
+ * The text, the range and the "edited" flag are handled SYNCHRONOUSLY at call
+ * time (so editor teardown can call this right before `unregisterEditorView`,
+ * and edits made while the IPC is in flight re-mark the buffer); only the IPC
+ * call itself is chained per buffer. After the call, `winRange.end` already
+ * reflects the replaced text, so back-to-back syncs use the right range.
+ *
+ * Skipped when no user text edits occurred since the last sync (the returned
+ * promise still waits for any in-flight sync).
  */
-export async function syncEditorToRust(bufferId: number): Promise<void> {
-  if (!textEditedBuffers.has(bufferId)) return;
+export function syncEditorToRust(bufferId: number): Promise<void> {
+  const prior = syncQueues.get(bufferId) ?? Promise.resolve();
+  if (!textEditedBuffers.has(bufferId)) return prior;
 
   const view = registry.get(bufferId);
-  if (!view) return;
+  if (!view) return prior;
 
   const text = view.state.doc.toString();
   const winRange = windowRangeMap.get(bufferId);
 
-  if (!winRange || winRange.start === 0) {
-    // Window anchored at file start → replace everything.
-    await applyEdit(bufferId, { from: 0, to: Number.MAX_SAFE_INTEGER, text });
-  } else {
-    // Windowed mode: replace only the original byte range of this window.
-    // winRange.end is the Rust-side exclusive end byte BEFORE any CM edits,
-    // so it correctly targets the original rope content to replace.
-    await applyEdit(bufferId, { from: winRange.start, to: winRange.end, text });
+  let from = 0;
+  let to = Number.MAX_SAFE_INTEGER;
+  let optimisticEnd: number | null = null;
+  if (winRange) {
+    from = winRange.start;
+    to = winRange.end;
+    optimisticEnd = winRange.start + utf8ByteLength(text);
+    windowRangeMap.set(bufferId, { start: winRange.start, end: optimisticEnd });
   }
-
   textEditedBuffers.delete(bufferId);
+
+  const run = prior.then(async () => {
+    try {
+      await applyEdit(bufferId, { from, to, text });
+    } catch (err) {
+      // Rope was not changed: re-arm the dirty flag and restore the old range.
+      textEditedBuffers.add(bufferId);
+      const cur = windowRangeMap.get(bufferId);
+      if (winRange && cur && cur.end === optimisticEnd) {
+        windowRangeMap.set(bufferId, { start: cur.start, end: winRange.end });
+      }
+      throw err;
+    }
+  });
+
+  const tail = run.catch(() => {});
+  syncQueues.set(bufferId, tail);
+  void tail.then(() => {
+    if (syncQueues.get(bufferId) === tail) syncQueues.delete(bufferId);
+  });
+  return run;
 }

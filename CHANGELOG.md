@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed / 修复
+- **Replace All truncated large files to the first 300 lines / 大文件“全部替换”后只剩前 300 行**: after Replace All on a large file the refreshed editor window was treated as a user edit and written back over the whole document, silently deleting everything outside the loaded window (and Undo kept the truncated text). Syncing from the editor now only ever replaces the loaded window's byte range, the window's right edge no longer swallows the newline after its last line (which could merge two lines on save), reloads after Replace All no longer mark the buffer as edited, and the status-bar line count refreshes. On large files (CodeMirror holds only part of the document) Replace All is not undoable and asks for confirmation first; small files stay undoable, even if the replacement adds lines. Fully loaded files up to 10 MB (e.g. 70k short lines) are loaded into the editor before Replace All so they stay undoable too, focus returns to the editor afterwards so Ctrl+Z works, and the "not undoable" confirmation now really appears (`window.confirm` is asynchronous under Tauri's dialog plugin and never blocked or cancelled anything; it now uses `ask`).
+  （大文件执行“全部替换”后，刷新后的编辑窗口被当作用户编辑回写，覆盖了整个文档，窗口之外的内容被静默删除，撤销也只会得到被截断的文本。现在编辑器同步只会替换已加载窗口对应的字节范围；窗口右边界不再吞掉末行后的换行符（此前可能在保存时把两行合并）；“全部替换”后的窗口刷新不再标记为已编辑；状态栏总行数同步刷新。大文件（编辑器只载入部分内容）的全部替换不可撤销，并会先弹出确认；小文件仍可撤销，即使替换使行数增加。已完整加载且不超过 10 MB 的文件（如 7 万行短行文本）会在替换前先载入编辑器，因此同样可撤销；替换完成后焦点回到编辑器，Ctrl+Z 才能生效；“不可撤销”确认框现在会真正出现（Tauri 对话框插件把 `window.confirm` 改成了异步函数，原先既不会阻塞也不能取消，现改用 `ask`）。）
+
 ## [0.2.12] - 2026-11-09
 
 ### Added / 新增

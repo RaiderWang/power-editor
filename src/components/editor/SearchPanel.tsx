@@ -28,6 +28,10 @@ import {
   focusEditor,
 } from '../../store/editorViewRegistry';
 import { activePaneAtom, secondaryActiveTabAtom } from '../../store/splitAtoms';
+import { ask } from '@tauri-apps/plugin-dialog';
+import { isWindowCoveringFullDoc } from '../../store/windowCoverageRegistry';
+import { ensureFullyLoaded } from '../../store/previewBridge';
+import { REPLACE_ALL_UNDO_THRESHOLD } from '../../store/windowRangeUtils';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
 import { LineListDialog } from './LineListDialog';
@@ -353,42 +357,67 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     doSearch, markTabModified, refreshMatches, setCurrentIdx, onMatchesFound,
   ]);
 
-  // Threshold (in characters) above which Replace All is non-undoable.
-  // CM6 undo stores the full old document for a whole-doc replacement;
-  // for very large virtual windows (e.g. after Ctrl+A on a 100 MB file)
-  // this would consume excessive memory.  10 M chars ≈ 10 MB ASCII.
-  const REPLACE_ALL_UNDO_THRESHOLD = 10_000_000;
-
   const doReplaceAll = useCallback(async () => {
     if (!activeTab || !params.pattern) return;
     // Sync any pending CM edits (including Ctrl+Z undo) to Rust before replacing,
     // so replaceAll operates on the current editor content, not a stale rope.
     await syncEditorToRust(activeTab.bufferId);
 
-    // Decide whether the replacement should be undoable.
-    // For large CM windows the undo entry would duplicate the entire document
-    // in memory, so we fall back to non-undoable and warn the user.
-    const docLen = getEditorDocLength(activeTab.bufferId);
-    const canUndo = docLen < REPLACE_ALL_UNDO_THRESHOLD;
+    const bufferId = activeTab.bufferId;
+
+    // Undo through CM history is only safe when CM holds the WHOLE document
+    // (otherwise Ctrl+Z could only revert the visible window while Rust already
+    // changed the rest) and the document is small enough that the undo entry does
+    // not double memory.  A fully loaded file up to the threshold is therefore
+    // loaded into CM first, so e.g. a 70k-line / few-hundred-KB file stays undoable.
+    let covering = isWindowCoveringFullDoc(bufferId);
+    if (
+      !covering &&
+      activeTab.fileInfo.is_fully_loaded &&
+      activeTab.fileInfo.total_bytes <= REPLACE_ALL_UNDO_THRESHOLD
+    ) {
+      try {
+        covering = await ensureFullyLoaded(bufferId);
+      } catch (err) {
+        console.error('[SearchPanel] loading full document before Replace All failed:', err);
+      }
+    }
+    const docLen = getEditorDocLength(bufferId);
+    const canUndo = covering && docLen < REPLACE_ALL_UNDO_THRESHOLD;
 
     if (!canUndo) {
-      const ok = confirm(t('search.replaceAllNoUndo'));
-      if (!ok) return;
+      // NOTE: window.confirm() is replaced by the dialog plugin with an async
+      // function (returns a Promise, needs `dialog:allow-confirm`), so it can
+      // never block or cancel. Use the awaited `ask` API instead.
+      try {
+        const ok = await ask(t('search.replaceAllNoUndo'), { kind: 'warning' });
+        if (!ok) return;
+      } catch (err) {
+        console.error('[SearchPanel] Replace All confirmation dialog failed:', err);
+        return;
+      }
     }
 
-    const replaceParams = params.is_regex
-      ? params
-      : { ...params, pattern: expandSpecialChars(params.pattern) };
-    const expandedReplacement = params.is_regex ? replaceText : expandSpecialChars(replaceText);
-    const count = await cmd.replaceAll(activeTab.bufferId, replaceParams, expandedReplacement);
-    await reloadCurrentWindow(activeTab.bufferId, { trackHistory: canUndo });
-    addSearchHistory(params.pattern);
-    setSearchHistory(loadSearchHistory());
-    addReplaceHistory(replaceText);
-    setReplaceHistory(loadReplaceHistory());
-    markTabModified(activeTab.id);
-    await doSearch({ noScroll: true });
-    alert(t('search.replacedCount', { count }));
+    try {
+      const replaceParams = params.is_regex
+        ? params
+        : { ...params, pattern: expandSpecialChars(params.pattern) };
+      const expandedReplacement = params.is_regex ? replaceText : expandSpecialChars(replaceText);
+      const count = await cmd.replaceAll(bufferId, replaceParams, expandedReplacement);
+      await reloadCurrentWindow(bufferId, { trackHistory: canUndo });
+      addSearchHistory(params.pattern);
+      setSearchHistory(loadSearchHistory());
+      addReplaceHistory(replaceText);
+      setReplaceHistory(loadReplaceHistory());
+      markTabModified(activeTab.id);
+      await doSearch({ noScroll: true });
+      // Hand focus back to the editor so Ctrl+Z / Ctrl+Y reach CodeMirror
+      // instead of the (focused) Replace All button.
+      focusEditor(bufferId);
+      alert(t('search.replacedCount', { count }));
+    } catch (err) {
+      console.error('[SearchPanel] Replace All failed:', err);
+    }
   }, [activeTab, params, replaceText, doSearch, markTabModified, t]);
 
   const handleSaveToNewFile = useCallback(async (lines: string[]) => {
