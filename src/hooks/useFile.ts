@@ -9,6 +9,7 @@ import { isMarkdownLanguage } from '../extensions/builtinLanguages';
 import type { PendingLargeFile, PendingBinaryFile } from '../store/atoms';
 import * as cmd from '../store/tauriCommands';
 import { syncEditorToRust, clearTextEdited } from '../store/editorViewRegistry';
+import { forgetReplaceUndo } from '../store/replaceUndo';
 import { recentFilesAtom, addToRecent, saveRecentFiles } from '../store/recentFiles';
 import { pathsEqual, getFileExtension } from '../utils/pathUtils';
 import type { TabState } from '../types';
@@ -150,6 +151,7 @@ export function useFile() {
     const tab = currentTabs.find((t) => t.id === tabId);
     if (tab) {
       await cmd.closeBuffer(tab.bufferId).catch(console.error);
+      forgetReplaceUndo(tab.bufferId);
     }
     // Forget this tab's preview; showing/hiding for the next active tab is
     // handled by usePreviewTabSync.

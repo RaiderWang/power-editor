@@ -354,11 +354,14 @@ pub fn replace_all(
     let buffer = buffers
         .get_mut(&buffer_id)
         .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?;
+    buffer.ensure_replaceable().map_err(|e| anyhow!(e))?;
 
     let replacements = collect_replacements(&buffer.rope, &re, replacement, !params.is_regex);
     let count = replacements.len();
 
     if count > 0 {
+        // O(1) copy-on-write snapshot so the whole replacement can be undone.
+        buffer.save_replace_snapshot();
         // Apply from last to first so earlier byte offsets remain valid.
         for (from, to, ref rep) in replacements.into_iter().rev() {
             let from_char = buffer.rope.byte_to_char(from.min(buffer.rope.len_bytes()));
@@ -388,6 +391,8 @@ pub fn replace_one(
     let buffer = buffers
         .get_mut(&buffer_id)
         .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?;
+    buffer.ensure_replaceable().map_err(|e| anyhow!(e))?;
+    buffer.invalidate_replace_snapshots();
 
     let from_char = buffer.rope.byte_to_char(from.min(buffer.rope.len_bytes()));
     let to_char = buffer.rope.byte_to_char(to.min(buffer.rope.len_bytes()));
@@ -643,6 +648,89 @@ mod tests {
         assert_eq!(count, 2);
         let buffers = registry.buffers.lock().unwrap();
         assert_eq!(buffers.get(&id).unwrap().get_full_text(), "你好家园，美丽的地球家园");
+    }
+
+    fn plain_params(pattern: &str) -> SearchParams {
+        SearchParams {
+            pattern: pattern.into(),
+            is_regex: false,
+            case_sensitive: true,
+            whole_word: false,
+        }
+    }
+
+    #[test]
+    fn test_replace_all_undo_redo_roundtrip() {
+        let (registry, id) = make_registry_with("a X b\nX c X");
+        assert_eq!(replace_all(&registry, id, &plain_params("X"), "YY\nY").unwrap(), 3);
+        let mut buffers = registry.buffers.lock().unwrap();
+        let buf = buffers.get_mut(&id).unwrap();
+        assert_eq!(buf.get_full_text(), "a YY\nY b\nYY\nY c YY\nY");
+
+        assert!(buf.undo_replace_all());
+        assert_eq!(buf.get_full_text(), "a X b\nX c X");
+        assert!(!buf.undo_replace_all(), "only one level of undo");
+
+        assert!(buf.redo_replace_all());
+        assert_eq!(buf.get_full_text(), "a YY\nY b\nYY\nY c YY\nY");
+        assert!(!buf.redo_replace_all());
+        assert!(buf.undo_replace_all());
+        assert_eq!(buf.get_full_text(), "a X b\nX c X");
+    }
+
+    #[test]
+    fn test_replace_all_without_match_keeps_previous_snapshot_state() {
+        let (registry, id) = make_registry_with("abc");
+        assert_eq!(replace_all(&registry, id, &plain_params("zzz"), "1").unwrap(), 0);
+        let mut buffers = registry.buffers.lock().unwrap();
+        assert!(!buffers.get_mut(&id).unwrap().undo_replace_all());
+    }
+
+    #[test]
+    fn test_snapshots_invalidated_by_real_edit_but_not_by_noop_edit() {
+        use crate::buffer::EditOp;
+        let (registry, id) = make_registry_with("one two one");
+        replace_all(&registry, id, &plain_params("one"), "1").unwrap();
+        let mut buffers = registry.buffers.lock().unwrap();
+        let buf = buffers.get_mut(&id).unwrap();
+
+        // Writing back identical text (typed char that was undone) keeps the snapshot.
+        buf.apply_edit(&EditOp { from: 0, to: usize::MAX, text: "1 two 1".into() }).unwrap();
+        assert!(buf.replace_undo.is_some());
+
+        // A real edit drops it.
+        buf.apply_edit(&EditOp { from: 0, to: 0, text: "x".into() }).unwrap();
+        assert!(buf.replace_undo.is_none() && buf.replace_redo.is_none());
+        assert!(!buf.undo_replace_all());
+    }
+
+    #[test]
+    fn test_replace_one_invalidates_snapshots() {
+        let (registry, id) = make_registry_with("a a a");
+        replace_all(&registry, id, &plain_params("a"), "b").unwrap();
+        replace_one(&registry, id, 0, 1, "c").unwrap();
+        let mut buffers = registry.buffers.lock().unwrap();
+        assert!(!buffers.get_mut(&id).unwrap().undo_replace_all());
+    }
+
+    #[test]
+    fn test_replace_refused_when_read_only_or_still_loading() {
+        let (registry, id) = make_registry_with("a a");
+        {
+            let mut buffers = registry.buffers.lock().unwrap();
+            buffers.get_mut(&id).unwrap().is_read_only = true;
+        }
+        assert!(replace_all(&registry, id, &plain_params("a"), "b").is_err());
+        assert!(replace_one(&registry, id, 0, 1, "b").is_err());
+        {
+            let mut buffers = registry.buffers.lock().unwrap();
+            let buf = buffers.get_mut(&id).unwrap();
+            buf.is_read_only = false;
+            buf.is_fully_loaded = false;
+        }
+        assert!(replace_all(&registry, id, &plain_params("a"), "b").is_err());
+        let buffers = registry.buffers.lock().unwrap();
+        assert_eq!(buffers.get(&id).unwrap().get_full_text(), "a a");
     }
 }
 

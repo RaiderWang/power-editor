@@ -252,6 +252,7 @@ fn reload_buffer(state: State<AppState>, buffer_id: u64) -> Result<FileInfo, Str
     let mut buffers = state.registry.buffers.lock().unwrap();
     let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
     buf.rope = rope;
+    buf.invalidate_replace_snapshots();
     buf.encoding = enc_name;
     buf.line_ending = line_ending;
     buf.is_modified = false;
@@ -344,6 +345,26 @@ fn replace_all(
     replacement: String,
 ) -> Result<usize, String> {
     search::replace_all(&state.registry, buffer_id, &params, &replacement).map_err(|e| e.to_string())
+}
+
+/// Undo the last Replace All by swapping the rope with its pre-replace snapshot.
+/// Returns `None` when there is nothing to undo (no snapshot, or the text was
+/// edited since), otherwise the refreshed `FileInfo`.
+#[tauri::command]
+fn undo_replace_all(state: State<AppState>, buffer_id: u64) -> Result<Option<FileInfo>, String> {
+    let mut buffers = state.registry.buffers.lock().unwrap();
+    let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    buf.ensure_replaceable().map_err(|e| e.to_string())?;
+    Ok(buf.undo_replace_all().then(|| buf.file_info()))
+}
+
+/// Redo a Replace All that was undone with `undo_replace_all`.
+#[tauri::command]
+fn redo_replace_all(state: State<AppState>, buffer_id: u64) -> Result<Option<FileInfo>, String> {
+    let mut buffers = state.registry.buffers.lock().unwrap();
+    let buf = buffers.get_mut(&buffer_id).ok_or("Buffer not found")?;
+    buf.ensure_replaceable().map_err(|e| e.to_string())?;
+    Ok(buf.redo_replace_all().then(|| buf.file_info()))
 }
 
 #[tauri::command]
@@ -706,6 +727,8 @@ pub fn run() {
             // Search
             find_all,
             replace_all,
+            undo_replace_all,
+            redo_replace_all,
             replace_one,
             // Encoding
             get_supported_encodings,

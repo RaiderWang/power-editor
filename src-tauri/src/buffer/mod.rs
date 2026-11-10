@@ -39,9 +39,12 @@ pub struct LineChunk {
     /// Used by the frontend to map Rust search-match byte offsets into the
     /// currently loaded virtual-document window.
     pub start_byte_offset: usize,
-    /// UTF-8 byte offset of the first character of the line *after* the last
-    /// loaded line (i.e., the exclusive end of this chunk in the rope).
-    /// Equals `rope.len_bytes()` when this chunk reaches the end of the file.
+    /// UTF-8 byte offset just past the last character of the last loaded line,
+    /// i.e. the exclusive end of `lines.join("\n")` in the rope.  The terminator
+    /// of the last line is NOT included, so `end - start` equals the byte length
+    /// of the text the frontend puts into CodeMirror.  Equals `start_byte_offset`
+    /// for an empty chunk and `rope.len_bytes()` when the chunk reaches the end
+    /// of a file that does not end with a newline.
     pub end_byte_offset: usize,
 }
 
@@ -77,6 +80,12 @@ pub struct Buffer {
     pub is_read_only: bool,
     /// `true` when the buffer was detected as binary data.
     pub is_binary: bool,
+    /// Rope as it was right before the last Replace All.  `Rope::clone` is an
+    /// O(1) copy-on-write share, so keeping it costs no up-front copy.  Dropped as
+    /// soon as the text is edited in any other way (see `invalidate_replace_snapshots`).
+    pub replace_undo: Option<Rope>,
+    /// Rope as it was right before the last "undo Replace All" (for redo).
+    pub replace_redo: Option<Rope>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -110,7 +119,62 @@ impl Buffer {
             file_total_bytes: 0,
             is_read_only: false,
             is_binary: false,
+            replace_undo: None,
+            replace_redo: None,
         }
+    }
+
+    /// Forget the Replace All undo/redo snapshots (the rope was changed in a way
+    /// they no longer describe).
+    pub fn invalidate_replace_snapshots(&mut self) {
+        self.replace_undo = None;
+        self.replace_redo = None;
+    }
+
+    /// Remember the current rope so the next Replace All can be undone.
+    pub fn save_replace_snapshot(&mut self) {
+        self.replace_undo = Some(self.rope.clone());
+        self.replace_redo = None;
+    }
+
+    /// Undo the last Replace All: swap the rope with the saved snapshot.
+    /// Returns `false` when there is nothing to undo.
+    pub fn undo_replace_all(&mut self) -> bool {
+        match self.replace_undo.take() {
+            Some(prev) => {
+                let current = std::mem::replace(&mut self.rope, prev);
+                self.replace_redo = Some(current);
+                self.is_modified = true;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Redo a Replace All that was undone. Returns `false` when there is nothing to redo.
+    pub fn redo_replace_all(&mut self) -> bool {
+        match self.replace_redo.take() {
+            Some(next) => {
+                let current = std::mem::replace(&mut self.rope, next);
+                self.replace_undo = Some(current);
+                self.is_modified = true;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Gate shared by every command that rewrites the whole text (Replace All and
+    /// its undo/redo): refuse while the file is still streaming in (a snapshot of a
+    /// half-loaded rope would drop the rest) and for read-only buffers.
+    pub fn ensure_replaceable(&self) -> Result<(), &'static str> {
+        if self.is_read_only {
+            return Err("Cannot modify a read-only or binary file.");
+        }
+        if !self.is_fully_loaded {
+            return Err("Cannot replace while the file is still loading");
+        }
+        Ok(())
     }
 
     pub fn file_info(&self) -> FileInfo {
@@ -147,12 +211,15 @@ impl Buffer {
         let end_line = (start_line + count).min(total_lines);
         let mut lines = Vec::with_capacity(end_line - start_line);
 
+        // Bytes of line terminator stripped from the LAST line of the chunk.
+        let mut last_stripped_bytes = 0usize;
         for line_idx in start_line..end_line {
             let line = self.rope.line(line_idx);
             // Strip trailing \r\n or \n
             let s = line.to_string();
-            let s = s.trim_end_matches('\n').trim_end_matches('\r');
-            lines.push(s.to_string());
+            let trimmed = s.trim_end_matches('\n').trim_end_matches('\r');
+            last_stripped_bytes = s.len() - trimmed.len();
+            lines.push(trimmed.to_string());
         }
 
         // Compute byte offsets via char index (ropey has no direct line_to_byte).
@@ -161,10 +228,18 @@ impl Buffer {
         } else {
             self.rope.len_bytes()
         };
-        let end_byte_offset = if end_line < total_lines {
+        let next_line_byte_offset = if end_line < total_lines {
             self.rope.char_to_byte(self.rope.line_to_char(end_line))
         } else {
             self.rope.len_bytes()
+        };
+        // Exact right edge of the chunk TEXT (`lines.join("\n")`) in the rope:
+        // the terminator of the last line is not part of it. Only exact while the
+        // rope stores `\n` line endings (see `convert_line_endings`).
+        let end_byte_offset = if end_line == start_line {
+            start_byte_offset
+        } else {
+            next_line_byte_offset - last_stripped_bytes
         };
 
         LineChunk {
@@ -181,6 +256,15 @@ impl Buffer {
         let from_char = self.rope.byte_to_char(op.from.min(self.rope.len_bytes()));
         let to_char = self.rope.byte_to_char(op.to.min(self.rope.len_bytes()));
 
+        // No-op (e.g. a typed character that was undone again): the replaced range
+        // already holds exactly this text. Skip it so the buffer is not marked
+        // modified and the Replace All snapshots stay valid. `RopeSlice == str`
+        // compares chunk by chunk without allocating.
+        if from_char <= to_char && self.rope.slice(from_char..to_char) == op.text.as_str() {
+            return Ok(());
+        }
+
+        self.invalidate_replace_snapshots();
         if from_char < to_char {
             self.rope.remove(from_char..to_char);
         }
@@ -264,27 +348,14 @@ impl Buffer {
         self.rope.to_string()
     }
 
-    /// Convert all line endings in the rope to the target style.
+    /// Change the line-ending style the file is SAVED with.
     ///
-    /// Rebuilds the rope via `RopeBuilder` line-by-line instead of materialising
-    /// the entire document as a `String`, keeping peak memory at O(single line).
+    /// The rope always stores `\n` line endings (the decoder normalises them, and
+    /// the virtual-window byte offsets shared with the frontend rely on a 1-byte
+    /// terminator). `save()` writes `self.line_ending` between lines, so only the
+    /// flag has to change; rewriting `\r\n` into the rope would desynchronise the
+    /// window byte ranges used by `get_lines` / `apply_edit`.
     pub fn convert_line_endings(&mut self, target: LineEnding) {
-        let target_le: &str = match target {
-            LineEnding::CrLf => "\r\n",
-            _ => "\n",
-        };
-
-        let total = self.rope.len_lines();
-        let mut builder = ropey::RopeBuilder::new();
-        for (i, line) in self.rope.lines().enumerate() {
-            let s = line.to_string();
-            let s = s.trim_end_matches('\n').trim_end_matches('\r');
-            builder.append(s);
-            if i + 1 < total {
-                builder.append(target_le);
-            }
-        }
-        self.rope = builder.finish();
         self.line_ending = target;
         self.is_modified = true;
     }
@@ -371,7 +442,8 @@ mod tests {
         let chunk = buf.get_lines(1, 1);
         assert_eq!(chunk.lines, vec!["world"]);
         assert_eq!(chunk.start_byte_offset, 6);
-        assert_eq!(chunk.end_byte_offset, 12);
+        // "world" without its trailing "\n"
+        assert_eq!(chunk.end_byte_offset, 11);
         assert_eq!(chunk.total_lines, 4);
     }
 
@@ -383,7 +455,7 @@ mod tests {
         let chunk = buf.get_lines(1, 1);
         assert_eq!(chunk.lines, vec!["世界"]);
         assert_eq!(chunk.start_byte_offset, 7);
-        assert_eq!(chunk.end_byte_offset, 14);
+        assert_eq!(chunk.end_byte_offset, 13);
     }
 
     #[test]
@@ -394,7 +466,7 @@ mod tests {
         let chunk = buf.get_lines(1, 1);
         assert_eq!(chunk.lines, vec!["ABC"]);
         assert_eq!(chunk.start_byte_offset, 5);
-        assert_eq!(chunk.end_byte_offset, 9);
+        assert_eq!(chunk.end_byte_offset, 8);
     }
 
     #[test]
@@ -405,12 +477,38 @@ mod tests {
         let chunk0 = buf.get_lines(0, 1);
         assert_eq!(chunk0.lines, vec!["a你b"]);
         assert_eq!(chunk0.start_byte_offset, 0);
-        assert_eq!(chunk0.end_byte_offset, 6);
+        assert_eq!(chunk0.end_byte_offset, 5);
 
         let chunk1 = buf.get_lines(1, 1);
         assert_eq!(chunk1.lines, vec!["C"]);
         assert_eq!(chunk1.start_byte_offset, 6);
-        assert_eq!(chunk1.end_byte_offset, 8);
+        assert_eq!(chunk1.end_byte_offset, 7);
+    }
+
+    #[test]
+    fn test_get_lines_end_matches_joined_text_len() {
+        // Window in the middle, window reaching the end (with and without a
+        // trailing newline), CJK, and an empty chunk: the byte range must always
+        // equal the UTF-8 length of `lines.join("\n")`.
+        for text in ["a\nbb\nccc\ndddd\n", "a\nbb\nccc\ndddd", "你好\n世界\n😀\n\n\nx"] {
+            let buf = make_buffer(text);
+            let total = buf.rope.len_lines();
+            for start in 0..=total {
+                for count in 0..=total + 1 {
+                    let chunk = buf.get_lines(start, count);
+                    let joined = chunk.lines.join("\n");
+                    assert_eq!(
+                        chunk.end_byte_offset - chunk.start_byte_offset,
+                        joined.len(),
+                        "text={text:?} start={start} count={count}"
+                    );
+                    // The rope range really holds that text.
+                    let from = buf.rope.byte_to_char(chunk.start_byte_offset);
+                    let to = buf.rope.byte_to_char(chunk.end_byte_offset);
+                    assert_eq!(buf.rope.slice(from..to).to_string(), joined);
+                }
+            }
+        }
     }
 
     #[test]
@@ -518,13 +616,34 @@ mod tests {
         let mut buf = make_buffer("line1\nline2\nline3");
         buf.convert_line_endings(LineEnding::CrLf);
         assert_eq!(buf.line_ending, LineEnding::CrLf);
-        assert_eq!(buf.get_full_text(), "line1\r\nline2\r\nline3");
+        assert!(buf.is_modified);
+        // The rope stays LF-normalised; only the save style changes.
+        assert_eq!(buf.get_full_text(), "line1\nline2\nline3");
         assert_eq!(buf.rope.len_lines(), 3);
+        // Window byte ranges must stay exact after switching to CRLF.
+        let chunk = buf.get_lines(0, 2);
+        assert_eq!(chunk.end_byte_offset - chunk.start_byte_offset, "line1\nline2".len());
 
         buf.convert_line_endings(LineEnding::Lf);
         assert_eq!(buf.line_ending, LineEnding::Lf);
         assert_eq!(buf.get_full_text(), "line1\nline2\nline3");
         assert_eq!(buf.rope.len_lines(), 3);
+    }
+
+    #[test]
+    fn test_save_uses_selected_line_ending() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("le.txt");
+        let mut buf = Buffer::from_rope(
+            1,
+            Rope::from_str("a\nb\nc"),
+            Some(path.clone()),
+            "UTF-8".into(),
+            LineEnding::Lf,
+        );
+        buf.convert_line_endings(LineEnding::CrLf);
+        buf.save().unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"a\r\nb\r\nc");
     }
 
     // ── relocate_paths / strip_prefix_ignore_case ─────────────────────────

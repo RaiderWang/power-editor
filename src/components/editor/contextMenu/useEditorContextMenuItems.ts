@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { undo, redo, deleteLine } from '@codemirror/commands';
+import { deleteLine } from '@codemirror/commands';
+import {
+  undoEditOrReplace,
+  redoEditOrReplace,
+  hasReplaceUndo,
+  hasReplaceRedo,
+} from '../../../store/replaceUndo';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
   editorPrefsAtom,
@@ -61,8 +67,9 @@ export function useEditorContextMenuItems({
 
     const isReadOnly = Boolean(tab.readOnly || tab.fileInfo.is_read_only);
     const hasSel = hasSelection(view);
-    const undoable = !isReadOnly && canUndo(view);
-    const redoable = !isReadOnly && canRedo(view);
+    // Undo / redo also cover a pending Replace All snapshot (kept in Rust).
+    const undoable = !isReadOnly && (canUndo(view) || hasReplaceUndo(tab.bufferId));
+    const redoable = !isReadOnly && (canRedo(view) || hasReplaceRedo(tab.bufferId));
     const hasPath = Boolean(tab.fileInfo.path);
 
     const shortcut = (id: string) => getEffectiveShortcut(id, customs);
@@ -74,14 +81,14 @@ export function useEditorContextMenuItems({
         label: t('keybinding.editor.undo'),
         shortcut: shortcut('editor.undo'),
         disabled: !undoable,
-        onClick: () => { undo(view); },
+        onClick: () => { undoEditOrReplace(view, tab.bufferId); },
       },
       {
         id: 'redo',
         label: t('keybinding.editor.redo'),
         shortcut: shortcut('editor.redo'),
         disabled: !redoable,
-        onClick: () => { redo(view); },
+        onClick: () => { redoEditOrReplace(view, tab.bufferId); },
       },
       { separator: true, label: 'sep-history' },
 

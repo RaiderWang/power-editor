@@ -24,14 +24,10 @@ import {
   applyReplaceEditToCM,
   hasCursorMoved,
   clearCursorMoved,
-  getEditorDocLength,
   focusEditor,
 } from '../../store/editorViewRegistry';
 import { activePaneAtom, secondaryActiveTabAtom } from '../../store/splitAtoms';
-import { ask } from '@tauri-apps/plugin-dialog';
-import { isWindowCoveringFullDoc } from '../../store/windowCoverageRegistry';
-import { ensureFullyLoaded } from '../../store/previewBridge';
-import { REPLACE_ALL_UNDO_THRESHOLD } from '../../store/windowRangeUtils';
+import { noteReplaceAllDone } from '../../store/replaceUndo';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
 import { LineListDialog } from './LineListDialog';
@@ -72,6 +68,10 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const [searchHistory, setSearchHistory] = useState<string[]>(() => loadSearchHistory());
   const [replaceHistory, setReplaceHistory] = useState<string[]>(() => loadReplaceHistory());
   const [searching, setSearching] = useState(false);
+  // Replace needs a writable, fully loaded buffer (Rust rejects it otherwise).
+  const replaceDisabled = Boolean(
+    activeTab && (activeTab.readOnly || activeTab.fileInfo.is_read_only || !activeTab.fileInfo.is_fully_loaded),
+  );
 
   // 记录上一次搜索时使用的 pattern，用于判断是否需要重新搜索
   // （仅用于渲染「无结果」提示，故用 state 而非 ref）
@@ -359,57 +359,28 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
 
   const doReplaceAll = useCallback(async () => {
     if (!activeTab || !params.pattern) return;
-    // Sync any pending CM edits (including Ctrl+Z undo) to Rust before replacing,
-    // so replaceAll operates on the current editor content, not a stale rope.
-    await syncEditorToRust(activeTab.bufferId);
+    if (activeTab.readOnly || activeTab.fileInfo.is_read_only || !activeTab.fileInfo.is_fully_loaded) return;
 
     const bufferId = activeTab.bufferId;
-
-    // Undo through CM history is only safe when CM holds the WHOLE document
-    // (otherwise Ctrl+Z could only revert the visible window while Rust already
-    // changed the rest) and the document is small enough that the undo entry does
-    // not double memory.  A fully loaded file up to the threshold is therefore
-    // loaded into CM first, so e.g. a 70k-line / few-hundred-KB file stays undoable.
-    let covering = isWindowCoveringFullDoc(bufferId);
-    if (
-      !covering &&
-      activeTab.fileInfo.is_fully_loaded &&
-      activeTab.fileInfo.total_bytes <= REPLACE_ALL_UNDO_THRESHOLD
-    ) {
-      try {
-        covering = await ensureFullyLoaded(bufferId);
-      } catch (err) {
-        console.error('[SearchPanel] loading full document before Replace All failed:', err);
-      }
-    }
-    const docLen = getEditorDocLength(bufferId);
-    const canUndo = covering && docLen < REPLACE_ALL_UNDO_THRESHOLD;
-
-    if (!canUndo) {
-      // NOTE: window.confirm() is replaced by the dialog plugin with an async
-      // function (returns a Promise, needs `dialog:allow-confirm`), so it can
-      // never block or cancel. Use the awaited `ask` API instead.
-      try {
-        const ok = await ask(t('search.replaceAllNoUndo'), { kind: 'warning' });
-        if (!ok) return;
-      } catch (err) {
-        console.error('[SearchPanel] Replace All confirmation dialog failed:', err);
-        return;
-      }
-    }
-
     try {
+      // Sync any pending CM edits (including Ctrl+Z undo) to Rust before replacing,
+      // so replaceAll operates on the current editor content, not a stale rope.
+      await syncEditorToRust(bufferId);
+
       const replaceParams = params.is_regex
         ? params
         : { ...params, pattern: expandSpecialChars(params.pattern) };
       const expandedReplacement = params.is_regex ? replaceText : expandSpecialChars(replaceText);
+      // Rust takes an O(1) rope snapshot first, so Ctrl+Z / Ctrl+Y work for any file
+      // size without loading the document into CodeMirror (see replaceUndo.ts).
       const count = await cmd.replaceAll(bufferId, replaceParams, expandedReplacement);
-      await reloadCurrentWindow(bufferId, { trackHistory: canUndo });
+      if (count > 0) noteReplaceAllDone(bufferId);
+      await reloadCurrentWindow(bufferId);
       addSearchHistory(params.pattern);
       setSearchHistory(loadSearchHistory());
       addReplaceHistory(replaceText);
       setReplaceHistory(loadReplaceHistory());
-      markTabModified(activeTab.id);
+      if (count > 0) markTabModified(activeTab.id);
       await doSearch({ noScroll: true });
       // Hand focus back to the editor so Ctrl+Z / Ctrl+Y reach CodeMirror
       // instead of the (focused) Replace All button.
@@ -417,6 +388,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       alert(t('search.replacedCount', { count }));
     } catch (err) {
       console.error('[SearchPanel] Replace All failed:', err);
+      alert(String(err));
     }
   }, [activeTab, params, replaceText, doSearch, markTabModified, t]);
 
@@ -568,10 +540,10 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
             history={replaceHistory}
           />
           <div className={styles.replaceActions}>
-            <button className={styles.btn} onClick={doReplaceOne}>
+            <button className={styles.btn} onClick={doReplaceOne} disabled={replaceDisabled}>
               {t('search.replaceOne')}
             </button>
-            <button className={styles.btn} onClick={doReplaceAll}>
+            <button className={styles.btn} onClick={doReplaceAll} disabled={replaceDisabled}>
               {t('search.replaceAll')}
             </button>
           </div>

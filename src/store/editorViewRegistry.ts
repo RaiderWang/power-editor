@@ -1,4 +1,4 @@
-import { deleteLine, undo, redo } from '@codemirror/commands';
+import { deleteLine } from '@codemirror/commands';
 import { Annotation } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { applyEdit } from './tauriCommands';
@@ -58,22 +58,20 @@ const jumpRegistry = new Map<number, (targetLine: number, noScroll?: boolean) =>
 /** Options for reloading the current CM window from Rust. */
 export interface ReloadWindowOptions {
   /**
-   * When true, the reload change is a **normal** history-tracked CM transaction
-   * (not virtualLoad, not addToHistory:false).  This makes it undoable via
-   * Ctrl+Z.  Used by Replace All so the user can undo the replacement.
+   * Also flag the tab as modified.  Used after undo/redo of Replace All, where
+   * the rope changed in Rust without any CodeMirror edit.
    *
-   * When false (default), the reload is a non-history virtualLoad and the
-   * history is reset afterwards — appropriate for external reloads and window
-   * jumps where undo should not revert to stale content.
+   * The reload itself is always a non-history `virtualLoad` and resets the CM
+   * undo history: Replace All is undone through Rust (see `replaceUndo.ts`).
    */
-  trackHistory?: boolean;
+  markModified?: boolean;
 }
 
 /**
  * Maps bufferId → reloadCurrentWindow function registered by the corresponding Editor.
  * Called after replace operations to refresh the CM view from the updated Rust rope.
  */
-const reloadWindowRegistry = new Map<number, (options?: ReloadWindowOptions) => Promise<void>>();
+const reloadWindowRegistry = new Map<number, Map<PaneId, (options?: ReloadWindowOptions) => Promise<void>>>();
 
 /**
  * Maps bufferId → reloadFromStart function registered by the corresponding Editor.
@@ -81,7 +79,7 @@ const reloadWindowRegistry = new Map<number, (options?: ReloadWindowOptions) => 
  * sees the freshly updated file from the beginning regardless of where the virtual
  * window was positioned before the reload.
  */
-const reloadFromStartRegistry = new Map<number, () => Promise<void>>();
+const reloadFromStartRegistry = new Map<number, Map<PaneId, () => Promise<void>>>();
 
 /**
  * Tracks which buffers have user-typed text edits (as opposed to only
@@ -136,8 +134,7 @@ export function unregisterEditorView(bufferId: number) {
   searchStaleBuffers.delete(bufferId);
   cursorMovedSinceNav.delete(bufferId);
   windowRangeMap.delete(bufferId);
-  reloadWindowRegistry.delete(bufferId);
-  reloadFromStartRegistry.delete(bufferId);
+  // (reload registrations are per pane and removed by each Editor on its own)
   // If the secondary was still registered, disconnect its peer ref.
   secondaryRegistry.delete(bufferId);
 }
@@ -191,6 +188,9 @@ export function unregisterSecondaryEditorView(
   clearMyPeer();
 }
 
+// Jump / window range bookkeeping belongs to the PRIMARY pane only (search results
+// and `syncEditorToRust` address the primary view); the secondary pane keeps its own
+// local window state but never publishes it here.
 export function registerJumpToLine(bufferId: number, fn: (targetLine: number, noScroll?: boolean) => Promise<void>) {
   jumpRegistry.set(bufferId, fn);
 }
@@ -199,29 +199,56 @@ export function unregisterJumpToLine(bufferId: number) {
   jumpRegistry.delete(bufferId);
 }
 
-export function registerReloadWindow(bufferId: number, fn: (options?: ReloadWindowOptions) => Promise<void>) {
-  reloadWindowRegistry.set(bufferId, fn);
+/** Per-pane registrations: both panes of a split must reload after a rope change. */
+function registerPaneFn<F>(map: Map<number, Map<PaneId, F>>, bufferId: number, paneId: PaneId, fn: F) {
+  let panes = map.get(bufferId);
+  if (!panes) {
+    panes = new Map();
+    map.set(bufferId, panes);
+  }
+  panes.set(paneId, fn);
 }
 
-export function unregisterReloadWindow(bufferId: number) {
-  reloadWindowRegistry.delete(bufferId);
+function unregisterPaneFn<F>(map: Map<number, Map<PaneId, F>>, bufferId: number, paneId: PaneId) {
+  const panes = map.get(bufferId);
+  if (!panes) return;
+  panes.delete(paneId);
+  if (panes.size === 0) map.delete(bufferId);
+}
+
+export function registerReloadWindow(
+  bufferId: number,
+  fn: (options?: ReloadWindowOptions) => Promise<void>,
+  paneId: PaneId = 'primary',
+) {
+  registerPaneFn(reloadWindowRegistry, bufferId, paneId, fn);
+}
+
+export function unregisterReloadWindow(bufferId: number, paneId: PaneId = 'primary') {
+  unregisterPaneFn(reloadWindowRegistry, bufferId, paneId);
 }
 
 /**
- * Re-fetches the current virtual-document window from Rust and refreshes the CM view.
- * Pass `{ trackHistory: true }` to make the reload undoable (used by Replace All).
+ * Re-fetches the current virtual-document window from Rust and refreshes the CM
+ * view(s) of the buffer (both panes when split). Always a non-undoable
+ * `virtualLoad` with a history reset.
  */
 export async function reloadCurrentWindow(bufferId: number, options?: ReloadWindowOptions): Promise<void> {
-  const fn = reloadWindowRegistry.get(bufferId);
-  if (fn) await fn(options);
+  const panes = reloadWindowRegistry.get(bufferId);
+  if (!panes) return;
+  await Promise.all([...panes.values()].map((fn) => fn(options)));
 }
 
-export function registerReloadFromStart(bufferId: number, fn: () => Promise<void>) {
-  reloadFromStartRegistry.set(bufferId, fn);
+export function registerReloadFromStart(
+  bufferId: number,
+  fn: () => Promise<void>,
+  paneId: PaneId = 'primary',
+) {
+  registerPaneFn(reloadFromStartRegistry, bufferId, paneId, fn);
 }
 
-export function unregisterReloadFromStart(bufferId: number) {
-  reloadFromStartRegistry.delete(bufferId);
+export function unregisterReloadFromStart(bufferId: number, paneId: PaneId = 'primary') {
+  unregisterPaneFn(reloadFromStartRegistry, bufferId, paneId);
 }
 
 /**
@@ -233,8 +260,9 @@ export function unregisterReloadFromStart(bufferId: number) {
  * which should use reloadCurrentWindow to stay at the user's current position).
  */
 export async function reloadFromStart(bufferId: number): Promise<void> {
-  const fn = reloadFromStartRegistry.get(bufferId);
-  if (fn) await fn();
+  const panes = reloadFromStartRegistry.get(bufferId);
+  if (!panes) return;
+  await Promise.all([...panes.values()].map((fn) => fn()));
 }
 
 export function markTextEdited(bufferId: number) {
@@ -312,16 +340,6 @@ export function clearAllSearchHighlights(): void {
 }
 
 /**
- * Returns the character count of the CM document for the given buffer.
- * Used to decide whether Replace All should be undoable (small doc) or
- * non-undoable (large doc where storing undo would consume too much memory).
- */
-export function getEditorDocLength(bufferId: number): number {
-  const view = registry.get(bufferId);
-  return view ? view.state.doc.length : 0;
-}
-
-/**
  * Returns the currently selected text in the editor for the given buffer.
  * Returns an empty string when there is no selection or the view is not found.
  */
@@ -331,20 +349,6 @@ export function getSelectedText(bufferId: number): string {
   const { from, to } = view.state.selection.main;
   if (from === to) return '';
   return view.state.sliceDoc(from, to);
-}
-
-/** Runs undo in the editor for the given buffer. Returns false when no view is found. */
-export function undoEdit(bufferId: number): boolean {
-  const view = registry.get(bufferId);
-  if (!view) return false;
-  return undo(view);
-}
-
-/** Runs redo in the editor for the given buffer. Returns false when no view is found. */
-export function redoEdit(bufferId: number): boolean {
-  const view = registry.get(bufferId);
-  if (!view) return false;
-  return redo(view);
 }
 
 /** Deletes the full line(s) containing the primary cursor in the active editor. */
@@ -370,21 +374,12 @@ export function transformCase(bufferId: number, transform: 'upper' | 'lower'): b
 }
 
 /**
- * Called by Editor whenever its virtual-document window shifts:
- * initial load, maybeLoadMore (end extends), and jumpToWindow (full shift).
+ * Called by the PRIMARY pane's Editor whenever its virtual-document window shifts:
+ * initial load, maybeLoadMore (end extends), jumpToWindow and reloads. Always pass
+ * Rust's absolute `start_byte_offset` / `end_byte_offset` of the loaded chunk.
  */
 export function setWindowRange(bufferId: number, start: number, end: number) {
   windowRangeMap.set(bufferId, { start, end });
-}
-
-/**
- * Extend the window's right edge by `bytes` after text taken from the rope was
- * appended to CM (maybeLoadMore). Relative on purpose: when user edits are not
- * synced yet, `end` is in rope coordinates and must not be derived from CM text.
- */
-export function extendWindowRangeEnd(bufferId: number, bytes: number) {
-  const cur = windowRangeMap.get(bufferId);
-  if (cur) windowRangeMap.set(bufferId, { start: cur.start, end: cur.end + bytes });
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -586,8 +581,8 @@ const syncQueues = new Map<number, Promise<void>>();
  * even when the window starts at byte 0 — because CM usually holds just the
  * first N lines, never assume it is the whole file (that truncates the rope).
  * `winRange.end` is the exact right edge of the CM text in the rope (it does not
- * include the newline that terminates the window's last line, see
- * `chunkByteRange`).
+ * include the newline that terminates the window's last line; Rust's
+ * `get_lines` returns it exactly as `end_byte_offset`).
  *
  * The text, the range and the "edited" flag are handled SYNCHRONOUSLY at call
  * time (so editor teardown can call this right before `unregisterEditorView`,

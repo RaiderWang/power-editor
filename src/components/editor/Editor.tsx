@@ -46,9 +46,7 @@ import {
   registerReloadFromStart,
   unregisterReloadFromStart,
   setWindowRange,
-  extendWindowRangeEnd,
   hasUnsyncedEdits,
-  clearTextEdited,
   syncEditorToRust,
   registerPeerSetter,
   unregisterPeerSetter,
@@ -64,15 +62,7 @@ import type { PaneId } from '../../store/splitAtoms';
 import { useTranslation } from '../../i18n';
 import { formatBytes } from '../../utils/formatBytes';
 import { notifyDocChange, registerFullLoader, unregisterFullLoader } from '../../store/previewBridge';
-import {
-  chunkByteRange,
-  utf8ByteLength,
-  REPLACE_ALL_UNDO_THRESHOLD,
-} from '../../store/windowRangeUtils';
-import {
-  registerWindowCoverage,
-  unregisterWindowCoverage,
-} from '../../store/windowCoverageRegistry';
+import { undoEditOrReplace, redoEditOrReplace } from '../../store/replaceUndo';
 
 // Compartments allow hot-swapping extensions without rebuilding the full state
 const wrapComp = new Compartment();
@@ -137,6 +127,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   const setTabsRef = useRef(setTabs);
   useEffect(() => { setTabsRef.current = setTabs; }, [setTabs]);
   const prevBufferIdRef = useRef<number>(-1);
+  // Window range / jump bookkeeping in the registry belongs to the primary pane only
+  // (a split's secondary pane has its own independent window).
+  const isPrimaryPaneRef = useRef(paneId !== 'secondary');
+  useEffect(() => { isPrimaryPaneRef.current = paneId !== 'secondary'; }, [paneId]);
   const loadingRef = useRef(false);
   // ── Virtual scrollbar state (0-1 fractions of the full file) ──
   const [vsbInfo, setVsbInfo] = useState({ top: 0, size: 1 });
@@ -269,9 +263,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         totalLinesRef.current = chunk.total_lines;
       }
       loadedEndLineRef.current = loadedEndNow + chunk.lines.length;
-      // The appended rope text is exactly `appendText` (the separating newline
-      // was part of the previous window's rope range but not of its CM text).
-      extendWindowRangeEnd(bufferId, utf8ByteLength(appendText));
+      // No unsynced edits at this point, so Rust's exact chunk end (the rope range
+      // that corresponds to the CM text) is also the new right edge of the window.
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, windowStartByteOffsetRef.current, chunk.end_byte_offset);
       updateScrollbar(view);
     })()
       .catch((err) => console.error('[Editor] maybeLoadMore failed:', err))
@@ -397,8 +391,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       windowStartLineRef.current = chunk.start_line;
       windowStartByteOffsetRef.current = chunk.start_byte_offset;
       loadedEndLineRef.current = chunk.start_line + chunk.lines.length;
-      const jumpRange = chunkByteRange(chunk);
-      setWindowRange(bufferId, jumpRange.start, jumpRange.end);
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
       scrollToTarget(chunk.start_line);
     } finally {
       isAppendingRef.current = false;
@@ -408,9 +401,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   // ── Reload current window from Rust (called after replace operations) ──────
   // Re-fetches the same window position and replaces CM content.
   //
-  // options.trackHistory (default false):
-  //   false → virtualLoad + addToHistory:false + history reset (non-undoable reload)
-  //   true  → normal history-tracked transaction so Ctrl+Z can undo (Replace All)
+  // Always a non-history `virtualLoad` followed by a history reset: Replace All is
+  // undone through the Rust rope snapshot (see `replaceUndo.ts`), never through CM.
+  // options.markModified: also flag the tab modified (undo/redo of Replace All).
   const reloadCurrentWindowFn = useCallback(async (options?: ReloadWindowOptions) => {
     const view = viewRef.current;
     const bufferId = activeBufferIdRef.current;
@@ -423,11 +416,6 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     isAppendingRef.current = true;
     try {
       const startLine = windowStartLineRef.current;
-      // CM can only hold the whole document (and thus undo a whole-document
-      // change) when the window already covered the full file BEFORE the reload.
-      const wasFullDoc =
-        startLine === 0 && loadedEndLineRef.current >= totalLinesRef.current;
-      let trackHistory = (options?.trackHistory ?? false) && wasFullDoc;
       const lineCount = Math.max(loadedEndLineRef.current - startLine, CHUNK_SIZE);
       let chunk = await getLines(bufferId, startLine, lineCount);
       if (activeBufferIdRef.current !== bufferId) return;
@@ -436,22 +424,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       if (chunk.start_line >= chunk.total_lines && chunk.total_lines > 0) {
         chunk = await getLines(bufferId, Math.max(0, chunk.total_lines - CHUNK_SIZE), CHUNK_SIZE);
         if (activeBufferIdRef.current !== bufferId) return;
-        trackHistory = false;
-      }
-
-      // Small document that grew past the window (e.g. replacement with newlines):
-      // keep the whole document in CM so it stays undoable, unless it got huge.
-      if (trackHistory && chunk.start_line === 0 && chunk.lines.length < chunk.total_lines) {
-        const bytesPerLine = chunk.end_byte_offset / Math.max(1, chunk.lines.length);
-        if (bytesPerLine * chunk.total_lines <= REPLACE_ALL_UNDO_THRESHOLD) {
-          chunk = await getLines(bufferId, 0, chunk.total_lines);
-          if (activeBufferIdRef.current !== bufferId) return;
-        }
-        if (chunk.lines.length < chunk.total_lines) trackHistory = false;
       }
 
       const newWinStart = chunk.start_line;
-      const reloadRange = chunkByteRange(chunk);
 
       // Update refs / window range BEFORE dispatch (same as loadContent): the
       // synchronous update listener reads them.
@@ -459,7 +434,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       windowStartByteOffsetRef.current = chunk.start_byte_offset;
       loadedEndLineRef.current = chunk.start_line + chunk.lines.length;
       totalLinesRef.current = chunk.total_lines;
-      setWindowRange(bufferId, reloadRange.start, reloadRange.end);
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
 
       // Preserve scroll position: CM6 maps the old viewport through the change
       // set during a full-doc replacement, sending all positions to 0 and causing
@@ -467,49 +442,37 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // so that replace-all (and similar operations) keep the user's viewport stable.
       const savedScrollTop = view.scrollDOM.scrollTop;
 
-      if (trackHistory) {
-        // History-tracked reload: the change enters the undo stack so Ctrl+Z
-        // can revert it.  No virtualLoad annotation, no addToHistory:false.
-        // The updateListener treats it as a user edit (tab line count, peer
-        // forwarding) and marks the buffer as needing a sync. The rope ALREADY
-        // holds this content (it came from Rust), so clear that flag right away;
-        // otherwise the next syncEditorToRust would write the whole text back.
-        // A later Ctrl+Z produces a normal user edit and syncs as usual.
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
-          effects: [
-            lineNumComp.reconfigure(
-              newWinStart === 0
-                ? lineNumbers()
-                : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
-            ),
-          ],
-        });
-        clearTextEdited(bufferId);
-      } else {
-        // Non-history reload: used by external file reloads, window jumps, etc.
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
-          annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
-          effects: [
-            lineNumComp.reconfigure(
-              newWinStart === 0
-                ? lineNumbers()
-                : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
-            ),
-          ],
-        });
-        resetEditorHistory(view);
-      }
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
+        annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
+        effects: [
+          lineNumComp.reconfigure(
+            newWinStart === 0
+              ? lineNumbers()
+              : lineNumbers({ formatNumber: (n) => String(newWinStart + n) }),
+          ),
+        ],
+      });
+      resetEditorHistory(view);
       view.scrollDOM.scrollTop = savedScrollTop;
 
       // The status bar reads the line count from the tab state. Virtual (non-history)
       // reloads skip the user-edit branch of the update listener, so sync it here.
       const reloadedTotalLines = chunk.total_lines;
+      const markModified = options?.markModified ?? false;
       setTabsRef.current((prev) =>
         prev.map((tb) =>
-          tb.bufferId === bufferId && tb.fileInfo.total_lines !== reloadedTotalLines
-            ? { ...tb, fileInfo: { ...tb.fileInfo, total_lines: reloadedTotalLines } }
+          tb.bufferId === bufferId &&
+          (tb.fileInfo.total_lines !== reloadedTotalLines ||
+            (markModified && !tb.fileInfo.is_modified))
+            ? {
+                ...tb,
+                fileInfo: {
+                  ...tb.fileInfo,
+                  total_lines: reloadedTotalLines,
+                  is_modified: markModified ? true : tb.fileInfo.is_modified,
+                },
+              }
             : tb,
         ),
       );
@@ -548,8 +511,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       windowStartByteOffsetRef.current = 0;
       loadedEndLineRef.current = chunk.lines.length;
       totalLinesRef.current = chunk.total_lines;
-      const startRange = chunkByteRange(chunk);
-      setWindowRange(bufferId, startRange.start, startRange.end);
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
 
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
@@ -592,8 +554,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       if (chunk.total_lines > totalLinesRef.current) {
         totalLinesRef.current = chunk.total_lines;
       }
-      const initRange = chunkByteRange(chunk);
-      setWindowRange(bufferId, initRange.start, initRange.end);
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, chunk.start_byte_offset, chunk.end_byte_offset);
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: chunk.lines.join('\n') },
         annotations: [virtualLoad.of(true), Transaction.addToHistory.of(false)],
@@ -681,7 +642,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       windowStartByteOffsetRef.current = 0;
       loadedEndLineRef.current = view.state.doc.lines;
       totalLinesRef.current = view.state.doc.lines;
-      setWindowRange(bufferId, 0, textByteLen);
+      if (isPrimaryPaneRef.current) setWindowRange(bufferId, 0, textByteLen);
       updateScrollbar(view);
       return true;
     } catch (err) {
@@ -691,12 +652,6 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       isAppendingRef.current = false;
     }
   }, [updateScrollbar]);
-
-  // Whether CM currently holds the whole document (read by Replace All via
-  // windowCoverageRegistry). Stable function that only reads refs.
-  const isWindowFullDocRef = useRef<() => boolean>(
-    () => windowStartLineRef.current === 0 && loadedEndLineRef.current >= totalLinesRef.current,
-  );
 
   const loadFullDocumentRef = useRef(loadFullDocument);
   useEffect(() => {
@@ -864,6 +819,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
           indentWithTab,
           smartEnterKey,
           { key: 'Mod-a', run: selectAllHandler },
+          // Undo/redo: CodeMirror history first, then the Rust-side Replace All snapshot.
+          { key: 'Mod-z', run: (v) => undoEditOrReplace(v, activeBufferIdRef.current), preventDefault: true },
+          { key: 'Mod-y', mac: 'Mod-Shift-z', run: (v) => redoEditOrReplace(v, activeBufferIdRef.current), preventDefault: true },
+          { key: 'Mod-Shift-z', run: (v) => redoEditOrReplace(v, activeBufferIdRef.current), preventDefault: true },
           ...defaultKeymap,
           ...historyKeymap,
         ]),
@@ -899,11 +858,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       registerEditorView(tab.bufferId, view);
       registerPeerSetter(tab.bufferId, setPeer);
       registerFullLoader(tab.bufferId, () => loadFullDocumentRef.current(view, tab.bufferId));
-      registerWindowCoverage(tab.bufferId, isWindowFullDocRef.current);
+      registerJumpToLine(tab.bufferId, jumpToWindow);
     }
-    registerJumpToLine(tab.bufferId, jumpToWindow);
-    registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
-    registerReloadFromStart(tab.bufferId, reloadFromStartFn);
+    registerReloadWindow(tab.bufferId, reloadCurrentWindowFn, paneId);
+    registerReloadFromStart(tab.bufferId, reloadFromStartFn, paneId);
 
     // Small files may fit entirely inside CM's render viewport, so wheel
     // scrolling only changes scrollTop without firing viewportChanged.
@@ -928,11 +886,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         unregisterEditorView(prevBufferIdRef.current);
         unregisterPeerSetter(prevBufferIdRef.current);
         unregisterFullLoader(prevBufferIdRef.current);
-        unregisterWindowCoverage(prevBufferIdRef.current);
+        unregisterJumpToLine(prevBufferIdRef.current);
       }
-      unregisterJumpToLine(prevBufferIdRef.current);
-      unregisterReloadWindow(prevBufferIdRef.current);
-      unregisterReloadFromStart(prevBufferIdRef.current);
+      unregisterReloadWindow(prevBufferIdRef.current, paneId);
+      unregisterReloadFromStart(prevBufferIdRef.current, paneId);
       view.destroy();
       viewRef.current = null;
       loadingRef.current = false;
@@ -957,16 +914,15 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     setContextMenu(null);
 
     const prevId = prevBufferIdRef.current;
-    unregisterJumpToLine(prevId);
-    unregisterReloadWindow(prevId);
-    unregisterReloadFromStart(prevId);
+    unregisterReloadWindow(prevId, paneId);
+    unregisterReloadFromStart(prevId, paneId);
     // Disconnect peer for the old buffer.
     if (paneId === 'secondary') {
       unregisterSecondaryEditorView(prevId, () => { peerViewRef.current = null; });
     } else {
       unregisterPeerSetter(prevId);
       unregisterFullLoader(prevId);
-      unregisterWindowCoverage(prevId);
+      unregisterJumpToLine(prevId);
     }
 
     prevBufferIdRef.current = tab.bufferId;
@@ -978,11 +934,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       registerEditorView(tab.bufferId, view);
       registerPeerSetter(tab.bufferId, setPeer);
       registerFullLoader(tab.bufferId, () => loadFullDocumentRef.current(view, tab.bufferId));
-      registerWindowCoverage(tab.bufferId, isWindowFullDocRef.current);
+      registerJumpToLine(tab.bufferId, jumpToWindow);
     }
-    registerJumpToLine(tab.bufferId, jumpToWindow);
-    registerReloadWindow(tab.bufferId, reloadCurrentWindowFn);
-    registerReloadFromStart(tab.bufferId, reloadFromStartFn);
+    registerReloadWindow(tab.bufferId, reloadCurrentWindowFn, paneId);
+    registerReloadFromStart(tab.bufferId, reloadFromStartFn, paneId);
     loadContent(tab.bufferId, view, tabTotalLinesRef.current);
     view.focus();
   }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn, reloadFromStartFn]);
