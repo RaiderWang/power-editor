@@ -6,6 +6,7 @@ import { utf8ByteLength } from './windowRangeUtils';
 import { setMatchRanges, setCurrentMatch } from '../extensions/searchHighlight';
 import type { SearchMatch } from '../types';
 import type { PaneId } from './splitAtoms';
+import { isSearchPanelFocused } from './searchPanelFocus';
 
 /**
  * Annotation used to mark CM transactions that originate from peer-sync
@@ -113,13 +114,25 @@ export function getEditorView(bufferId: number, paneId: PaneId = 'primary'): Edi
  * Focuses the EditorView for the specified buffer and pane.
  * Performs immediate focus and schedules a requestAnimationFrame retry
  * to handle asynchronous DOM display updates and pending mouse events.
+ *
+ * By default this is a no-op while the find/replace panel holds focus, so that implicit
+ * "restore focus" side effects (tab switches, dropdown close, pane activation) cannot steal
+ * focus from the panel the user just clicked. Pass `force: true` for explicit user intent
+ * (clicking a tab, closing the panel, finishing Replace All).
  */
-export function focusEditor(bufferId: number, paneId: PaneId = 'primary'): void {
+export function focusEditor(
+  bufferId: number,
+  paneId: PaneId = 'primary',
+  opts?: { force?: boolean },
+): void {
+  const force = opts?.force === true;
+  if (!force && isSearchPanelFocused()) return;
   const view = getEditorView(bufferId, paneId);
   if (view) {
     view.focus();
   }
   requestAnimationFrame(() => {
+    if (!force && isSearchPanelFocused()) return;
     const v = getEditorView(bufferId, paneId);
     if (v && !v.hasFocus) {
       v.focus();

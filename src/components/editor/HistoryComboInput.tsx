@@ -29,7 +29,18 @@ export const HistoryComboInput: React.FC<HistoryComboInputProps> = ({
 
   useEffect(() => {
     if (!selectAllTrigger) return;
-    inputRef.current?.select();
+    const input = inputRef.current;
+    if (!input) return;
+    // select() alone does not reliably move focus (e.g. panel already open and focus
+    // is in an editor pane), so focus explicitly, then re-assert on the next frame in
+    // case an editor pane activation stole it.
+    const focusAndSelect = () => {
+      if (document.activeElement !== input) input.focus();
+      input.select();
+    };
+    focusAndSelect();
+    const raf = requestAnimationFrame(focusAndSelect);
+    return () => cancelAnimationFrame(raf);
   }, [selectAllTrigger]);
 
   useEffect(() => {

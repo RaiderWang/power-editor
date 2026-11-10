@@ -87,7 +87,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   const handleTabClick = useCallback((tab: typeof tabs[number]) => {
     setActivePane(paneId);
     setActiveTabId(tab.id);
-    focusEditor(tab.bufferId, paneId);
+    focusEditor(tab.bufferId, paneId, { force: true });
   }, [paneId, setActivePane, setActiveTabId]);
 
   const restoreEditorFocus = useCallback(() => {

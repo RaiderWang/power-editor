@@ -103,7 +103,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       if (prevOpenRef.current) {
         const tabToFocus = activePane === 'secondary' ? (secondaryActiveTab ?? activeTab) : activeTab;
         if (tabToFocus) {
-          focusEditor(tabToFocus.bufferId, activePane);
+          focusEditor(tabToFocus.bufferId, activePane, { force: true });
         }
       }
     }
@@ -384,13 +384,18 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       await doSearch({ noScroll: true });
       // Hand focus back to the editor so Ctrl+Z / Ctrl+Y reach CodeMirror
       // instead of the (focused) Replace All button.
-      focusEditor(bufferId);
+      // Search/replace always operates on the primary pane's tab; only return focus to
+      // the secondary pane when it is showing that same buffer.
+      const focusPane = activePane === 'secondary' && secondaryActiveTab?.bufferId === bufferId
+        ? 'secondary'
+        : 'primary';
+      focusEditor(bufferId, focusPane, { force: true });
       alert(t('search.replacedCount', { count }));
     } catch (err) {
       console.error('[SearchPanel] Replace All failed:', err);
       alert(String(err));
     }
-  }, [activeTab, params, replaceText, doSearch, markTabModified, t]);
+  }, [activeTab, activePane, secondaryActiveTab, params, replaceText, doSearch, markTabModified, t]);
 
   const handleSaveToNewFile = useCallback(async (lines: string[]) => {
     const { v4: uuidv4 } = await import('uuid');
@@ -414,6 +419,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
 
   return (
     <div
+      data-search-panel=""
       className={`${styles.panel} ${searching ? styles.panelSearching : ''}`}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
