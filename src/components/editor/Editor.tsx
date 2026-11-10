@@ -56,6 +56,7 @@ import {
 } from '../../store/editorViewRegistry';
 import type { ReloadWindowOptions } from '../../store/editorViewRegistry';
 import { notifyEditorFocused } from '../../print/selectionHelper';
+import { isSearchPanelFocused } from '../../store/searchPanelFocus';
 import { virtualLoad } from '../../store/virtualLoadAnnotation';
 import type { TabState } from '../../types';
 import type { PaneId } from '../../store/splitAtoms';
@@ -869,7 +870,7 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     view.scrollDOM.addEventListener('scroll', onScrollerScroll, { passive: true });
 
     loadContent(tab.bufferId, view, tab.fileInfo.total_lines);
-    view.focus();
+    if (!isSearchPanelFocused()) view.focus();
     prevBufferIdRef.current = tab.bufferId;
 
     return () => {
@@ -939,16 +940,18 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     registerReloadWindow(tab.bufferId, reloadCurrentWindowFn, paneId);
     registerReloadFromStart(tab.bufferId, reloadFromStartFn, paneId);
     loadContent(tab.bufferId, view, tabTotalLinesRef.current);
-    view.focus();
+    if (!isSearchPanelFocused()) view.focus();
   }, [tab.bufferId, paneId, loadContent, jumpToWindow, reloadCurrentWindowFn, reloadFromStartFn]);
 
   // ── Auto-focus when this editor tab becomes active ───────────
   useEffect(() => {
-    if (isActive) {
+    // Pane activation must not steal focus from the find/replace panel the user just clicked.
+    if (isActive && !isSearchPanelFocused()) {
       const view = viewRef.current;
       if (view) {
         view.focus();
         requestAnimationFrame(() => {
+          if (isSearchPanelFocused()) return;
           if (viewRef.current && !viewRef.current.hasFocus) {
             viewRef.current.focus();
           }

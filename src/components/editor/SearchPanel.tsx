@@ -101,9 +101,10 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     if (!open) {
       clearAllSearchHighlights();
       if (prevOpenRef.current) {
-        const tabToFocus = activePane === 'secondary' ? (secondaryActiveTab ?? activeTab) : activeTab;
+        const paneToFocus = activePane === 'secondary' && secondaryActiveTab ? 'secondary' : 'primary';
+        const tabToFocus = paneToFocus === 'secondary' ? secondaryActiveTab : activeTab;
         if (tabToFocus) {
-          focusEditor(tabToFocus.bufferId, activePane);
+          focusEditor(tabToFocus.bufferId, paneToFocus, { force: true });
         }
       }
     }
@@ -384,13 +385,18 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       await doSearch({ noScroll: true });
       // Hand focus back to the editor so Ctrl+Z / Ctrl+Y reach CodeMirror
       // instead of the (focused) Replace All button.
-      focusEditor(bufferId);
+      // Search/replace always operates on the primary pane's tab; only return focus to
+      // the secondary pane when it is showing that same buffer.
+      const focusPane = activePane === 'secondary' && secondaryActiveTab?.bufferId === bufferId
+        ? 'secondary'
+        : 'primary';
+      focusEditor(bufferId, focusPane, { force: true });
       alert(t('search.replacedCount', { count }));
     } catch (err) {
       console.error('[SearchPanel] Replace All failed:', err);
       alert(String(err));
     }
-  }, [activeTab, params, replaceText, doSearch, markTabModified, t]);
+  }, [activeTab, activePane, secondaryActiveTab, params, replaceText, doSearch, markTabModified, t]);
 
   const handleSaveToNewFile = useCallback(async (lines: string[]) => {
     const { v4: uuidv4 } = await import('uuid');
@@ -406,14 +412,20 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       scrollTop: 0,
       language: null,
     };
+    // Unmount the dialog in the same batch that mounts the new Editor, so the editor's
+    // mount-time focus is not blocked by the focus guard (the "save" button lives in the panel).
+    setShowLineList(false);
     setTabs((prev) => [...prev, tab]);
     setActiveTabId(tab.id);
+    focusEditor(fileInfo.id, 'primary', { force: true });
   }, [setTabs, setActiveTabId]);
 
   if (!open) return null;
 
   return (
     <div
+      data-search-panel=""
+      tabIndex={-1}
       className={`${styles.panel} ${searching ? styles.panelSearching : ''}`}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
@@ -449,10 +461,24 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
           selectAllTrigger={searchSelectTrigger}
         />
         <div className={styles.navGroup}>
-          <button className={styles.iconBtn} onClick={gotoPrev} disabled={searching} title={t('search.prev')}>
+          {/* mousedown preventDefault: keep focus in the find box; a focused button that becomes
+              disabled while searching would drop focus to <body> (Escape/focus guard then fail). */}
+          <button
+            className={styles.iconBtn}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={gotoPrev}
+            disabled={searching}
+            title={t('search.prev')}
+          >
             ↑
           </button>
-          <button className={styles.iconBtn} onClick={gotoNext} disabled={searching} title={t('search.next')}>
+          <button
+            className={styles.iconBtn}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={gotoNext}
+            disabled={searching}
+            title={t('search.next')}
+          >
             ↓
           </button>
           <span className={styles.count}>
