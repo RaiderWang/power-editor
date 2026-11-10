@@ -158,7 +158,6 @@
   "search.replaceOne": "Replace",
   "search.replaceAll": "Replace All",
   "search.replacedCount": "Replaced {count} occurrences",
-  "search.replaceAllNoUndo": "The document is very large. Replace All will not be undoable. Continue?",
   "history.title": "History",
   "history.ariaLabel": "Show history",
   "lineList.header": "Matching lines ({count} lines)",

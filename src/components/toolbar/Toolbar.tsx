@@ -30,7 +30,7 @@ import {
   languageDefsAtom,
 } from '../../store/atoms';
 import { customKeybindingsAtom, getEffectiveShortcut } from '../../store/keybindings';
-import { undoEdit, redoEdit } from '../../store/editorViewRegistry';
+import { undoEdit, redoEdit } from '../../store/replaceUndo';
 import { useFile } from '../../hooks/useFile';
 import { useExplorer } from '../../hooks/useExplorer';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';

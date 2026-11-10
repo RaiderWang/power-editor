@@ -71,6 +71,14 @@ export const getBufferInfo = (bufferId: number): Promise<FileInfo> =>
 export const findAll = (bufferId: number, params: SearchParams, maxResults = 10000): Promise<FindResult> =>
   invoke('find_all', { bufferId, params, maxResults });
 
+/** Undo the last Replace All (Rope snapshot). `null` = nothing to undo. */
+export const undoReplaceAll = (bufferId: number): Promise<FileInfo | null> =>
+  invoke('undo_replace_all', { bufferId });
+
+/** Redo a Replace All that was undone. `null` = nothing to redo. */
+export const redoReplaceAll = (bufferId: number): Promise<FileInfo | null> =>
+  invoke('redo_replace_all', { bufferId });
+
 export const replaceAll = (bufferId: number, params: SearchParams, replacement: string): Promise<number> =>
   invoke('replace_all', { bufferId, params, replacement });
 
