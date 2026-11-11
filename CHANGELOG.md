@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
 ### Added / 新增
 - **Replace All progress, cancel and a much faster engine / “全部替换”进度、可取消与大幅提速**: Replace All on very large files (e.g. 2.6 GB) no longer freezes the app. It now runs as a background job with a progress dialog (percentage, bytes processed, replacements so far) and a Cancel button (Esc also cancels; a cancelled run leaves the text untouched). The dialog only appears after 150 ms, so small files finish without a flash, and while it runs global shortcuts and repeated triggers are blocked. The engine was rebuilt: the document is cut into line-aligned segments that are scanned on several CPU cores when the pattern cannot match across lines; segments without a match are shared instead of copied, matched segments are rebuilt in one pass (no more per-match rope edits or a huge in-memory match list), and plain-text / `$`-free replacements skip capture-group matching. The result is committed in one step, so a failed or cancelled run changes nothing and Undo / Redo still use the O(1) rope snapshot. The status bar's line count and size are updated after Replace All and its undo/redo. Find (`find_all`) now also runs off the UI thread, and only the newest of several overlapping searches updates the panel; the follow-up search after a replace runs in the background and no longer delays the completion toast.
   （超大文件（如 2.6 GB）执行“全部替换”不再卡死：改为后台任务，带进度对话框（百分比、已处理字节、已替换数量）与“取消”按钮（Esc 同样取消；取消后文本保持不变）。对话框延迟 150 ms 才显示，小文件不会闪烁；运行期间全局快捷键与重复触发被屏蔽。引擎重写：文档按行对齐切成多段，在正则不可跨行时多核并行扫描；无匹配的段直接共享不拷贝，有匹配的段一次性重建（不再逐个匹配编辑 Rope，也不再构造巨大的匹配列表），纯文本或不含 `$` 的替换文本跳过捕获组匹配。结果一次性提交，失败或取消不会改动任何内容，撤销/重做仍使用 O(1) 的 Rope 快照。“全部替换”及其撤销/重做后，状态栏的行数与大小同步更新。查找（`find_all`）同样移出 UI 线程，多个重叠搜索只有最新一次会更新面板；替换后的后续搜索在后台进行，不再拖慢完成提示。）
@@ -407,7 +409,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.2.12...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/RaiderWang/power-editor/compare/v0.2.12...v0.3.0
 [0.2.12]: https://github.com/RaiderWang/power-editor/compare/v0.2.11...v0.2.12
 [0.2.11]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/RaiderWang/power-editor/compare/v0.2.9...v0.2.10
