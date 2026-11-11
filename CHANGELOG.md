@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / 新增
+- **Markdown preview zoom / Markdown 预览缩放**: the preview pane can now be zoomed independently of the editor font size (50%–300%, remembered across restarts). Use Ctrl+mouse wheel or a trackpad pinch over the preview, Ctrl+= / Ctrl+- / Ctrl+0 while the preview has focus (in the editor these keys still change the editor font size; Ctrl+0 now also resets it to the default), the new `− 100% +` control in the preview header (click the percentage to reset), or View → Zoom In / Out / Reset Preview. Text, code blocks, tables and block spacing scale together, the scroll position is preserved proportionally, and printing is unaffected.
+  （预览窗格现在可独立于编辑器字号缩放（50%–300%，重启后保留）。在预览上按 Ctrl+鼠标滚轮或触控板双指捏合；预览获得焦点时按 Ctrl+= / Ctrl+- / Ctrl+0（在编辑器中这些按键仍调整编辑器字号，Ctrl+0 现在也会把编辑器字号恢复默认）；使用预览标题栏新增的 `− 100% +` 控件（点击百分比重置）；或使用 视图 → 放大/缩小/重置预览。文字、代码块、表格与块间距一起缩放，滚动位置按比例保持，打印不受影响。）
+
 ## [0.3.0] - 2026-11-11
 
 ### Added / 新增

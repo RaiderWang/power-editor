@@ -77,6 +77,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'view.markdownPreview', labelKey: 'keybinding.view.markdownPreview', category: 'view', defaultShortcut: 'Ctrl+Shift+V', editable: true },
   { id: 'view.fontSizeUp',   labelKey: 'keybinding.view.fontSizeUp',   category: 'view', defaultShortcut: 'Ctrl+=',       editable: true },
   { id: 'view.fontSizeDown', labelKey: 'keybinding.view.fontSizeDown', category: 'view', defaultShortcut: 'Ctrl+-',       editable: true },
+  { id: 'view.fontSizeReset', labelKey: 'keybinding.view.fontSizeReset', category: 'view', defaultShortcut: 'Ctrl+0',     editable: true },
   { id: 'view.toggleTheme',  labelKey: 'keybinding.view.toggleTheme',  category: 'view', defaultShortcut: '',              editable: true },
 
   { id: 'editor.undo',      labelKey: 'keybinding.editor.undo',      category: 'editor', defaultShortcut: 'Ctrl+Z',       editable: false },

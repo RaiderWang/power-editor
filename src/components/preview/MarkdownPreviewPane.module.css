@@ -63,6 +63,10 @@
   --tok-special: #0184bc;
 }
 
+.pane:focus {
+  outline: none;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -139,7 +143,8 @@
   overflow-x: hidden;
   padding: 24px 32px 64px;
   line-height: 1.6;
-  font-size: 14px;
+  /* --preview-zoom (1 = 100%) is set imperatively by usePreviewZoom; fixed-px values below multiply it. */
+  font-size: calc(14px * var(--preview-zoom, 1));
   -webkit-user-select: text;
   user-select: text;
 }
@@ -200,8 +205,8 @@
 .markdownBody h4,
 .markdownBody h5,
 .markdownBody h6 {
-  margin-top: 24px;
-  margin-bottom: 14px;
+  margin-top: calc(24px * var(--preview-zoom, 1));
+  margin-bottom: calc(14px * var(--preview-zoom, 1));
   font-weight: 600;
   line-height: 1.25;
   color: var(--app-fg, #f3f4f6);
@@ -235,13 +240,13 @@
 .markdownBody table,
 .markdownBody pre {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--preview-zoom, 1));
 }
 
 .markdownBody hr {
   height: 2px;
   padding: 0;
-  margin: 24px 0;
+  margin: calc(24px * var(--preview-zoom, 1)) 0;
   background-color: var(--preview-border, #333);
   border: 0;
 }
@@ -290,7 +295,7 @@
 :global(.codeBlockContainer) {
   position: relative;
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--preview-zoom, 1));
   border: 1px solid var(--code-border);
   border-radius: 6px;
   background-color: transparent;
@@ -303,10 +308,10 @@
 
 .markdownBody pre {
   margin-top: 0;
-  margin-bottom: 16px;
-  padding: 14px 18px;
+  margin-bottom: calc(16px * var(--preview-zoom, 1));
+  padding: calc(14px * var(--preview-zoom, 1)) calc(18px * var(--preview-zoom, 1));
   overflow: auto;
-  font-size: 13px;
+  font-size: calc(13px * var(--preview-zoom, 1));
   line-height: 1.55;
   background-color: transparent;
   border-radius: 6px;
@@ -335,15 +340,15 @@
 /* ── YAML Frontmatter Card (<details class="frontmatter">) ── */
 .markdownBody :global(.frontmatter) {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--preview-zoom, 1));
   border: 1px solid var(--code-border);
   border-radius: 6px;
   background-color: transparent;
 }
 
 .markdownBody :global(.frontmatter) > summary {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: calc(6px * var(--preview-zoom, 1)) calc(12px * var(--preview-zoom, 1));
+  font-size: calc(12px * var(--preview-zoom, 1));
   font-weight: 600;
   color: var(--app-fg-muted, #888);
   cursor: pointer;
@@ -443,14 +448,14 @@
   border-spacing: 0;
   border-collapse: collapse;
   width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--preview-zoom, 1));
   overflow: auto;
   display: block;
 }
 
 .markdownBody table th,
 .markdownBody table td {
-  padding: 6px 13px;
+  padding: calc(6px * var(--preview-zoom, 1)) calc(13px * var(--preview-zoom, 1));
   border: 1px solid var(--preview-border, #333);
 }
 
@@ -466,7 +471,7 @@
 .markdownBody img {
   max-width: 100%;
   display: block;
-  margin: 12px 0;
+  margin: calc(12px * var(--preview-zoom, 1)) 0;
   border-radius: 4px;
 }
 
