@@ -53,8 +53,9 @@ import {
   registerSecondaryEditorView,
   unregisterSecondaryEditorView,
   syncAnnotation,
+  markEditorReady,
 } from '../../store/editorViewRegistry';
-import type { ReloadWindowOptions } from '../../store/editorViewRegistry';
+import type { ReloadWindowOptions, JumpOptions } from '../../store/editorViewRegistry';
 import { notifyEditorFocused } from '../../print/selectionHelper';
 import { isSearchPanelFocused } from '../../store/searchPanelFocus';
 import { virtualLoad } from '../../store/virtualLoadAnnotation';
@@ -303,10 +304,19 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
   // single { y: 'center' } scroll it dispatches afterwards is the sole scroll
   // intent, avoiding a race between { y: 'start' } (from here) and { y: 'center' }
   // (from the caller) that could leave the match above the visible viewport.
-  const jumpToWindow = useCallback(async (targetLine: number, noScroll?: boolean) => {
+  const jumpToWindow = useCallback(async (targetLine: number, noScroll?: boolean, jumpOptions?: JumpOptions) => {
     const view = viewRef.current;
+    if (!view || activeBufferIdRef.current < 0) return;
+
+    // The initial `loadContent` (async `getLines(0)`) must finish first: it replaces the
+    // whole document with line 0.. and would undo this jump (e.g. a jump right after the
+    // tab was opened by a folder-search result).
+    const loadWaitStart = Date.now();
+    while (loadingRef.current && Date.now() - loadWaitStart < 10_000) {
+      await new Promise<void>((r) => setTimeout(r, 20));
+    }
     const bufferId = activeBufferIdRef.current;
-    if (!view || bufferId < 0) return;
+    if (bufferId < 0) return;
 
     const totalLines = totalLinesRef.current;
     const lastLine = Math.max(0, totalLines - 1);
@@ -323,6 +333,17 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     }
 
     const scrollToTarget = (winStart: number) => {
+      if (jumpOptions?.placeCursor) {
+        // Caret at the start of the target line, centred in the viewport.
+        const cmLineNum = Math.max(1, Math.min(targetLine - winStart + 1, view.state.doc.lines));
+        const pos = view.state.doc.line(cmLineNum).from;
+        view.dispatch({
+          selection: { anchor: pos },
+          effects: EditorView.scrollIntoView(pos, { y: 'center' }),
+        });
+        updateScrollbar(view, targetLine);
+        return;
+      }
       if (noScroll) {
         // Caller (highlightSearchMatches) handles scrolling; just sync the scrollbar.
         updateScrollbar(view, seekToBottom ? maxFirstLine : targetLine);
@@ -551,6 +572,10 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
     try {
       const chunk = await getLines(bufferId, 0, CHUNK_SIZE);
       if (activeBufferIdRef.current !== bufferId) return; // guard against race
+      // This view was torn down while the fetch was in flight (e.g. React StrictMode's dev
+      // double mount): a newer view owns the refs and its own load. Do not touch the
+      // window state or flag the buffer "ready" on behalf of a dead view.
+      if (viewRef.current !== view) return;
       // Update refs BEFORE dispatch: the update listener fires synchronously inside
       // dispatch and calls maybeLoadMore, which reads these refs. If they still hold
       // their reset values (0) at that point, maybeLoadMore would fetch line 0 again
@@ -567,10 +592,13 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
         effects: lineNumComp.reconfigure(lineNumbers()),
       });
       updateScrollbar(view);
+      // First window is in place: jumps (e.g. from folder-search results) are safe now.
+      if (isPrimaryPaneRef.current) markEditorReady(bufferId);
     } catch (err) {
       console.error('[Editor] loadContent failed:', err);
     } finally {
-      loadingRef.current = false;
+      // A dead view's stale load must not release the lock of the live view's load.
+      if (viewRef.current === view) loadingRef.current = false;
     }
   }, [updateScrollbar]);
 
@@ -928,6 +956,9 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       unregisterPeerSetter(prevId);
       unregisterFullLoader(prevId);
       unregisterJumpToLine(prevId);
+      // The old buffer id is gone for good (re-open replaced it): drop its view mapping,
+      // window range and ready state, and wake anyone still waiting for it to become ready.
+      unregisterEditorView(prevId);
     }
 
     prevBufferIdRef.current = tab.bufferId;

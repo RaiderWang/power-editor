@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import type { AppSession } from '../types/session';
 import type { FileEntry } from '../types/explorer';
+import type { WorkspaceSearchParams } from '../types/workspaceSearch';
 
 // ──────────────────────────────────────────────────────────────
 // File operations
@@ -281,3 +282,19 @@ export const revealInExplorer = (path: string): Promise<void> =>
   invoke('reveal_in_explorer', { path });
 
 
+
+// ──────────────────────────────────────────────────────────────
+// Folder search (Explorer sidebar)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Starts a folder search. Resolves once the job runs (rejects on invalid input such as a
+ * bad regex); results stream through `workspace-search:batch` / `workspace-search:done`
+ * events tagged with `jobId`. Starting a search cancels all older ones.
+ */
+export const workspaceSearchStart = (jobId: string, params: WorkspaceSearchParams): Promise<void> =>
+  invoke('workspace_search_start', { jobId, params });
+
+/** Stops a running folder search. Resolves to whether it was still running. */
+export const workspaceSearchCancel = (jobId: string): Promise<boolean> =>
+  invoke('workspace_search_cancel', { jobId });

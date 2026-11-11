@@ -56,6 +56,7 @@ tempfile = "3"
 
 # File-system event watching (external modification detection)
 notify = "6"
+ignore = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 # Windows registry access for Explorer context menu integration

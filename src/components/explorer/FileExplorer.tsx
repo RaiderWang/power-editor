@@ -8,7 +8,12 @@ import {
   ChevronsDownUp,
   X,
 } from 'lucide-react';
+import { useAtomValue } from 'jotai';
 import { useExplorer } from '../../hooks/useExplorer';
+import { useWorkspaceSearch } from '../../hooks/useWorkspaceSearch';
+import { workspaceSearchQueryAtom } from '../../store/workspaceSearch';
+import { WorkspaceSearchBox } from './search/WorkspaceSearchBox';
+import { WorkspaceSearchResults } from './search/WorkspaceSearchResults';
 import { useTranslation } from '../../i18n';
 import { getBaseName } from '../../utils/pathUtils';
 import { FileTree } from './FileTree';
@@ -26,6 +31,8 @@ export const FileExplorer: React.FC = () => {
     collapseAllFolders,
   } = useExplorer();
   const t = useTranslation();
+  useWorkspaceSearch();
+  const showSearchResults = useAtomValue(workspaceSearchQueryAtom).length > 0;
 
   const [inlineInput, setInlineInput] = useState<InlineInputState | null>(null);
 
@@ -119,14 +126,21 @@ export const FileExplorer: React.FC = () => {
       </div>
 
       {currentFolderPath ? (
-        <FileTree
-          rootPath={currentFolderPath}
-          inlineInput={inlineInput}
-          onClearInlineInput={() => setInlineInput(null)}
-          onStartNewFile={handleStartNewFile}
-          onStartNewFolder={handleStartNewFolder}
-          onStartRename={handleStartRename}
-        />
+        <>
+          <WorkspaceSearchBox />
+          {/* Kept mounted (hidden) while searching to preserve expansion / scroll state. */}
+          <div style={{ display: showSearchResults ? 'none' : 'contents' }}>
+            <FileTree
+              rootPath={currentFolderPath}
+              inlineInput={inlineInput}
+              onClearInlineInput={() => setInlineInput(null)}
+              onStartNewFile={handleStartNewFile}
+              onStartNewFolder={handleStartNewFolder}
+              onStartRename={handleStartRename}
+            />
+          </div>
+          {showSearchResults && <WorkspaceSearchResults />}
+        </>
       ) : (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>{t('explorer.noFolder')}</p>

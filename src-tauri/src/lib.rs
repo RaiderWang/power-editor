@@ -11,6 +11,8 @@ pub mod search;
 pub mod session;
 pub mod shell_integration;
 pub mod wordfile;
+pub mod workspace_search;
+pub mod workspace_search_commands;
 
 use buffer::{BufferRegistry, EditOp, FileInfo, LineChunk};
 use file_io::supported_encodings;
@@ -41,6 +43,8 @@ pub struct AppState {
     pub watcher: Arc<FileWatcherRegistry>,
     /// Running Replace All jobs (one per buffer), so they can be cancelled.
     pub replace_jobs: Arc<search::replace::jobs::ReplaceJobs>,
+    /// Running folder searches (Explorer sidebar), so they can be cancelled.
+    pub workspace_search_jobs: Arc<workspace_search::WorkspaceSearchJobs>,
     /// File path passed as a CLI argument (e.g. opened via Explorer context menu).
     /// Read once by `get_startup_file` and then cleared.
     pub startup_file: std::sync::Mutex<Option<String>>,
@@ -698,6 +702,7 @@ pub fn run() {
                 registry: Arc::new(BufferRegistry::new()),
                 watcher: Arc::new(watcher),
                 replace_jobs: Arc::new(search::replace::jobs::ReplaceJobs::new()),
+                workspace_search_jobs: Arc::new(workspace_search::WorkspaceSearchJobs::new()),
                 startup_file: std::sync::Mutex::new(startup_file),
             };
             app.manage(state);
@@ -710,6 +715,7 @@ pub fn run() {
                 // Stop any running Replace All before the frontend saves the session.
                 if let Some(state) = window.app_handle().try_state::<AppState>() {
                     state.replace_jobs.cancel_all();
+                    state.workspace_search_jobs.cancel_all();
                 }
                 let _ = window.emit("app:close-requested", ());
             }
@@ -738,6 +744,9 @@ pub fn run() {
             undo_replace_all,
             redo_replace_all,
             replace_one,
+            // Folder search
+            workspace_search_commands::workspace_search_start,
+            workspace_search_commands::workspace_search_cancel,
             // Encoding
             get_supported_encodings,
             change_encoding,
