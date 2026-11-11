@@ -461,16 +461,20 @@ export const Editor: React.FC<EditorProps> = ({ tab, onCursorChange, paneId = 'p
       // reloads skip the user-edit branch of the update listener, so sync it here.
       const reloadedTotalLines = chunk.total_lines;
       const markModified = options?.markModified ?? false;
+      // Byte size changed by Replace All undo/redo (reported by Rust, not derivable here).
+      const reloadedTotalBytes = options?.totalBytes;
       setTabsRef.current((prev) =>
         prev.map((tb) =>
           tb.bufferId === bufferId &&
           (tb.fileInfo.total_lines !== reloadedTotalLines ||
-            (markModified && !tb.fileInfo.is_modified))
+            (markModified && !tb.fileInfo.is_modified) ||
+            (reloadedTotalBytes !== undefined && tb.fileInfo.total_bytes !== reloadedTotalBytes))
             ? {
                 ...tb,
                 fileInfo: {
                   ...tb.fileInfo,
                   total_lines: reloadedTotalLines,
+                  total_bytes: reloadedTotalBytes ?? tb.fileInfo.total_bytes,
                   is_modified: markModified ? true : tb.fileInfo.is_modified,
                 },
               }

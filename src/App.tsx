@@ -29,6 +29,8 @@ import { useFile } from './hooks/useFile';
 import { useExplorer } from './hooks/useExplorer';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { useFileOpenProgress } from './hooks/useFileOpenProgress';
+import { useReplaceProgress } from './hooks/useReplaceProgress';
+import { ReplaceProgressDialog } from './components/editor/ReplaceProgressDialog';
 import { useSessionRestore } from './hooks/useSessionRestore';
 import { useWindowClose } from './hooks/useWindowClose';
 import { usePrefsPersist } from './hooks/usePrefsPersist';
@@ -60,6 +62,7 @@ export default function App() {
   usePrefsPersist();
   useFileWatcher();
   useFileOpenProgress();
+  useReplaceProgress();
   useKeybindingDispatcher();
   usePreviewTabSync();
   useBlockNativeContextMenu();
@@ -244,6 +247,7 @@ export default function App() {
       <KeyboardShortcutsDialog />
       <UpdateDialog />
       <ToastHost />
+      <ReplaceProgressDialog />
       {reopenEncodingOpen && activeTab && activeTab.fileInfo.path && (
         <EncodingPicker
           currentEncoding={activeTab.fileInfo.encoding}

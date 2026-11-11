@@ -37,6 +37,9 @@ chardetng = "0.1"
 
 # Regex search engine (SIMD-accelerated)
 regex = "1.11"
+# Same parser the `regex` crate uses; lets Replace All analyse a pattern's HIR
+# (can it match `\n`? does it use text-level anchors?) to decide on parallel scans.
+regex-syntax = "0.8"
 memchr = "2.7"
 
 # Async runtime for non-blocking I/O

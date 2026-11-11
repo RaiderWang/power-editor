@@ -27,7 +27,8 @@ import {
   focusEditor,
 } from '../../store/editorViewRegistry';
 import { activePaneAtom, secondaryActiveTabAtom } from '../../store/splitAtoms';
-import { noteReplaceAllDone } from '../../store/replaceUndo';
+import { replaceProgressAtom } from '../../store/replaceProgress';
+import { useReplaceAll } from './useReplaceAll';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
 import { LineListDialog } from './LineListDialog';
@@ -69,7 +70,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const [replaceHistory, setReplaceHistory] = useState<string[]>(() => loadReplaceHistory());
   const [searching, setSearching] = useState(false);
   // Replace needs a writable, fully loaded buffer (Rust rejects it otherwise).
-  const replaceDisabled = Boolean(
+  const replaceRunning = useAtomValue(replaceProgressAtom) !== null;
+  const replaceDisabled = replaceRunning || Boolean(
     activeTab && (activeTab.readOnly || activeTab.fileInfo.is_read_only || !activeTab.fileInfo.is_fully_loaded),
   );
 
@@ -128,8 +130,35 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     listLinesRef.current = listLines;
   }, [listLines]);
 
+  // find_all runs on a Rust worker thread, so several searches can be in flight (e.g. the
+  // background refresh after Replace All and a new user search). Only the newest one
+  // may write results / the "searching" flag.
+  const searchSeqRef = useRef(0);
+
+  // Publishes a finished search for the current pattern (shared by doSearch and the
+  // "Replace All found nothing" shortcut below).
+  const applyResult = useCallback((bufferId: number, found: SearchMatch[], total: number, noScroll?: boolean) => {
+    clearSearchStale(bufferId);
+    clearCursorMoved(bufferId);
+    // 仅在搜索成功后标记「已搜索」，失败时不应显示「无结果」
+    setLastSearchedPattern(params.pattern);
+    setMatches(found);
+    setTotal(total);
+    const newIdx = found.length > 0 ? 0 : -1;
+    setCurrentIdx(newIdx);
+    onMatchesFound?.(found, newIdx, noScroll);
+  }, [params.pattern, setMatches, setTotal, setCurrentIdx, onMatchesFound]);
+
+  // Replace All just scanned the whole buffer with the same pattern and found
+  // nothing, so there is no need to run find_all again (a full rescan on huge files).
+  const applyEmptyResult = useCallback(() => {
+    if (!activeTab) return;
+    applyResult(activeTab.bufferId, [], 0, true);
+  }, [activeTab, applyResult]);
+
   const doSearch = useCallback(async (options?: { noScroll?: boolean }) => {
     if (!activeTab || !params.pattern) return;
+    const seq = ++searchSeqRef.current;
     setSearching(true);
     try {
       await syncEditorToRust(activeTab.bufferId);
@@ -137,21 +166,14 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         ? params
         : { ...params, pattern: expandSpecialChars(params.pattern) };
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
-      clearSearchStale(activeTab.bufferId);
-      clearCursorMoved(activeTab.bufferId);
-      // 仅在搜索成功后标记「已搜索」，失败时不应显示「无结果」
-      setLastSearchedPattern(params.pattern);
-      setMatches(result.matches);
-      setTotal(result.total);
-      const newIdx = result.matches.length > 0 ? 0 : -1;
-      setCurrentIdx(newIdx);
-      onMatchesFound?.(result.matches, newIdx, options?.noScroll);
+      if (seq !== searchSeqRef.current) return; // superseded by a newer search
+      applyResult(activeTab.bufferId, result.matches, result.total, options?.noScroll);
     } catch (err) {
       console.error('[SearchPanel] findAll failed:', err);
     } finally {
-      setSearching(false);
+      if (seq === searchSeqRef.current) setSearching(false);
     }
-  }, [activeTab, params, setMatches, setTotal, setCurrentIdx, onMatchesFound]);
+  }, [activeTab, params, applyResult]);
 
   // 标签切换时：清除旧搜索结果；若面板已开启且有关键词，立即在新标签重新搜索（Bug 2 修复）
   // 必须声明在 doSearch 之后。
@@ -175,6 +197,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
 
   const refreshMatches = useCallback(async (): Promise<SearchMatch[]> => {
     if (!activeTab || !params.pattern) return [];
+    const seq = ++searchSeqRef.current;
     setSearching(true);
     try {
       await syncEditorToRust(activeTab.bufferId);
@@ -182,6 +205,9 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         ? params
         : { ...params, pattern: expandSpecialChars(params.pattern) };
       const result = await cmd.findAll(activeTab.bufferId, searchParams, 10000);
+      // Superseded by a newer search: that one owns the shared state; still hand the
+      // caller its own result so it can navigate.
+      if (seq !== searchSeqRef.current) return result.matches;
       clearSearchStale(activeTab.bufferId);
       setLastSearchedPattern(params.pattern);
       setMatches(result.matches);
@@ -191,7 +217,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
       console.error('[SearchPanel] findAll failed:', err);
       return [];
     } finally {
-      setSearching(false);
+      if (seq === searchSeqRef.current) setSearching(false);
     }
   }, [activeTab, params, setMatches, setTotal]);
 
@@ -358,45 +384,18 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     doSearch, markTabModified, refreshMatches, setCurrentIdx, onMatchesFound,
   ]);
 
-  const doReplaceAll = useCallback(async () => {
-    if (!activeTab || !params.pattern) return;
-    if (activeTab.readOnly || activeTab.fileInfo.is_read_only || !activeTab.fileInfo.is_fully_loaded) return;
-
-    const bufferId = activeTab.bufferId;
-    try {
-      // Sync any pending CM edits (including Ctrl+Z undo) to Rust before replacing,
-      // so replaceAll operates on the current editor content, not a stale rope.
-      await syncEditorToRust(bufferId);
-
-      const replaceParams = params.is_regex
-        ? params
-        : { ...params, pattern: expandSpecialChars(params.pattern) };
-      const expandedReplacement = params.is_regex ? replaceText : expandSpecialChars(replaceText);
-      // Rust takes an O(1) rope snapshot first, so Ctrl+Z / Ctrl+Y work for any file
-      // size without loading the document into CodeMirror (see replaceUndo.ts).
-      const count = await cmd.replaceAll(bufferId, replaceParams, expandedReplacement);
-      if (count > 0) noteReplaceAllDone(bufferId);
-      await reloadCurrentWindow(bufferId);
+  const doReplaceAll = useReplaceAll({
+    params,
+    replaceText,
+    doSearch,
+    applyEmptyResult,
+    onReplaced: () => {
       addSearchHistory(params.pattern);
       setSearchHistory(loadSearchHistory());
       addReplaceHistory(replaceText);
       setReplaceHistory(loadReplaceHistory());
-      if (count > 0) markTabModified(activeTab.id);
-      await doSearch({ noScroll: true });
-      // Hand focus back to the editor so Ctrl+Z / Ctrl+Y reach CodeMirror
-      // instead of the (focused) Replace All button.
-      // Search/replace always operates on the primary pane's tab; only return focus to
-      // the secondary pane when it is showing that same buffer.
-      const focusPane = activePane === 'secondary' && secondaryActiveTab?.bufferId === bufferId
-        ? 'secondary'
-        : 'primary';
-      focusEditor(bufferId, focusPane, { force: true });
-      alert(t('search.replacedCount', { count }));
-    } catch (err) {
-      console.error('[SearchPanel] Replace All failed:', err);
-      alert(String(err));
-    }
-  }, [activeTab, activePane, secondaryActiveTab, params, replaceText, doSearch, markTabModified, t]);
+    },
+  });
 
   const handleSaveToNewFile = useCallback(async (lines: string[]) => {
     const { v4: uuidv4 } = await import('uuid');

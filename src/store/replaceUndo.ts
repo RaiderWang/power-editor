@@ -63,7 +63,7 @@ async function runReplaceStep(bufferId: number, kind: 'undo' | 'redo'): Promise<
     }
     from.delete(bufferId);
     to.add(bufferId);
-    await reloadCurrentWindow(bufferId, { markModified: true });
+    await reloadCurrentWindow(bufferId, { markModified: true, totalBytes: info.total_bytes });
     // The reload is a virtual load: it does not mark search results stale itself.
     markSearchStale(bufferId);
     clearSearchHighlights(bufferId);

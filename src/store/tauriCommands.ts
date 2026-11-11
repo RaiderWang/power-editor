@@ -5,6 +5,7 @@ import type {
   EditOp,
   SearchParams,
   FindResult,
+  ReplaceAllOutcome,
   WordfileDef,
 } from '../types';
 import type { AppSession } from '../types/session';
@@ -79,8 +80,21 @@ export const undoReplaceAll = (bufferId: number): Promise<FileInfo | null> =>
 export const redoReplaceAll = (bufferId: number): Promise<FileInfo | null> =>
   invoke('redo_replace_all', { bufferId });
 
-export const replaceAll = (bufferId: number, params: SearchParams, replacement: string): Promise<number> =>
+/**
+ * Replace All runs as a background job in Rust (progress arrives via the
+ * `replace:progress` event). Resolves to `null` when cancelled (buffer untouched),
+ * otherwise the match count and the refreshed `FileInfo`.
+ */
+export const replaceAll = (
+  bufferId: number,
+  params: SearchParams,
+  replacement: string,
+): Promise<ReplaceAllOutcome | null> =>
   invoke('replace_all', { bufferId, params, replacement });
+
+/** Ask a running Replace All of this buffer to stop. Resolves to whether one was running. */
+export const cancelReplaceAll = (bufferId: number): Promise<boolean> =>
+  invoke('cancel_replace_all', { bufferId });
 
 export const replaceOne = (bufferId: number, from: number, to: number, replacement: string): Promise<void> =>
   invoke('replace_one', { bufferId, from, to, replacement });

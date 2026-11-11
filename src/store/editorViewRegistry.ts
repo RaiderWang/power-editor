@@ -66,6 +66,8 @@ export interface ReloadWindowOptions {
    * undo history: Replace All is undone through Rust (see `replaceUndo.ts`).
    */
   markModified?: boolean;
+  /** New `FileInfo.total_bytes` reported by Rust (Replace All undo/redo change the size). */
+  totalBytes?: number;
 }
 
 /**
