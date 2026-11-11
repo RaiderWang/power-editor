@@ -11,6 +11,7 @@ import {
   STORAGE_FOLDER_KEY,
 } from '../store/explorerAtoms';
 import { tabsAtom } from '../store/atoms';
+import { workspaceSearchFocusPendingAtom } from '../store/workspaceSearch';
 import {
   recentFoldersAtom,
   addToRecentFolders,
@@ -34,6 +35,7 @@ export function useExplorer() {
   const [expandedFolders, setExpandedFolders] = useAtom(expandedFoldersAtom);
   const setRefreshTrigger = useSetAtom(explorerRefreshTriggerAtom);
   const setRecentFolders = useSetAtom(recentFoldersAtom);
+  const setSearchFocusPending = useSetAtom(workspaceSearchFocusPendingAtom);
   const setTabs = useSetAtom(tabsAtom);
   const { openFile, closeTab } = useFile();
   const t = useTranslation();
@@ -153,6 +155,16 @@ export function useExplorer() {
   const toggleSidebar = useCallback(() => {
     setStoredSidebarVisible(!sidebarVisible);
   }, [sidebarVisible, setStoredSidebarVisible]);
+
+  /** Ctrl+Shift+F: reveal the sidebar and focus its folder-search input. */
+  const searchInFolder = useCallback(() => {
+    if (!currentFolderPath) {
+      void openFolder();
+      return;
+    }
+    setStoredSidebarVisible(true);
+    setSearchFocusPending(true);
+  }, [currentFolderPath, openFolder, setStoredSidebarVisible, setSearchFocusPending]);
 
   const refreshTree = useCallback(() => {
     setRefreshTrigger((n) => n + 1);
@@ -334,6 +346,7 @@ export function useExplorer() {
     openRecentFolder,
     closeFolder,
     toggleSidebar,
+    searchInFolder,
     refreshTree,
     toggleFolderExpansion,
     collapseAllFolders,

@@ -54,7 +54,7 @@ export function useKeybindingDispatcher() {
   const switchTabByIndex = useSetAtom(switchTabByIndexAtom);
   const { handlePrint } = usePrintActiveTab();
   const { newFile, openFile, saveFile, saveFileAs, closeTab } = useFile();
-  const { openFolder, closeFolder, currentFolderPath, toggleSidebar } = useExplorer();
+  const { openFolder, closeFolder, currentFolderPath, toggleSidebar, searchInFolder } = useExplorer();
 
   const shortcutMap = useMemo(() => buildShortcutMap(customs), [customs]);
 
@@ -122,6 +122,8 @@ export function useKeybindingDispatcher() {
         };
       case 'search.find':
         return () => { setSearchOpen(true); setSearchTrigger((n) => n + 1); };
+      case 'search.inFolder':
+        return () => { searchInFolder(); };
       case 'search.nextMatch':
         return () => {
           document.dispatchEvent(new CustomEvent('keybinding:search.nextMatch'));
@@ -164,7 +166,7 @@ export function useKeybindingDispatcher() {
         return null;
       }
     }
-  }, [switchTabRelative, switchTabByIndex, activeTab, newFile, openFile, openFolder, closeFolder, currentFolderPath, toggleSidebar, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
+  }, [switchTabRelative, switchTabByIndex, activeTab, newFile, openFile, openFolder, closeFolder, currentFolderPath, toggleSidebar, searchInFolder, saveFile, saveFileAs, handlePrint, closeTab, setSearchOpen, setSearchTrigger, setPrefs, setColumnMode, setReopenEncodingOpen, toggleMarkdownPreview]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

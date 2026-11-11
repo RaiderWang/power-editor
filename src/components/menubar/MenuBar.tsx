@@ -175,7 +175,7 @@ export const MenuBar: React.FC = () => {
 
   const t = useTranslation();
   const { openFile, newFile, closeTab, saveFile, saveFileAs, renameFile } = useFile();
-  const { currentFolderPath, openFolder, openRecentFolder, closeFolder, toggleSidebar, sidebarVisible } = useExplorer();
+  const { currentFolderPath, openFolder, openRecentFolder, closeFolder, toggleSidebar, searchInFolder, sidebarVisible } = useExplorer();
   const recentFiles = useAtomValue(recentFilesAtom);
   const recentFolders = useAtomValue(recentFoldersAtom);
   const [favoriteFiles, setFavoriteFiles] = useAtom(favoriteFilesAtom);
@@ -539,6 +539,7 @@ export const MenuBar: React.FC = () => {
 
   const editMenu: MenuItem[] = [
     { kind: 'item', label: t('menu.edit.findReplace'), shortcut: shortcut('search.find'), onClick: openSearch },
+    { kind: 'item', label: t('menu.edit.searchInFolder'), shortcut: shortcut('search.inFolder'), onClick: searchInFolder },
     { kind: 'item', label: t('menu.edit.deleteLine'), shortcut: shortcut('edit.deleteLine'), disabled: !activeTab, onClick: handleDeleteLine },
     { kind: 'sep' },
     { kind: 'item', label: t('menu.edit.toUpperCase'), shortcut: shortcut('edit.toUpperCase'), disabled: !activeTab, onClick: handleToUpperCase },

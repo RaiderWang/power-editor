@@ -1,0 +1,258 @@
+/* ── Search box ── */
+
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--toolbar-border);
+  background-color: var(--app-bg);
+  outline: none;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 2px 0 6px;
+  background-color: var(--toolbar-field-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+}
+
+.inputRow:focus-within {
+  border-color: #007acc;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--app-fg-muted);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--app-fg);
+  font-size: 12px;
+  font-family: inherit;
+  user-select: text;
+}
+
+.toggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--toolbar-btn-color);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggleBtn:hover {
+  background-color: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg);
+}
+
+.toggleBtn.active {
+  background-color: #094771;
+  border-color: #007acc;
+  color: #ffffff;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.segment {
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: var(--toolbar-btn-color);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segment + .segment {
+  border-left: 1px solid var(--toolbar-border);
+}
+
+.segment:hover {
+  background-color: var(--toolbar-btn-hover-bg);
+}
+
+.segment.active {
+  background-color: #094771;
+  color: #ffffff;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--app-fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Results ── */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.status {
+  padding: 4px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--app-fg-muted);
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.statusError {
+  color: #f48771;
+}
+
+.statusWarn {
+  color: #cca700;
+}
+
+.viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  outline: none;
+}
+
+.row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding-right: 8px;
+  font-size: 12px;
+  color: var(--app-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.row:hover {
+  background-color: var(--list-row-hover-bg);
+}
+
+.fileRow {
+  font-size: 13px;
+}
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  color: var(--app-fg-muted);
+}
+
+.fileName {
+  flex-shrink: 0;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dir {
+  flex: 1;
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--app-fg-muted);
+}
+
+.badge {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background-color: var(--toolbar-btn-hover-bg);
+  color: var(--app-fg-muted);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.hitRow {
+  padding-left: 28px;
+}
+
+.lineNo {
+  flex-shrink: 0;
+  min-width: 32px;
+  margin-right: 8px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--app-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.emptyLine {
+  font-family: inherit;
+  font-style: italic;
+  color: var(--app-fg-muted);
+}
+
+.mark {
+  background-color: rgba(255, 200, 0, 0.35);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--app-fg-muted);
+}

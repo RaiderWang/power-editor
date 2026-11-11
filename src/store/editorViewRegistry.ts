@@ -53,8 +53,64 @@ const windowRangeMap = new Map<number, { start: number; end: number }>();
  *                 scrolling to the match.  This prevents competing scroll
  *                 intents (one from jumpToWindow, one from the caller) that
  *                 can leave the match above or below the visible viewport.
+ *   - options.placeCursor: also move the caret to the start of the target line
+ *                 (and centre it) — used when the caller has no match to select.
  */
-const jumpRegistry = new Map<number, (targetLine: number, noScroll?: boolean) => Promise<void>>();
+export interface JumpOptions {
+  placeCursor?: boolean;
+}
+type JumpFn = (targetLine: number, noScroll?: boolean, options?: JumpOptions) => Promise<void>;
+const jumpRegistry = new Map<number, JumpFn>();
+
+/**
+ * Buffers whose primary CM view has finished its first `loadContent` (window range set,
+ * first chunk in the document). Jumping before that is unsafe: the pending initial load
+ * would overwrite the jumped-to window with line 0.
+ */
+const editorReadyBuffers = new Set<number>();
+const editorReadyWaiters = new Map<number, Array<(ready: boolean) => void>>();
+
+export function markEditorReady(bufferId: number) {
+  editorReadyBuffers.add(bufferId);
+  const waiters = editorReadyWaiters.get(bufferId);
+  if (waiters) {
+    editorReadyWaiters.delete(bufferId);
+    waiters.forEach((resolve) => resolve(true));
+  }
+}
+
+/**
+ * Forgets the ready state of a buffer (editor torn down / buffer id replaced) and wakes
+ * everyone still waiting for it with `false`, so they don't sit out their timeout.
+ */
+export function clearEditorReady(bufferId: number) {
+  editorReadyBuffers.delete(bufferId);
+  const waiters = editorReadyWaiters.get(bufferId);
+  if (waiters) {
+    editorReadyWaiters.delete(bufferId);
+    waiters.forEach((resolve) => resolve(false));
+  }
+}
+
+/** Resolves `true` once the buffer's editor finished its first load, `false` on timeout. */
+export function whenEditorReady(bufferId: number, timeoutMs: number): Promise<boolean> {
+  if (editorReadyBuffers.has(bufferId)) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    const waiter = (ready: boolean) => {
+      window.clearTimeout(timer);
+      resolve(ready);
+    };
+    const timer = window.setTimeout(() => {
+      const list = editorReadyWaiters.get(bufferId)?.filter((w) => w !== waiter);
+      if (list && list.length > 0) editorReadyWaiters.set(bufferId, list);
+      else editorReadyWaiters.delete(bufferId);
+      resolve(false);
+    }, timeoutMs);
+    const list = editorReadyWaiters.get(bufferId) ?? [];
+    list.push(waiter);
+    editorReadyWaiters.set(bufferId, list);
+  });
+}
 
 /** Options for reloading the current CM window from Rust. */
 export interface ReloadWindowOptions {
@@ -144,6 +200,7 @@ export function focusEditor(
 
 export function unregisterEditorView(bufferId: number) {
   registry.delete(bufferId);
+  clearEditorReady(bufferId);
   peerSetterRegistry.delete(bufferId);
   textEditedBuffers.delete(bufferId);
   searchStaleBuffers.delete(bufferId);
@@ -206,8 +263,19 @@ export function unregisterSecondaryEditorView(
 // Jump / window range bookkeeping belongs to the PRIMARY pane only (search results
 // and `syncEditorToRust` address the primary view); the secondary pane keeps its own
 // local window state but never publishes it here.
-export function registerJumpToLine(bufferId: number, fn: (targetLine: number, noScroll?: boolean) => Promise<void>) {
+export function registerJumpToLine(bufferId: number, fn: JumpFn) {
   jumpRegistry.set(bufferId, fn);
+}
+
+/**
+ * Slides the virtual window to `line` (0-based, whole-file coordinates), scrolls it into
+ * view and puts the caret at its start. Returns false when the buffer has no primary editor.
+ */
+export async function jumpToLine(bufferId: number, line: number): Promise<boolean> {
+  const jump = jumpRegistry.get(bufferId);
+  if (!jump) return false;
+  await jump(line, false, { placeCursor: true });
+  return true;
 }
 
 export function unregisterJumpToLine(bufferId: number) {
@@ -452,6 +520,7 @@ export async function highlightSearchMatches(
   matches: SearchMatch[],
   currentIdx: number,
   noScroll?: boolean,
+  options?: { selectCurrent?: boolean },
 ): Promise<void> {
   const view = registry.get(bufferId);
   if (!view) return;
@@ -528,7 +597,14 @@ export async function highlightSearchMatches(
   if (cmCurrentIdx >= 0 && cmMatches[cmCurrentIdx] && !noScroll) {
     effects.push(EditorView.scrollIntoView(cmMatches[cmCurrentIdx].from, { y: 'center' }));
   }
-  view.dispatch({ effects });
+  const current = cmCurrentIdx >= 0 ? cmMatches[cmCurrentIdx] : undefined;
+  if (options?.selectCurrent && current) {
+    // Put the caret on the match: otherwise it stays where it was and the next key press
+    // scrolls the viewport back there.
+    view.dispatch({ effects, selection: { anchor: current.from, head: current.to } });
+  } else {
+    view.dispatch({ effects });
+  }
 }
 
 // ──────────────────────────────────────────────────────────────

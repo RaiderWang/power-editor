@@ -39,6 +39,9 @@ export const searchMatchField = StateField.define<DecorationSet>({
       if (effect.is(setMatchRanges)) {
         const ranges: Range<Decoration>[] = [];
         effect.value.forEach((r, idx) => {
+          // Zero-width matches (`^`, `$`, `^$`) cannot be decorated: CodeMirror rejects
+          // empty mark decorations. They are still valid caret targets elsewhere.
+          if (r.from >= r.to) return;
           if (idx === currentIdx) {
             ranges.push(currentMatchMark.range(r.from, r.to));
           } else {

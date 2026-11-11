@@ -68,6 +68,7 @@ export const DEFAULT_KEYBINDINGS: KeybindingDef[] = [
   { id: 'edit.copyPath',    labelKey: 'keybinding.edit.copyPath',    category: 'edit', defaultShortcut: '',             editable: true },
 
   { id: 'search.find',      labelKey: 'keybinding.search.find',      category: 'search', defaultShortcut: 'Ctrl+F',       editable: true },
+  { id: 'search.inFolder',  labelKey: 'keybinding.search.inFolder',  category: 'search', defaultShortcut: 'Ctrl+Shift+F', editable: true },
   { id: 'search.nextMatch', labelKey: 'keybinding.search.nextMatch', category: 'search', defaultShortcut: 'F3',           editable: true },
   { id: 'search.prevMatch', labelKey: 'keybinding.search.prevMatch', category: 'search', defaultShortcut: 'Shift+F3',     editable: true },
 
