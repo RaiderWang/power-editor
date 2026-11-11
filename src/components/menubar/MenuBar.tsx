@@ -22,6 +22,8 @@ import {
   isPreviewOpenAtom,
   toggleMarkdownPreviewAtom,
 } from '../../store/previewAtoms';
+import { adjustPreviewZoom } from '../../store/previewZoom';
+import { PREVIEW_ZOOM_STEP } from '../../store/previewZoomLimits';
 import { customKeybindingsAtom, keybindingsDialogOpenAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { useFile } from '../../hooks/useFile';
 import { useExplorer } from '../../hooks/useExplorer';
@@ -620,6 +622,24 @@ export const MenuBar: React.FC = () => {
       disabled: !canPreview && !isPreviewOpen,
       shortcut: shortcut('view.markdownPreview'),
       onClick: () => toggleMarkdownPreview(),
+    },
+    {
+      kind: 'item',
+      label: t('menu.view.previewZoomIn'),
+      disabled: !isPreviewOpen,
+      onClick: () => adjustPreviewZoom(setPrefs, PREVIEW_ZOOM_STEP),
+    },
+    {
+      kind: 'item',
+      label: t('menu.view.previewZoomOut'),
+      disabled: !isPreviewOpen,
+      onClick: () => adjustPreviewZoom(setPrefs, -PREVIEW_ZOOM_STEP),
+    },
+    {
+      kind: 'item',
+      label: t('menu.view.previewZoomReset'),
+      disabled: !isPreviewOpen,
+      onClick: () => adjustPreviewZoom(setPrefs, 'reset'),
     },
     { kind: 'sep' },
     {

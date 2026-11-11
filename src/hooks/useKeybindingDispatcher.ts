@@ -26,6 +26,9 @@ import { getTabSaveDefaultPath } from '../utils/tabFileName';
 import { writeClipboardText } from '../utils/clipboard';
 import { toggleMarkdownPreviewAtom } from '../store/previewAtoms';
 import { usePrintActiveTab } from './usePrintActiveTab';
+import { DEFAULT_PREFS } from '../store/editorPrefs';
+import { adjustPreviewZoom, isPreviewFocused } from '../store/previewZoom';
+import { PREVIEW_ZOOM_STEP } from '../store/previewZoomLimits';
 
 type ActionHandler = () => void;
 
@@ -135,10 +138,22 @@ export function useKeybindingDispatcher() {
         return () => { setColumnMode((v) => !v); };
       case 'view.markdownPreview':
         return () => { toggleMarkdownPreview(); };
+      // Font-size shortcuts follow focus: inside the Markdown preview they zoom the preview.
       case 'view.fontSizeUp':
-        return () => { setPrefs((p) => ({ ...p, fontSize: Math.min(48, p.fontSize + 1) })); };
+        return () => {
+          if (isPreviewFocused()) adjustPreviewZoom(setPrefs, PREVIEW_ZOOM_STEP);
+          else setPrefs((p) => ({ ...p, fontSize: Math.min(48, p.fontSize + 1) }));
+        };
       case 'view.fontSizeDown':
-        return () => { setPrefs((p) => ({ ...p, fontSize: Math.max(8, p.fontSize - 1) })); };
+        return () => {
+          if (isPreviewFocused()) adjustPreviewZoom(setPrefs, -PREVIEW_ZOOM_STEP);
+          else setPrefs((p) => ({ ...p, fontSize: Math.max(8, p.fontSize - 1) }));
+        };
+      case 'view.fontSizeReset':
+        return () => {
+          if (isPreviewFocused()) adjustPreviewZoom(setPrefs, 'reset');
+          else setPrefs((p) => ({ ...p, fontSize: DEFAULT_PREFS.fontSize }));
+        };
       case 'view.toggleTheme':
         return () => { setPrefs((p) => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' })); };
       default: {

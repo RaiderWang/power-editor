@@ -23,7 +23,12 @@ import { showToastAtom } from '../../store/toastAtoms';
 import { postProcessImages } from '../../preview/imagePaths';
 import { setupScrollSync } from '../../preview/scrollSync';
 import { setCachedPreviewSelection } from '../../print/selectionHelper';
+import { usePreviewZoom } from '../../hooks/usePreviewZoom';
+import { PREVIEW_PANE_ATTR } from '../../store/previewZoom';
+import { PreviewZoomControl } from './PreviewZoomControl';
 import styles from './MarkdownPreviewPane.module.css';
+
+const PANE_ATTRS = { [PREVIEW_PANE_ATTR]: 'true' };
 
 export const MarkdownPreviewPane: React.FC = () => {
   const t = useTranslation();
@@ -32,6 +37,8 @@ export const MarkdownPreviewPane: React.FC = () => {
 
   const { status, content, bufferId, filePath, fileName } = useMarkdownSource();
   const contentRef = useRef<HTMLDivElement>(null);
+  const paneRef = useRef<HTMLDivElement>(null);
+  const { previewZoom, zoomIn, zoomOut, zoomReset } = usePreviewZoom(paneRef, contentRef);
   const syncScrollRef = useRef(syncScroll);
   useEffect(() => {
     syncScrollRef.current = syncScroll;
@@ -201,7 +208,7 @@ export const MarkdownPreviewPane: React.FC = () => {
   };
 
   return (
-    <div className={styles.pane}>
+    <div ref={paneRef} className={styles.pane} tabIndex={-1} {...PANE_ATTRS}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <span className={styles.headerTitle}>
@@ -211,6 +218,12 @@ export const MarkdownPreviewPane: React.FC = () => {
           {fileName && <span className={styles.fileNameBadge}>({fileName})</span>}
         </div>
         <div className={styles.headerActions}>
+          <PreviewZoomControl
+            zoom={previewZoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onReset={zoomReset}
+          />
           <button
             type="button"
             className={`${styles.actionBtn} ${syncScroll ? styles.actionBtnActive : ''}`}

@@ -1,9 +1,13 @@
+import { PREVIEW_ZOOM_DEFAULT, clampPreviewZoom } from './previewZoomLimits';
+
 const LS_KEY = 'power-editor:editor-prefs';
 
 export type Locale = 'zh-CN' | 'en-US';
 
 export interface EditorPrefs {
   fontSize: number;
+  /** Markdown preview zoom in percent (50-300). */
+  previewZoom: number;
   fontFamily: string;
   lineWrap: boolean;
   showLineNumbers: boolean;
@@ -18,6 +22,7 @@ export interface EditorPrefs {
 
 export const DEFAULT_PREFS: EditorPrefs = {
   fontSize: 14,
+  previewZoom: PREVIEW_ZOOM_DEFAULT,
   fontFamily: '"Consolas", "Monaco", "Courier New", monospace',
   lineWrap: false,
   showLineNumbers: true,
@@ -35,7 +40,9 @@ export function loadEditorPrefs(): EditorPrefs {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return DEFAULT_PREFS;
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    const merged: EditorPrefs = { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    merged.previewZoom = clampPreviewZoom(merged.previewZoom);
+    return merged;
   } catch {
     return DEFAULT_PREFS;
   }
