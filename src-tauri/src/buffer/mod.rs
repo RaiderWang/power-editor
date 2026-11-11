@@ -86,6 +86,11 @@ pub struct Buffer {
     pub replace_undo: Option<Rope>,
     /// Rope as it was right before the last "undo Replace All" (for redo).
     pub replace_redo: Option<Rope>,
+    /// Bumped whenever the text is changed in a way that invalidates in-flight
+    /// background computations on a rope clone (real edits, reloads, Replace All
+    /// undo/redo). A background Replace All only commits when the revision it
+    /// started from is still current.
+    pub revision: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -121,14 +126,27 @@ impl Buffer {
             is_binary: false,
             replace_undo: None,
             replace_redo: None,
+            revision: 0,
         }
     }
 
     /// Forget the Replace All undo/redo snapshots (the rope was changed in a way
-    /// they no longer describe).
+    /// they no longer describe). Called by every real text edit, so it also bumps
+    /// `revision` to invalidate any in-flight background Replace All.
     pub fn invalidate_replace_snapshots(&mut self) {
         self.replace_undo = None;
         self.replace_redo = None;
+        self.revision = self.revision.wrapping_add(1);
+    }
+
+    /// Adjust the reported on-disk size by the byte-length change of the rope
+    /// (Replace All and its undo/redo). `file_total_bytes` is the disk size taken at
+    /// load time; adjusting by the delta keeps it sensible for non-UTF-8 files too.
+    pub fn adjust_total_bytes(&mut self, old_rope_bytes: usize, new_rope_bytes: usize) {
+        if self.file_total_bytes > 0 {
+            let adjusted = self.file_total_bytes as i128 + new_rope_bytes as i128 - old_rope_bytes as i128;
+            self.file_total_bytes = adjusted.max(0) as u64;
+        }
     }
 
     /// Remember the current rope so the next Replace All can be undone.
@@ -143,8 +161,10 @@ impl Buffer {
         match self.replace_undo.take() {
             Some(prev) => {
                 let current = std::mem::replace(&mut self.rope, prev);
+                self.adjust_total_bytes(current.len_bytes(), self.rope.len_bytes());
                 self.replace_redo = Some(current);
                 self.is_modified = true;
+                self.revision = self.revision.wrapping_add(1);
                 true
             }
             None => false,
@@ -156,8 +176,10 @@ impl Buffer {
         match self.replace_redo.take() {
             Some(next) => {
                 let current = std::mem::replace(&mut self.rope, next);
+                self.adjust_total_bytes(current.len_bytes(), self.rope.len_bytes());
                 self.replace_undo = Some(current);
                 self.is_modified = true;
+                self.revision = self.revision.wrapping_add(1);
                 true
             }
             None => false,

@@ -6,6 +6,7 @@ pub mod file_watcher;
 pub mod image_resolve;
 pub mod keybindings;
 pub mod print;
+pub mod replace_commands;
 pub mod search;
 pub mod session;
 pub mod shell_integration;
@@ -38,6 +39,8 @@ const PROGRESS_THROTTLE_MS: u128 = 100;
 pub struct AppState {
     pub registry: Arc<BufferRegistry>,
     pub watcher: Arc<FileWatcherRegistry>,
+    /// Running Replace All jobs (one per buffer), so they can be cancelled.
+    pub replace_jobs: Arc<search::replace::jobs::ReplaceJobs>,
     /// File path passed as a CLI argument (e.g. opened via Explorer context menu).
     /// Read once by `get_startup_file` and then cleared.
     pub startup_file: std::sync::Mutex<Option<String>>,
@@ -183,6 +186,8 @@ fn new_buffer(state: State<AppState>) -> FileInfo {
 
 #[tauri::command]
 fn close_buffer(state: State<AppState>, buffer_id: u64) {
+    // A running Replace All on this buffer has nothing left to commit to.
+    state.replace_jobs.cancel(buffer_id);
     state.watcher.unwatch_buffer(buffer_id);
     state.registry.remove(buffer_id);
 }
@@ -319,9 +324,12 @@ fn get_buffer_info(state: State<AppState>, buffer_id: u64) -> Result<FileInfo, S
 // Tauri Commands – Search & Replace
 // ──────────────────────────────────────────────────────────────
 
+/// Async + blocking worker: a full scan of a multi-GB rope must not run on (and
+/// freeze) the UI thread. `search::find_all` works on an O(1) rope clone, so the
+/// registry lock is not held while scanning.
 #[tauri::command]
-fn find_all(
-    state: State<AppState>,
+async fn find_all(
+    state: State<'_, AppState>,
     buffer_id: u64,
     params: SearchParams,
     max_results: usize,
@@ -334,17 +342,11 @@ fn find_all(
         }
     }
     let max = if max_results == 0 { 10000 } else { max_results };
-    search::find_all(&state.registry, buffer_id, &params, max).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn replace_all(
-    state: State<AppState>,
-    buffer_id: u64,
-    params: SearchParams,
-    replacement: String,
-) -> Result<usize, String> {
-    search::replace_all(&state.registry, buffer_id, &params, &replacement).map_err(|e| e.to_string())
+    let registry = state.registry.clone();
+    tokio::task::spawn_blocking(move || search::find_all(&registry, buffer_id, &params, max))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 /// Undo the last Replace All by swapping the rope with its pre-replace snapshot.
@@ -695,6 +697,7 @@ pub fn run() {
             let state = AppState {
                 registry: Arc::new(BufferRegistry::new()),
                 watcher: Arc::new(watcher),
+                replace_jobs: Arc::new(search::replace::jobs::ReplaceJobs::new()),
                 startup_file: std::sync::Mutex::new(startup_file),
             };
             app.manage(state);
@@ -704,6 +707,10 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Prevent immediate close so the frontend can save the session first
                 api.prevent_close();
+                // Stop any running Replace All before the frontend saves the session.
+                if let Some(state) = window.app_handle().try_state::<AppState>() {
+                    state.replace_jobs.cancel_all();
+                }
                 let _ = window.emit("app:close-requested", ());
             }
         })
@@ -726,7 +733,8 @@ pub fn run() {
             get_buffer_info,
             // Search
             find_all,
-            replace_all,
+            replace_commands::replace_all,
+            replace_commands::cancel_replace_all,
             undo_replace_all,
             redo_replace_all,
             replace_one,

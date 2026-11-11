@@ -3044,6 +3044,7 @@ dependencies = [
  "memchr",
  "notify",
  "regex",
+ "regex-syntax",
  "ropey",
  "serde",
  "serde_json",

@@ -3,15 +3,17 @@ use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::buffer::BufferRegistry;
+#[cfg(test)]
+use scan::find_char_boundary;
+
+pub mod eligibility;
+pub mod replace;
+pub mod scan;
+
+pub use replace::replace_all;
 
 /// Files larger than this use windowed search instead of full-text materialisation.
 const SEARCH_WINDOW_THRESHOLD: usize = 200 * 1024 * 1024; // 200 MB
-
-/// Size of each text window for large-file search.
-const SEARCH_WINDOW_SIZE: usize = 4 * 1024 * 1024; // 4 MB
-
-/// Overlap kept between consecutive windows to catch boundary-spanning matches.
-const SEARCH_WINDOW_OVERLAP: usize = 1 * 1024 * 1024; // 1 MB
 
 /// Parameters for a find/replace operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,22 +43,30 @@ pub struct FindResult {
     pub truncated: bool,
 }
 
-/// Build a Regex from SearchParams
-fn build_regex(params: &SearchParams) -> Result<Regex> {
+/// The final regex source for `params` (escaping, whole-word wrapping).
+/// Shared with `eligibility`, which must analyse exactly what gets compiled.
+pub(crate) fn build_pattern(params: &SearchParams) -> String {
     let pattern = if params.is_regex {
         params.pattern.clone()
     } else {
         regex::escape(&params.pattern)
     };
 
-    let pattern = if params.whole_word {
+    if params.whole_word {
         format!(r"\b{}\b", pattern)
     } else {
         pattern
-    };
+    }
+}
 
-    let re = RegexBuilder::new(&pattern)
+/// Build a Regex from SearchParams.
+///
+/// `multi_line` is on: `^` / `$` match at line starts / ends like in other
+/// editors; use `\A` / `\z` for the start / end of the whole document.
+pub(crate) fn build_regex(params: &SearchParams) -> Result<Regex> {
+    let re = RegexBuilder::new(&build_pattern(params))
         .case_insensitive(!params.case_sensitive)
+        .multi_line(true)
         .build()
         .map_err(|e| anyhow!("Invalid regex: {}", e))?;
 
@@ -143,78 +153,61 @@ fn find_all_full(
 // find_all – windowed path (files > threshold)
 // ──────────────────────────────────────────────────────────────
 
-fn find_all_windowed(
-    rope: &ropey::Rope,
-    re: &Regex,
+/// Collects `SearchMatch`es from the shared window scanner (`scan::scan_rope`).
+struct FindSink<'a> {
+    rope: &'a ropey::Rope,
+    matches: Vec<SearchMatch>,
+    total: usize,
     max_results: usize,
-) -> FindResult {
-    let mut matches = Vec::new();
-    let mut total = 0;
-    let mut window = String::with_capacity(SEARCH_WINDOW_SIZE + SEARCH_WINDOW_OVERLAP);
-    let mut window_byte_start: usize = 0;
+}
 
-    // Accumulate chunks and process windows
-    for chunk in rope.chunks() {
-        window.push_str(chunk);
-
-        while window.len() >= SEARCH_WINDOW_SIZE {
-            let safe_end = window.len() - SEARCH_WINDOW_OVERLAP;
-
-            for m in re.find_iter(&window) {
-                if m.start() >= safe_end {
-                    break;
-                }
-                total += 1;
-                if matches.len() < max_results {
-                    matches.push(build_match(
-                        rope,
-                        &window,
-                        window_byte_start,
-                        window_byte_start + m.start(),
-                        window_byte_start + m.end(),
-                    ));
-                }
-            }
-
-            // Advance: keep the overlap tail for the next window.
-            // Find a valid UTF-8 char boundary for the split point.
-            let advance = find_char_boundary(&window, safe_end);
-            window_byte_start += advance;
-            window = window[advance..].to_string();
-        }
-    }
-
-    // Process the final (possibly short) window – emit all remaining matches.
-    for m in re.find_iter(&window) {
-        total += 1;
-        if matches.len() < max_results {
-            matches.push(build_match(
-                rope,
-                &window,
-                window_byte_start,
-                window_byte_start + m.start(),
-                window_byte_start + m.end(),
+impl scan::MatchSink for FindSink<'_> {
+    fn on_match(&mut self, win: &scan::Window, start: usize, end: usize, _caps: Option<&regex::Captures>) {
+        self.total += 1;
+        if self.matches.len() < self.max_results {
+            self.matches.push(build_match(
+                self.rope,
+                win.text,
+                win.abs_start,
+                win.abs_start + start,
+                win.abs_start + end,
             ));
         }
     }
 
-    FindResult {
-        truncated: total > max_results,
-        total,
-        matches,
-    }
+    fn flush(&mut self, _win: &scan::Window, _upto: usize) {}
 }
 
-/// Find the largest byte index ≤ `target` that is a valid UTF-8 char boundary.
-fn find_char_boundary(s: &str, target: usize) -> usize {
-    if target >= s.len() {
-        return s.len();
+fn find_all_windowed(
+    rope: &ropey::Rope,
+    re: &Regex,
+    max_results: usize,
+    cfg: &scan::ScanConfig,
+) -> FindResult {
+    let mut sink = FindSink {
+        rope,
+        matches: Vec::new(),
+        total: 0,
+        max_results,
+    };
+    let mut buf = String::new();
+    // `NoControl` never cancels, so the scan always completes.
+    let _ = scan::scan_rope(
+        rope,
+        true,
+        re,
+        false,
+        &mut sink,
+        &scan::NoControl,
+        cfg,
+        &mut buf,
+    );
+
+    FindResult {
+        truncated: sink.total > max_results,
+        total: sink.total,
+        matches: sink.matches,
     }
-    let mut i = target;
-    while i > 0 && !s.is_char_boundary(i) {
-        i -= 1;
-    }
-    i
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -227,156 +220,24 @@ pub fn find_all(
     params: &SearchParams,
     max_results: usize,
 ) -> Result<FindResult> {
-    let buffers = registry.buffers.lock().unwrap();
-    let buffer = buffers
-        .get(&buffer_id)
-        .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?;
+    // `Rope::clone` is an O(1) copy-on-write share: take it under the lock and
+    // scan without holding the registry mutex.
+    let rope = {
+        let buffers = registry.buffers.lock().unwrap();
+        buffers
+            .get(&buffer_id)
+            .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?
+            .rope
+            .clone()
+    };
 
     let re = build_regex(params)?;
-    let rope = &buffer.rope;
 
     if rope.len_bytes() <= SEARCH_WINDOW_THRESHOLD {
-        Ok(find_all_full(rope, &re, max_results))
+        Ok(find_all_full(&rope, &re, max_results))
     } else {
-        Ok(find_all_windowed(rope, &re, max_results))
+        Ok(find_all_windowed(&rope, &re, max_results, &scan::ScanConfig::default()))
     }
-}
-
-// ──────────────────────────────────────────────────────────────
-// replace_all – incremental rope edits (no full-text rebuild)
-// ──────────────────────────────────────────────────────────────
-
-/// Build the replacement text for one match.
-///
-/// - `literal == true` (non-regex mode): insert `replacement` verbatim. `$` and `${...}`
-///   must NOT be interpreted, otherwise e.g. `${tag[i]}` is treated as a reference to a
-///   non-existent capture group and expands to an empty string.
-/// - `literal == false` (regex mode): expand `$1`, `${name}`, `$$` etc.
-fn expand_replacement(caps: &regex::Captures, replacement: &str, literal: bool) -> String {
-    if literal {
-        replacement.to_string()
-    } else {
-        let mut expanded = String::new();
-        caps.expand(replacement, &mut expanded);
-        expanded
-    }
-}
-
-/// Collect all match byte ranges and their expanded replacements.
-/// Uses the same dual-path (full-text / windowed) strategy as `find_all`.
-fn collect_replacements(
-    rope: &ropey::Rope,
-    re: &Regex,
-    replacement: &str,
-    literal: bool,
-) -> Vec<(usize, usize, String)> {
-    if rope.len_bytes() <= SEARCH_WINDOW_THRESHOLD {
-        collect_replacements_full(rope, re, replacement, literal)
-    } else {
-        collect_replacements_windowed(rope, re, replacement, literal)
-    }
-}
-
-fn collect_replacements_full(
-    rope: &ropey::Rope,
-    re: &Regex,
-    replacement: &str,
-    literal: bool,
-) -> Vec<(usize, usize, String)> {
-    let text = rope.to_string();
-    let mut result = Vec::new();
-    for caps in re.captures_iter(&text) {
-        let m = caps.get(0).unwrap();
-        let expanded = expand_replacement(&caps, replacement, literal);
-        result.push((m.start(), m.end(), expanded));
-    }
-    result
-}
-
-fn collect_replacements_windowed(
-    rope: &ropey::Rope,
-    re: &Regex,
-    replacement: &str,
-    literal: bool,
-) -> Vec<(usize, usize, String)> {
-    let mut result = Vec::new();
-    let mut window = String::with_capacity(SEARCH_WINDOW_SIZE + SEARCH_WINDOW_OVERLAP);
-    let mut window_byte_start: usize = 0;
-
-    for chunk in rope.chunks() {
-        window.push_str(chunk);
-
-        while window.len() >= SEARCH_WINDOW_SIZE {
-            let safe_end = window.len() - SEARCH_WINDOW_OVERLAP;
-
-            for caps in re.captures_iter(&window) {
-                let m = caps.get(0).unwrap();
-                if m.start() >= safe_end {
-                    break;
-                }
-                let expanded = expand_replacement(&caps, replacement, literal);
-                result.push((
-                    window_byte_start + m.start(),
-                    window_byte_start + m.end(),
-                    expanded,
-                ));
-            }
-
-            let advance = find_char_boundary(&window, safe_end);
-            window_byte_start += advance;
-            window = window[advance..].to_string();
-        }
-    }
-
-    // Final window
-    for caps in re.captures_iter(&window) {
-        let m = caps.get(0).unwrap();
-        let expanded = expand_replacement(&caps, replacement, literal);
-        result.push((
-            window_byte_start + m.start(),
-            window_byte_start + m.end(),
-            expanded,
-        ));
-    }
-
-    result
-}
-
-pub fn replace_all(
-    registry: &BufferRegistry,
-    buffer_id: u64,
-    params: &SearchParams,
-    replacement: &str,
-) -> Result<usize> {
-    let re = build_regex(params)?;
-
-    let mut buffers = registry.buffers.lock().unwrap();
-    let buffer = buffers
-        .get_mut(&buffer_id)
-        .ok_or_else(|| anyhow!("Buffer {} not found", buffer_id))?;
-    buffer.ensure_replaceable().map_err(|e| anyhow!(e))?;
-
-    let replacements = collect_replacements(&buffer.rope, &re, replacement, !params.is_regex);
-    let count = replacements.len();
-
-    if count > 0 {
-        // O(1) copy-on-write snapshot so the whole replacement can be undone.
-        buffer.save_replace_snapshot();
-        // Apply from last to first so earlier byte offsets remain valid.
-        for (from, to, ref rep) in replacements.into_iter().rev() {
-            let from_char = buffer.rope.byte_to_char(from.min(buffer.rope.len_bytes()));
-            let to_char = buffer.rope.byte_to_char(to.min(buffer.rope.len_bytes()));
-            if from_char < to_char {
-                buffer.rope.remove(from_char..to_char);
-            }
-            if !rep.is_empty() {
-                buffer.rope.insert(from_char, rep);
-            }
-        }
-        buffer.is_modified = true;
-    }
-
-    Ok(count)
 }
 
 /// Replace a single match by byte range
@@ -459,6 +320,45 @@ mod tests {
         assert!(re.is_match("hello"));
         assert!(re.is_match("HELLO"));
         assert!(re.is_match("HeLLo"));
+    }
+
+    #[test]
+    fn test_build_regex_anchors_are_line_anchors() {
+        let params = SearchParams {
+            pattern: r"^\w+$".into(),
+            is_regex: true,
+            case_sensitive: true,
+            whole_word: false,
+        };
+        let re = build_regex(&params).unwrap();
+        let found: Vec<&str> = re.find_iter("one\ntwo three\nfour").map(|m| m.as_str()).collect();
+        assert_eq!(found, vec!["one", "four"]);
+
+        // `\A` / `\z` still anchor the whole document.
+        let doc = SearchParams { pattern: r"\Aone".into(), ..params.clone() };
+        let re = build_regex(&doc).unwrap();
+        assert_eq!(re.find_iter("one\none").count(), 1);
+    }
+
+    #[test]
+    fn test_find_all_windowed_matches_full_text_results() {
+        // Windowed scanning (used > 200 MB) must agree with the full-text path.
+        let text = "héllo foo\nfoo 你好 foo\n".repeat(500);
+        let rope = Rope::from_str(&text);
+        let re = RegexBuilder::new(r"(?m)^foo|你好|foo$").multi_line(true).build().unwrap();
+        let full = find_all_full(&rope, &re, 100_000);
+        // Tiny windows (and `single_window_max: 0`) so the multi-window path of
+        // `FindSink` / `build_match` is really exercised, not the single-window one.
+        let cfg = scan::ScanConfig { window_size: 64, overlap: 24, single_window_max: 0 };
+        let windowed = find_all_windowed(&rope, &re, 100_000, &cfg);
+        assert_eq!(windowed.total, full.total);
+        let pos = |r: &FindResult| {
+            r.matches
+                .iter()
+                .map(|m| (m.from, m.to, m.line, m.column, m.preview.clone()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(pos(&windowed), pos(&full));
     }
 
     #[test]

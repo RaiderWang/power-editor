@@ -55,6 +55,21 @@ export interface FindResult {
   truncated: boolean;
 }
 
+/** Result of a completed (not cancelled) Replace All; mirrors `ReplaceOutcome` in Rust. */
+export interface ReplaceAllOutcome {
+  count: number;
+  /** Refreshed buffer info (line count, byte size, modified flag). */
+  file_info: FileInfo;
+}
+
+/** Payload of the `replace:progress` event. */
+export interface ReplaceProgressPayload {
+  buffer_id: number;
+  bytes_done: number;
+  total_bytes: number;
+  matches: number;
+}
+
 // ──────────────────────────────────────────────────────────────
 // Wordfile / Syntax types
 // ──────────────────────────────────────────────────────────────

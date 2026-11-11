@@ -9,6 +9,7 @@ import {
   TAB_GOTO_PREFIX,
 } from '../store/keybindings';
 import { switchTabRelativeAtom, switchTabByIndexAtom } from '../store/tabNavigation';
+import { replaceProgressAtom } from '../store/replaceProgress';
 import {
   activeTabAtom,
   editorPrefsAtom,
@@ -35,7 +36,10 @@ type ActionHandler = () => void;
  */
 export function useKeybindingDispatcher() {
   const customs = useAtomValue(customKeybindingsAtom);
-  const dialogOpen = useAtomValue(keybindingsDialogOpenAtom);
+  const shortcutsDialogOpen = useAtomValue(keybindingsDialogOpenAtom);
+  // A running Replace All must not be disturbed by Ctrl+W, tab switching, etc.
+  const replaceRunning = useAtomValue(replaceProgressAtom) !== null;
+  const dialogOpen = shortcutsDialogOpen || replaceRunning;
   const activeTab = useAtomValue(activeTabAtom);
   const setPrefs = useSetAtom(editorPrefsAtom);
   const setColumnMode = useSetAtom(columnModeAtom);
