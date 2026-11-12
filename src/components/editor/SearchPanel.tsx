@@ -28,6 +28,11 @@ import {
 } from '../../store/editorViewRegistry';
 import { activePaneAtom, secondaryActiveTabAtom } from '../../store/splitAtoms';
 import { replaceProgressAtom } from '../../store/replaceProgress';
+import {
+  replaceTextAtom,
+  searchReplaceVisibleAtom,
+  toggleReplaceVisibleAtom,
+} from '../../store/searchReplaceState';
 import { useReplaceAll } from './useReplaceAll';
 import type { SearchMatch } from '../../types';
 import styles from './SearchPanel.module.css';
@@ -61,8 +66,9 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
   const setActiveTabId = useSetAtom(activeTabIdAtom);
 
   const t = useTranslation();
-  const [replaceText, setReplaceText] = useState('');
-  const [showReplace, setShowReplace] = useState(false);
+  const [replaceText, setReplaceText] = useAtom(replaceTextAtom);
+  const showReplace = useAtomValue(searchReplaceVisibleAtom);
+  const toggleShowReplace = useSetAtom(toggleReplaceVisibleAtom);
   const [searchSelectTrigger, setSearchSelectTrigger] = useState(0);
   const [listLines, setListLines] = useState(false);
   const [showLineList, setShowLineList] = useState(false);
@@ -112,18 +118,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
     }
     prevOpenRef.current = open;
   }, [open, activeTab, secondaryActiveTab, activePane]);
-
-  // 展开替换区时自动填入最近一次替换历史（仅在替换框为空时）
-  const toggleShowReplace = () => {
-    const next = !showReplace;
-    setShowReplace(next);
-    if (next && replaceText === '') {
-      const history = loadReplaceHistory();
-      if (history.length > 0) {
-        setReplaceText(history[0]);
-      }
-    }
-  };
 
   const listLinesRef = useRef(listLines);
   useEffect(() => {
@@ -540,7 +534,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onMatchesFound }) => {
         </div>
         <button
           className={`${styles.btn} ${showReplace ? styles.btnActive : ''}`}
-          onClick={toggleShowReplace}
+          onClick={() => toggleShowReplace()}
         >
           {t('search.replace')}
         </button>

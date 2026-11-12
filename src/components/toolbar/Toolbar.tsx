@@ -8,6 +8,7 @@ import {
   Undo2,
   Redo2,
   Search,
+  Replace,
   WrapText,
   Columns2,
   Sun,
@@ -23,14 +24,13 @@ import {
   activeTabAtom,
   editorPrefsAtom,
   columnModeAtom,
-  searchOpenAtom,
-  searchTriggerAtom,
   supportedEncodingsAtom,
   tabsAtom,
   languageDefsAtom,
 } from '../../store/atoms';
 import { customKeybindingsAtom, getEffectiveShortcut } from '../../store/keybindings';
 import { undoEdit, redoEdit } from '../../store/replaceUndo';
+import { openFindPanelAtom, openReplacePanelAtom } from '../../store/searchReplaceState';
 import { useFile } from '../../hooks/useFile';
 import { useExplorer } from '../../hooks/useExplorer';
 import { getTabSaveDefaultPath } from '../../utils/tabFileName';
@@ -46,9 +46,8 @@ export const Toolbar: React.FC = () => {
   const activeTab = useAtomValue(activeTabAtom);
   const [prefs, setPrefs] = useAtom(editorPrefsAtom);
   const [columnMode, setColumnMode] = useAtom(columnModeAtom);
-  const setSearchOpen = useSetAtom(searchOpenAtom);
-  const setSearchTrigger = useSetAtom(searchTriggerAtom);
-  const openSearch = useCallback(() => { setSearchOpen(true); setSearchTrigger((n) => n + 1); }, [setSearchOpen, setSearchTrigger]);
+  const openFindPanel = useSetAtom(openFindPanelAtom);
+  const openReplacePanel = useSetAtom(openReplacePanelAtom);
   const encodings = useAtomValue(supportedEncodingsAtom);
   const langDefs = useAtomValue(languageDefsAtom);
   const [, setTabs] = useAtom(tabsAtom);
@@ -200,8 +199,21 @@ export const Toolbar: React.FC = () => {
 
       <div className={styles.separator} />
 
-      <button className={styles.btn} onClick={openSearch} title={`${t('toolbar.findReplace')}${sk('search.find')}`}>
+      <button
+        className={styles.btn}
+        onClick={() => openFindPanel()}
+        disabled={!activeTab}
+        title={`${t('toolbar.find')}${sk('search.find')}`}
+      >
         <Search size={16} />
+      </button>
+      <button
+        className={styles.btn}
+        onClick={() => openReplacePanel()}
+        disabled={!activeTab}
+        title={t('toolbar.replace')}
+      >
+        <Replace size={16} />
       </button>
 
       <div className={styles.separator} />

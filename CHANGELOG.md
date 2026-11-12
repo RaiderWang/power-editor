@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed / 变更
+- **Separate Find and Replace toolbar buttons / 工具栏拆分「查找」与「替换」按钮**: the single "Find & Replace" toolbar button is now two buttons. "Find" opens the find panel with the replace row collapsed; "Replace" opens it with the "Replace with" row expanded (pre-filled with the latest replace history when empty). Both are disabled when no tab is open. Ctrl+F, the Edit menu and the context menu keep the replace row as you last left it.
+  （工具栏原来的单个“查找替换”按钮拆成两个：“查找”打开查找面板并收起替换区；“替换”打开面板并展开“替换为”输入框（为空时自动填入最近一次替换历史）。没有打开标签时两者均禁用。Ctrl+F、编辑菜单与右键菜单仍保持上次的替换区展开状态。）
+
 ## [0.3.1] - 2026-11-12
 
 ### Added / 新增
