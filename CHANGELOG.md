@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-12
+
 ### Added / 新增
 - **Search in folder / 文件夹内搜索**: with a folder open, the Explorer sidebar now has a search box (Ctrl+Shift+F, or Edit → Search in Folder) that searches either **file names** or **file contents** across all text files of the folder. Results stream in live while the search runs and are listed below the box: for content search each file shows its matching lines (cut around the match, keyword highlighted); click a line to open the file at the match (the caret is placed on it; an already open tab is reused), click a file header to collapse it. Options: match case, whole word, regular expression, and "Include ignored" (by default `.gitignore`d files, hidden files and `node_modules` are skipped; `.git` is never searched). Performance: the folder is walked on several threads in Rust, files are sniffed for binary content and read in 4 MB streaming chunks (memory does not grow with file size, any encoding, matches are reported in the same byte coordinates the editor uses), results are batched, the list is virtualised, a new query cancels the old search immediately, and results are capped (2000 files / 5000 matching lines, 200 per file). Searching reads the files from disk: for a file with unsaved edits or a manually changed encoding, clicking a result jumps to the line only (position may be approximate); for >4 MB files still loading in the background the jump waits until the target line is loaded. Regex searches support zero-width matches (e.g. `^$` finds empty lines), hiding and re-showing the sidebar (Ctrl+B) keeps the query and does not steal editor focus, and skipped binary files are shown as plain info rather than a warning.
   （打开文件夹后，资源管理器侧栏新增搜索框（Ctrl+Shift+F，或 编辑 → 在文件夹中搜索），可在文件夹内所有文本类文件中搜索**文件名**或**文件内容**。搜索进行时结果实时流式显示在搜索框下方：内容搜索按文件列出命中行（围绕命中处截取并高亮关键词），点击命中行即打开文件并定位到命中处（光标落在命中上，已打开的标签会被复用），点击文件标题可折叠。选项：区分大小写、全字匹配、正则表达式、“包含被忽略文件”（默认跳过 `.gitignore` 命中项、隐藏文件与 `node_modules`，`.git` 始终不搜索）。性能：Rust 多线程遍历目录，先嗅探二进制再以 4 MB 流式分块读取（内存不随文件大小增长，支持各种编码，命中偏移与编辑器使用同一字节坐标），结果分批推送、列表虚拟化，新查询会立即取消旧搜索，并设有上限（2000 个文件 / 5000 条命中行，单文件 200 条）。搜索读取的是磁盘内容：对有未保存修改或手动更改过编码的文件，点击结果只跳转到所在行（位置可能不准确）；对仍在后台加载的 >4 MB 文件，跳转会等目标行加载完成。正则搜索支持零宽匹配（如 `^$` 可查找空行）；用 Ctrl+B 收起再展开侧栏会保留搜索词且不会抢走编辑器焦点；被跳过的二进制文件改为普通提示而非警告。）
@@ -415,7 +417,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/RaiderWang/power-editor/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/RaiderWang/power-editor/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/RaiderWang/power-editor/compare/v0.2.12...v0.3.0
 [0.2.12]: https://github.com/RaiderWang/power-editor/compare/v0.2.11...v0.2.12
 [0.2.11]: https://github.com/RaiderWang/power-editor/compare/v0.2.10...v0.2.11
