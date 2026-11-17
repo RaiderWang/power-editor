@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.3.2] - 2026-11-17
 
 ### Fixed / 修复
 - **Markdown preview lost code highlighting after zooming / 预览缩放后代码高亮丢失**: zooming the preview (or toggling sync scroll) re-rendered the pane and made React 19 reset the preview's `innerHTML`, wiping the post-processed DOM: syntax highlighting, copy buttons, rewritten local image paths and the expanded state of the YAML frontmatter card. The HTML object is now kept stable, so the preview DOM is only replaced when the rendered Markdown actually changes.
