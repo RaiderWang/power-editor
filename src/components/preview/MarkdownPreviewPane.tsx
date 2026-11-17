@@ -62,6 +62,11 @@ export const MarkdownPreviewPane: React.FC = () => {
     return renderMarkdown(content, { frontmatterLabel });
   }, [status, content, frontmatterLabel]);
 
+  // React 19 re-assigns innerHTML whenever the `dangerouslySetInnerHTML` object identity changes, which
+  // would wipe the post-processed DOM (highlighting, copy buttons, image paths, frontmatter state) on
+  // any unrelated re-render such as a zoom change. Keep the identity stable per HTML string.
+  const htmlProps = useMemo(() => ({ __html: rendered.html }), [rendered.html]);
+
   // Re-apply the remembered expanded state right after the HTML is swapped (before paint)
   useLayoutEffect(() => {
     const details = contentRef.current?.querySelector<HTMLDetailsElement>('details.frontmatter');
@@ -202,7 +207,7 @@ export const MarkdownPreviewPane: React.FC = () => {
     return (
       <div
         className={styles.markdownBody}
-        dangerouslySetInnerHTML={{ __html: rendered.html }}
+        dangerouslySetInnerHTML={htmlProps}
       />
     );
   };
